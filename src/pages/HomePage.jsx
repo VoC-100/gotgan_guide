@@ -70,7 +70,7 @@ export default function HomePage() {
         <div className="mockup-banner">
           <div className="mockup-banner-text">
             <span className="mockup-tag">MOCKUP</span>
-            <b>목업 화면 43개</b>
+            <b>목업 화면 42개</b>
             <span>배포된 화면 목업 — 요구사항 · 화면 구현의 기준</span>
           </div>
           <a className="mockup-open" href={MOCKUP_URL} target="_blank" rel="noreferrer">
@@ -89,7 +89,7 @@ export default function HomePage() {
             </li>
           ))}
         </ul>
-        <p className="home-lead">화면 왼쪽 아래 <b>MOCK 화면 목록</b> 버튼으로 43개 화면 어디로든 이동할 수 있습니다. 데이터는 하드코딩이며 새로고침하면 초기화됩니다.</p>
+        <p className="home-lead">화면 왼쪽 아래 <b>MOCK 화면 목록</b> 버튼으로 42개 화면 어디로든 이동할 수 있습니다. 데이터는 하드코딩이며 새로고침하면 초기화됩니다.</p>
       </section>
 
       <section className="home-block">
@@ -155,17 +155,17 @@ export default function HomePage() {
       </section>
 
       <section className="home-block">
-        <h2>회의 전에 볼 것</h2>
+        <h2>먼저 볼 것</h2>
         <ul className="quick">
-          <li><Link to="/convention#c0-3"><b>컨벤션 0-3</b>확정 컨벤션 요약 — 회의에서 결정한 8가지</Link></li>
-          <li><Link to="/guideline#s3"><b>가이드라인 03</b>업무 분장 판단 자료 — 숙련도 · 난이도 · 참고안</Link></li>
-          <li><Link to="/guideline#s15"><b>가이드라인 18</b>팀 회의 안건 — 결정할 것과 추천 기본값</Link></li>
-          <li><Link to="/spec#s5"><b>스펙 06</b>P0 완료 기준 — 4주차까지 완주할 E2E 시나리오</Link></li>
+          <li><Link to="/guideline#s15"><b>가이드라인 18</b>결정 기록 — 10/08 컨벤션 회의 · 10/12 멘토링</Link></li>
+          <li><Link to="/convention#c0-3"><b>컨벤션 0-3</b>확정 컨벤션 요약</Link></li>
+          <li><Link to="/guideline#s3"><b>가이드라인 03</b>서비스 구성 · 업무 분장 — 서비스 9개 · 담당자</Link></li>
+                    <li><Link to="/spec#s5"><b>스펙 06</b>P0 완료 기준 — 4주차까지 완주할 E2E 시나리오</Link></li>
         </ul>
       </section>
 
       <footer className="home-foot">
-        <span>목업 화면 43개는 <a href={MOCKUP_URL} target="_blank" rel="noreferrer">mockup-page-sable.vercel.app ↗</a></span>
+        <span>목업 화면 42개는 <a href={MOCKUP_URL} target="_blank" rel="noreferrer">mockup-page-sable.vercel.app ↗</a></span>
         <span>문서 원본은 저장소 <code>content/</code> — 수정 후 main에 push하면 자동 배포</span>
         <span>컨벤션 MD를 고쳤다면 <code>npm run convention</code>으로 HTML 재생성</span>
       </footer>

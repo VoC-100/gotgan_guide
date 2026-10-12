@@ -134,6 +134,7 @@ main h3 + .tbl, main h4 + .tbl{margin-top:6px}
     <li class="l2"><a href="#c0-1">0-1 판단 원칙</a></li>
     <li class="l2"><a href="#c0-2">0-2 기존 컨벤션 대비 변경 사항</a></li>
     <li class="l2"><a href="#c0-3">0-3 확정 컨벤션 요약</a></li>
+    <li class="l2"><a href="#c0-4">0-4 10/12 추가 확정</a></li>
     <li><a href="#c1"><span class="num">01</span>공통 — Git · 협업</a></li>
     <li class="l2"><a href="#c1-1">1-1 브랜치</a></li>
     <li class="l2"><a href="#c1-2">1-2 커밋 메시지</a></li>
@@ -197,12 +198,12 @@ main h3 + .tbl, main h4 + .tbl{margin-top:6px}
 <section id="c0">
 <h2><span class="n">00</span>개요</h2>
 <h3 id="c0-1"><span class="n">0-1</span>판단 원칙</h3>
-<ul class="b"><li><b>"어떻게 쓰나"는 팀 기존 규칙 우선</b> — 코드 스타일 · 네이밍 · 응답 형식 · 예외 구조 · DB 규칙</li><li><b>"무엇을 만드나"는 프로젝트 스펙 유지</b> — 서비스 6개 · 엔드포인트 · 이벤트 · 인프라 구성</li><li><b>MSA 전용 규칙 추가</b> — 서비스 간 호출 · 이벤트 · Saga · 멱등성 · 인프라 네이밍</li><li>규칙끼리 충돌하면 이 문서가 우선, 다른 문서는 이 문서에 맞춰 수정</li></ul>
+<ul class="b"><li><b>"어떻게 쓰나"는 팀 기존 규칙 우선</b> — 코드 스타일 · 네이밍 · 응답 형식 · 예외 구조 · DB 규칙</li><li><b>"무엇을 만드나"는 프로젝트 스펙 유지</b> — 서비스 9개 + Keycloak · 엔드포인트 · 이벤트 · 인프라 구성</li><li><b>MSA 전용 규칙 추가</b> — 서비스 간 호출 · Resilience4j · 대시보드 조합 · 이벤트 · Saga · 멱등성 · 인프라 네이밍</li><li>규칙끼리 충돌하면 이 문서가 우선, 다른 문서는 이 문서에 맞춰 수정</li></ul>
 <h3 id="c0-2"><span class="n">0-2</span>기존 컨벤션 대비 변경 사항</h3>
 <div class="tbl"><table>
 <tr><th>항목</th><th>기존(따숨)</th><th>곳간</th><th>이유</th></tr>
 <tr><td>패키지</td><td>도메인형, 엔티티는 <code>domain/</code></td><td>도메인형, 엔티티는 <b><code>entity/</code></b>, 서비스 호출용 <b><code>client/</code></b> 추가</td><td>팀 합의(엔티티 패키지명) · 서비스 간 HTTP 호출</td></tr>
-<tr><td>보안 위치</td><td>각 앱 <code>common/security</code></td><td><b>게이트웨이에만</b> Spring Security, 업무 서비스는 <code>common/auth</code>(헤더 → 사용자)</td><td>JWT 검증은 게이트웨이 한 곳</td></tr>
+<tr><td>보안 위치</td><td>각 앱 <code>common/security</code></td><td><b>게이트웨이에만</b> Spring Security, 업무 서비스는 <code>common/auth</code>(헤더 → 사용자)</td><td>토큰 발급은 Keycloak, JWT 검증은 게이트웨이 한 곳</td></tr>
 <tr><td>로그인 사용자</td><td><code>SecurityUtil.getMemberId()</code></td><td><code>@CurrentUser AuthUser</code> (게이트웨이가 넣은 <code>X-User-*</code> 헤더)</td><td>업무 서비스에 SecurityContext 없음</td></tr>
 <tr><td>FK 제약</td><td>참조 컬럼 FK 필수</td><td><b>같은 서비스 안에서만 FK 필수</b>, 다른 서비스 ID는 논리 참조 + 인덱스</td><td>DB per Service</td></tr>
 <tr><td>회원 테이블 · 패키지</td><td><code>member</code> · <code>member/</code></td><td><b><code>users</code> · <code>user/</code></b></td><td>서비스(user-service) · 스키마(userdb) 이름과 일치</td></tr>
@@ -211,7 +212,7 @@ main h3 + .tbl, main h4 + .tbl{margin-top:6px}
 <tr><td>시드 데이터</td><td><code>db/seed</code> V100~</td><td><code>db/seed/R__*.sql</code> (반복 실행)</td><td>내용 수정 시 체크섬 오류 없음</td></tr>
 <tr><td>프론트 언어</td><td>TypeScript</td><td><b>JavaScript</b> (<code>.js</code> / <code>.jsx</code>)</td><td>목업 그대로 이식 · 입문자 부담 최소화</td></tr>
 <tr><td>프론트 UI 키트</td><td>shadcn/ui · recharts · sonner</td><td><b>목업 컴포넌트 · 목업 SVG 차트 · 목업 토스트</b></td><td>목업 디자인 원칙 유지</td></tr>
-<tr><td>프론트 관리자</td><td><code>features/admin</code> 공유 도메인</td><td><b>관리자 화면도 각 도메인 feature에</b> (<code>features/store</code>의 입점 심사 등)</td><td>도메인 담당 = 폴더 담당, 공유 폴더 충돌 없음</td></tr>
+<tr><td>프론트 관리자</td><td><code>features/admin</code> 공유 도메인</td><td><b><code>features/admin</code></b> — admin-service(<code>/api/admin/**</code>)만 호출, 담당 구지훈</td><td>백엔드 admin-service와 1:1 대칭, 담당 = 폴더 담당</td></tr>
 <tr><td>프론트 페이지</td><td>—</td><td><code>pages/{shop,mypage,seller,admin}</code></td><td>4개 화면 영역</td></tr>
 </table></div>
 <h3 id="c0-3"><span class="n">0-3</span>확정 컨벤션 요약</h3>
@@ -225,17 +226,29 @@ main h3 + .tbl, main h4 + .tbl{margin-top:6px}
 <tr><td>5</td><td>에러 코드 형식</td><td>의미형 <code>{도메인}_{상황}</code> — <code>ORDER_OUT_OF_STOCK</code></td><td>2-5</td></tr>
 <tr><td>6</td><td>프론트 언어</td><td>JavaScript (<code>.js</code> / <code>.jsx</code>) — 목업 그대로</td><td>4-1</td></tr>
 <tr><td>7</td><td>프론트 페이지 위치</td><td><code>pages/{shop · mypage · seller · admin}/</code> — 로직은 <code>features/</code></td><td>4-2</td></tr>
-<tr><td>8</td><td>Redis 키 이름</td><td><code>refresh:</code> · <code>blacklist:</code> — <code>{용도}:{식별자}</code></td><td>2-2</td></tr>
+<tr><td>8</td><td>Redis 키 이름</td><td><code>{용도}:{식별자}</code> — <code>cart:{userId}</code> · <code>blacklist:{jti}</code>(Could). 리프레시 토큰 키는 폐지(Keycloak이 관리)</td><td>2-2</td></tr>
+</table></div>
+<h3 id="c0-4"><span class="n">0-4</span>10/12 추가 확정</h3>
+<div class="tbl"><table>
+<tr><th>항목</th><th>확정 규칙</th><th>관련 절</th></tr>
+<tr><td>서비스 구성</td><td>Spring 9개(gateway · user · store · product · order · payment · review · settlement · admin) + Keycloak</td><td>2-1 · 3-2</td></tr>
+<tr><td>admin-service</td><td>DB 없는 조합 계층 — 관리자 API 진입점, 각 서비스 <code>/internal/**</code>을 호출해 조합만</td><td>2-1 · 2-4 · 2-7</td></tr>
+<tr><td>카테고리 · 수수료</td><td>카테고리는 product-service, 카테고리별 수수료는 settlement-service</td><td>2-1 · 3-2</td></tr>
+<tr><td>대시보드</td><td>판매자는 store, 관리자는 admin 안에서 조합 — 병렬 호출 + 실패 영역만 빼고 부분 응답</td><td>2-7</td></tr>
+<tr><td>서비스 간 호출</td><td>Resilience4j 표준 (타임아웃 · 서킷 브레이커 · 멱등 GET만 재시도 · 폴백)</td><td>2-7</td></tr>
+<tr><td>동적 검색</td><td>QueryDSL</td><td>2-6</td></tr>
+<tr><td>XSS</td><td>사용자 입력 HTML은 OWASP Java HTML Sanitizer로 저장 전 정화</td><td>2-6</td></tr>
+<tr><td>코드 품질</td><td>SonarQube Cloud — main 대상 PR에 품질 게이트</td><td>1-3</td></tr>
 </table></div>
 </section>
 <section id="c1">
 <h2><span class="n">01</span>공통 — Git · 협업</h2>
 <h3 id="c1-1"><span class="n">1-1</span>브랜치</h3>
-<ul class="b"><li><code>main</code> — 보호 브랜치. 직접 push 금지, PR + 승인 1명 + CI 통과 후 Squash merge</li><li>작업 브랜치: <code>feat/{도메인}-{작업}</code> (예: <code>feat/order-payment-verify</code>, <code>feat/infra-eks-cluster</code>)</li><li>그 외: <code>fix/</code> · <code>refactor/</code> · <code>docs/</code> · <code>chore/</code>(빌드 · 설정)</li><li>도메인 값: <code>auth</code> <code>user</code> <code>store</code> <code>product</code> <code>order</code> <code>settlement</code> <code>gateway</code> <code>front</code>(프론트 공통) <code>infra</code> <code>cicd</code> <code>obs</code>(관측성) <code>sls</code>(서버리스)</li></ul>
+<ul class="b"><li><code>main</code> — 보호 브랜치. 직접 push 금지, PR + 승인 1명 + CI 통과 후 Squash merge</li><li>작업 브랜치: <code>feat/{도메인}-{작업}</code> (예: <code>feat/order-payment-verify</code>, <code>feat/infra-eks-cluster</code>)</li><li>그 외: <code>fix/</code> · <code>refactor/</code> · <code>docs/</code> · <code>chore/</code>(빌드 · 설정)</li><li>도메인 값: <code>auth</code> <code>user</code> <code>store</code> <code>product</code> <code>order</code> <code>payment</code> <code>review</code> <code>settlement</code> <code>admin</code> <code>gateway</code> <code>front</code>(프론트 공통) <code>infra</code>(Keycloak 설정 포함, 예: <code>feat/infra-keycloak-realm</code>) <code>cicd</code> <code>obs</code>(관측성) <code>sls</code>(서버리스)</li></ul>
 <h3 id="c1-2"><span class="n">1-2</span>커밋 메시지</h3>
 <ul class="b"><li>Conventional Commits: <code>{type}({scope}): {요약}</code></li><li>type: <code>feat</code> <code>fix</code> <code>refactor</code> <code>docs</code> <code>test</code> <code>chore</code> <code>ci</code> <code>infra</code></li><li>scope: 서비스 · 영역 이름 (<code>order</code> <code>gateway</code> <code>front</code> <code>terraform</code> <code>helm</code> …)</li><li>요약은 한국어 명사형 종결, 50자 이내</li><li>예: <code>feat(order): 포트원 결제 검증 API</code> · <code>fix(front): 장바구니 무료배송 금액 계산</code> · <code>infra(terraform): NLB용 EIP 추가</code></li></ul>
 <h3 id="c1-3"><span class="n">1-3</span>이슈 · PR</h3>
-<ul class="b"><li>이슈 제목: <code>[요구사항 ID] 작업</code> — 예: <code>[ORD-06] 결제 검증</code></li><li>PR 제목: 커밋 메시지 형식과 동일</li><li>PR 본문 템플릿:<ul class="b"><li>개요 — 관련 요구사항 ID · 이슈 링크</li><li>작업 내용 — 변경 사항 개조식</li><li>테스트 — 확인 방법 (curl · 화면 · 테스트 코드)</li><li>팀원 확인 사항 — 다른 팀원이 알아야 할 것</li></ul></li><li><b>프론트 · 다른 서비스에 영향 있는 변경(응답 형식 · 에러 코드 · 이벤트 payload · API 경로)은 PR 제목에 <code>[영향]</code> 표시</b>, 영향받는 담당자 리뷰 필수</li><li>PR 하나에 기능 하나, 변경 300줄 이하 권장</li></ul>
+<ul class="b"><li>이슈 제목: <code>[요구사항 ID] 작업</code> — 예: <code>[ORD-06] 결제 검증</code></li><li>PR 제목: 커밋 메시지 형식과 동일</li><li>PR 본문 템플릿:<ul class="b"><li>개요 — 관련 요구사항 ID · 이슈 링크</li><li>작업 내용 — 변경 사항 개조식</li><li>테스트 — 확인 방법 (curl · 화면 · 테스트 코드)</li><li>팀원 확인 사항 — 다른 팀원이 알아야 할 것</li></ul></li><li><b>프론트 · 다른 서비스에 영향 있는 변경(응답 형식 · 에러 코드 · 이벤트 payload · API 경로)은 PR 제목에 <code>[영향]</code> 표시</b>, 영향받는 담당자 리뷰 필수</li><li>PR 하나에 기능 하나, 변경 300줄 이하 권장</li><li>main 대상 PR은 CI에서 <b>SonarQube Cloud 품질 게이트</b>를 통과해야 머지 (이슈는 PR 코멘트로 확인)</li></ul>
 <h3 id="c1-4"><span class="n">1-4</span>폴더 소유권</h3>
 <ul class="b"><li><b>다른 사람이 맡은 서비스 · <code>features/</code> 폴더는 PR 없이 수정 금지.</b> 연동이 필요하면 이슈로 요청</li><li>공유 파일(<code>shared/api/queryKeys.js</code> · <code>app/router.jsx</code> · <code>01-configmap.yaml</code> · <code>values.yaml</code>)은 <b>도메인별 주석 구획 안에서만</b> 수정</li><li>CODEOWNERS로 리뷰어 자동 지정</li></ul>
 <h3 id="c1-5"><span class="n">1-5</span>시크릿</h3>
@@ -245,10 +258,10 @@ main h3 + .tbl, main h4 + .tbl{margin-top:6px}
 <h2><span class="n">02</span>백엔드</h2>
 <h3 id="c2-1"><span class="n">2-1</span>패키지 구조</h3>
 <p>도메인형 구조. 최상위를 계층(controller/service …)으로 나누지 않습니다.</p>
-<pre><code>com.sesac.team1.{service}            # service = gateway · user · store · product · order · settlement
+<pre><code>com.sesac.team1.{service}            # service = gateway · user · store · product · order · payment · review · settlement · admin
 ├── {Service}Application.java
 ├── common                           # 도메인에 속하지 않는 공통 모듈 (서비스 템플릿에서 복사)
-│   ├── config                       # @Configuration — Redis · RestClient · Scheduling(ShedLock) · WebMvc · Swagger · AWS
+│   ├── config                       # @Configuration — Redis · RestClient · Resilience4j · QueryDSL · Scheduling(ShedLock) · WebMvc · Swagger · AWS
 │   ├── dto                          # ApiResponse · PageResponse
 │   ├── exception                    # ErrorCode · CommonErrorCode · BusinessException · GlobalExceptionHandler
 │   ├── auth                         # @CurrentUser · AuthUser · CurrentUserArgumentResolver
@@ -266,15 +279,19 @@ main h3 + .tbl, main h4 + .tbl{margin-top:6px}
     ├── exception                    # {Domain}Exception · {Domain}ErrorCode
     ├── client                       # 다른 서비스 · 포트원 호출 (@HttpExchange)
     └── util                         # 이 도메인 전용 유틸</code></pre>
-<ul class="b"><li>해당 도메인에 필요 없는 패키지는 만들지 않음 (예: <code>cart</code>는 <code>entity</code> 없음)</li><li>gateway-service는 예외: <code>config</code> · <code>filter</code> · <code>exception</code>만, DB 없음</li></ul>
+<ul class="b"><li>해당 도메인에 필요 없는 패키지는 만들지 않음 (예: <code>cart</code>는 <code>entity</code> 없음)</li><li><b>DB가 없는 서비스 두 곳</b><ul class="b"><li>gateway-service: <code>config</code> · <code>filter</code> · <code>exception</code>만</li><li>admin-service: 도메인 패키지에 <code>controller</code> · <code>service</code> · <code>client</code> · <code>dto</code>만 — <b><code>entity</code> · <code>repository</code> 없음</b>, 데이터는 각 서비스 <code>/internal/**</code> 호출로만 다룸</li></ul></li></ul>
 <h4>서비스별 도메인</h4>
 <div class="tbl"><table>
-<tr><th>서비스</th><th>도메인 패키지</th></tr>
-<tr><td>user-service</td><td><code>auth</code>(가입 · 로그인 · 토큰) · <code>user</code>(회원 · 배송지 · 관리자 회원)</td></tr>
-<tr><td>store-service</td><td><code>apply</code>(입점 신청 · 심사 · 서류) · <code>store</code> · <code>category</code>(카테고리 · 수수료)</td></tr>
-<tr><td>product-service</td><td><code>product</code> · <code>option</code>(옵션 · 재고) · <code>stock</code>(예약 · 해제) · <code>image</code></td></tr>
-<tr><td>order-service</td><td><code>cart</code> · <code>order</code> · <code>payment</code> · <code>saga</code></td></tr>
-<tr><td>settlement-service</td><td><code>settlement</code>(적재 · 집계 · 지급 · 보류)</td></tr>
+<tr><th>서비스</th><th>DB</th><th>도메인 패키지</th></tr>
+<tr><td>gateway-service</td><td>없음</td><td>— (<code>config</code> · <code>filter</code> · <code>exception</code>)</td></tr>
+<tr><td>user-service</td><td>userdb</td><td><code>auth</code>(가입 · 로그인 · refresh · 로그아웃 — Keycloak 대리 호출) · <code>user</code>(회원 프로필 · 등급) · <code>address</code>(배송지) · <code>point</code>(적립 · 사용 · 환원)</td></tr>
+<tr><td>store-service</td><td>storedb</td><td><code>apply</code>(입점 신청 · 심사 · 서류) · <code>store</code>(상태 · 배송정책) · <code>dashboard</code>(판매자 대시보드 조합)</td></tr>
+<tr><td>product-service</td><td>productdb</td><td><code>category</code>(상위/하위) · <code>product</code>(QueryDSL 검색 포함) · <code>option</code> · <code>stock</code>(예약 · 해제) · <code>image</code></td></tr>
+<tr><td>order-service</td><td>orderdb</td><td><code>cart</code> · <code>order</code> · <code>claim</code>(취소 · 반품 · 교환) · <code>saga</code></td></tr>
+<tr><td>payment-service</td><td>paymentdb</td><td><code>payment</code>(포트원 V2 검증 · 취소 · 웹훅)</td></tr>
+<tr><td>review-service</td><td>reviewdb</td><td><code>review</code>(사진 · 별점 · 판매자 답글) · <code>inquiry</code>(상품문의 · 답변) · <code>eligibility</code>(리뷰 작성 자격)</td></tr>
+<tr><td>settlement-service</td><td>settlementdb</td><td><code>settlement</code>(적재 · 집계 · 지급 · 보류) · <code>commission</code>(카테고리별 수수료)</td></tr>
+<tr><td>admin-service</td><td>없음</td><td><code>application</code> · <code>store</code> · <code>category</code> · <code>settlement</code> · <code>user</code> · <code>dashboard</code> — 모두 <code>/internal/**</code> 호출 조합</td></tr>
 </table></div>
 <h4>도메인 경계 기준</h4>
 <ul class="b"><li>"어느 서비스에서 예외를 throw 하는가"가 그 코드의 소속 도메인</li><li>엔티티는 리소스를 소유한 도메인에 둠. 같은 서비스 안 <b>단방향 의존</b>(예: <code>auth → user</code>)은 허용, 역방향 금지</li><li>다른 도메인의 repository를 직접 쓰지 않고 그 도메인의 service를 호출</li></ul>
@@ -284,13 +301,14 @@ main h3 + .tbl, main h4 + .tbl{margin-top:6px}
 <h4>클래스 접미사</h4>
 <div class="tbl"><table>
 <tr><th>종류</th><th>규칙</th><th>예시</th></tr>
-<tr><td>컨트롤러</td><td>구매자 · 공개 <code>{X}Controller</code> / 판매자 <code>Seller{X}Controller</code> / 관리자 <code>Admin{X}Controller</code> / 내부 <code>Internal{X}Controller</code></td><td><code>OrderController</code> · <code>SellerOrderItemController</code> · <code>InternalStockController</code></td></tr>
+<tr><td>컨트롤러</td><td>구매자 · 공개 <code>{X}Controller</code> / 판매자 <code>Seller{X}Controller</code> / 관리자 <code>Admin{X}Controller</code>(<b>admin-service에만</b>) / 내부 <code>Internal{X}Controller</code></td><td><code>OrderController</code> · <code>SellerOrderItemController</code> · <code>AdminApplicationController</code> · <code>InternalStockController</code></td></tr>
 <tr><td>서비스</td><td><code>{X}Service</code> · Saga <code>{행위}Saga</code> · 스케줄러 <code>{행위}Scheduler</code></td><td><code>PaymentService</code> · <code>PlaceOrderSaga</code> · <code>AutoConfirmScheduler</code></td></tr>
 <tr><td>레포지토리</td><td><code>{Entity}Repository</code> · Redis <code>{X}RedisRepository</code></td><td><code>OrderItemRepository</code> · <code>CartRedisRepository</code></td></tr>
-<tr><td>클라이언트</td><td><code>{대상}Client</code></td><td><code>ProductClient</code> · <code>PortOneClient</code></td></tr>
+<tr><td>클라이언트</td><td><code>{대상}Client</code></td><td><code>ProductClient</code> · <code>PaymentClient</code> · <code>PortOneClient</code></td></tr>
 <tr><td>이벤트 리스너</td><td><code>{이벤트}Listener</code></td><td><code>StoreApprovedListener</code></td></tr>
-<tr><td>설정</td><td><code>{대상}Config</code></td><td><code>RestClientConfig</code></td></tr>
+<tr><td>설정</td><td><code>{대상}Config</code></td><td><code>RestClientConfig</code> · <code>Resilience4jConfig</code></td></tr>
 </table></div>
+<ul class="b"><li>관리자 컨트롤러 <code>Admin{X}Controller</code>는 <b>admin-service 안에만</b> 둡니다. 도메인 서비스는 관리자 기능을 <code>Internal{X}Controller</code>(<code>/internal/**</code>)로 노출하고, admin-service가 이를 호출 (예: store <code>InternalApplicationController</code> ← admin <code>AdminApplicationController</code>)</li></ul>
 <h4>DTO</h4>
 <div class="tbl"><table>
 <tr><th>종류</th><th>규칙</th><th>예시</th></tr>
@@ -317,12 +335,10 @@ main h3 + .tbl, main h4 + .tbl{margin-top:6px}
 <ul class="b"><li>매직 넘버 · 문자열은 <code>private static final</code> 상수 + 이유 주석<ul class="b"><li><code>PAYMENT_TIMEOUT = Duration.ofMinutes(15); // 결제창 이탈 시 재고를 묶어두는 최대 시간</code></li></ul></li><li>운영 · 데모에서 바뀌는 값(자동 구매확정 기간 등)은 상수가 아니라 <code>application.yml</code> 설정값</li><li>Redis 키: <code>{용도}:{식별자}</code> · 키 생성은 private 메서드로 모음</li></ul>
 <div class="tbl"><table>
 <tr><th>키</th><th>서비스</th><th>용도</th></tr>
-<tr><td><code>refresh:{userId}:{tokenId}</code></td><td>user</td><td>리프레시 토큰</td></tr>
-<tr><td><code>blacklist:{jti}</code></td><td>user · gateway</td><td>로그아웃한 Access Token</td></tr>
-<tr><td><code>cart:{userId}</code></td><td>order</td><td>장바구니 Hash</td></tr>
-<tr><td><code>product::{productId}</code></td><td>product</td><td><code>@Cacheable</code> 캐시 (Spring 기본 형식)</td></tr>
+<tr><td><code>cart:{userId}</code></td><td>order</td><td>장바구니 Hash (Must)</td></tr>
+<tr><td><code>blacklist:{jti}</code></td><td>gateway</td><td>로그아웃한 Access Token 즉시 무효화 (Could)</td></tr>
 </table></div>
-<ul class="b"><li>한 Redis를 여러 서비스가 공유하므로 <b>다른 서비스의 키 접두어 사용 금지</b></li></ul>
+<ul class="b"><li>한 Redis를 여러 서비스가 공유하므로 <b>다른 서비스의 키 접두어 사용 금지</b></li><li>리프레시 토큰은 Keycloak이 관리 — Redis에 <code>refresh:</code> 키를 만들지 않음. 상품 캐시 키도 없음</li><li>새 키가 필요하면 이 표에 먼저 추가 (PR <code>[영향]</code>)</li></ul>
 <h3 id="c2-3"><span class="n">2-3</span>문법 스타일</h3>
 <p><b>삼항 연산자</b> — 한 줄로 읽히는 기본값 대입 · 단순 분기에만 허용, 중첩 금지</p>
 <pre><code>// 허용
@@ -348,11 +364,11 @@ if (isAmountMismatch) {
 <tr><th>영역</th><th>규칙</th><th>예시</th></tr>
 <tr><td>구매자 · 공개</td><td><code>/api/{자원}</code></td><td><code>GET /api/products/101</code> · <code>POST /api/orders</code></td></tr>
 <tr><td>판매자</td><td><code>/api/seller/{자원}</code></td><td><code>PATCH /api/seller/order-items/ship</code></td></tr>
-<tr><td>관리자</td><td><code>/api/admin/{자원}</code></td><td><code>PATCH /api/admin/applications/7/approve</code></td></tr>
-<tr><td>서비스 간</td><td><code>/internal/{자원}</code></td><td><code>POST /internal/stock/reservations</code> — 게이트웨이에 라우트 없음</td></tr>
-<tr><td>본인</td><td><code>/me</code></td><td><code>GET /api/users/me</code> · <code>GET /api/orders/me</code></td></tr>
+<tr><td>관리자</td><td><code>/api/admin/{자원}</code> — <b>admin-service만</b></td><td><code>PATCH /api/admin/applications/7/approve</code> → admin → store <code>/internal/applications/7/approve</code></td></tr>
+<tr><td>서비스 간</td><td><code>/internal/{자원}</code></td><td><code>POST /internal/stock/reservations</code> · <code>GET /internal/stats/orders</code> — 게이트웨이에 라우트 없음</td></tr>
+<tr><td>본인</td><td><code>/me</code></td><td><code>GET /api/users/me</code></td></tr>
 </table></div>
-<ul class="b"><li>자원은 <b>복수형 명사 · kebab-case</b>, 행위는 HTTP 메서드</li><li>상태 전이처럼 행위 중심 API는 동사 하위 경로 허용 (<code>/approve</code> · <code>/confirm</code> · <code>/ship</code> · <code>/api/auth/login</code>)</li><li>경로 변수는 외부 노출 번호 우선 (<code>/api/orders/{orderNo}</code>), 내부 PK 노출 최소화</li></ul>
+<ul class="b"><li><b>도메인 서비스는 <code>/api/admin/**</code>을 노출하지 않음.</b> 관리자 기능은 <code>/internal/**</code>로 열고 admin-service가 조합 (게이트웨이는 <code>/api/admin/**</code> 전부를 admin으로 라우팅)</li><li>브라우저는 payment-service를 직접 부르지 않음 — 결제 확인은 order(<code>POST /api/orders/{orderNo}/payment/confirm</code>) 경유 (포트원 웹훅 <code>/api/payments/webhook</code>만 예외)</li><li>자원은 <b>복수형 명사 · kebab-case</b>, 행위는 HTTP 메서드</li><li>상태 전이처럼 행위 중심 API는 동사 하위 경로 허용 (<code>/approve</code> · <code>/confirm</code> · <code>/ship</code> · <code>/api/auth/login</code>)</li><li>경로 변수는 외부 노출 번호 우선 (<code>/api/orders/{orderNo}</code>), 내부 PK 노출 최소화</li></ul>
 <h4>응답 — 모든 응답은 <code>ApiResponse&lt;T&gt;</code> 봉투 하나</h4>
 <pre><code>// 성공
 { "code": "SUCCESS", "message": "주문이 생성되었습니다.", "data": { "orderNo": "20261001-000123" } }
@@ -403,13 +419,17 @@ public ResponseEntity&lt;ApiResponse&lt;Void&gt;&gt; ship(@CurrentUser AuthUser 
 <ul class="b"><li>코드 문자열: <code>{도메인}_{상황}</code> 대문자 스네이크 — <code>ORDER_OUT_OF_STOCK</code> · <code>PAYMENT_AMOUNT_MISMATCH</code></li><li>enum 상수명 = 코드 문자열 (같은 값을 두 번 관리하지 않음)</li><li><b>프론트와 공유된 코드는 이름을 바꾸지 않음.</b> 의미가 달라지면 새 코드를 추가</li><li>에러 코드 목록은 <code>docs/api/error-codes.md</code>에 서비스별로 관리</li></ul>
 <div class="tbl"><table>
 <tr><th>도메인 접두어</th><th>서비스</th><th>예</th></tr>
-<tr><td><code>AUTH</code> · <code>USER</code></td><td>user</td><td><code>AUTH_DUPLICATE_EMAIL</code> 이메일 중복 · <code>USER_NOT_FOUND</code> 회원 없음</td></tr>
-<tr><td><code>APPLY</code> · <code>STORE</code> · <code>CATEGORY</code></td><td>store</td><td><code>APPLY_REAPPLY_RESTRICTED</code> 재신청 제한 기간</td></tr>
-<tr><td><code>PRODUCT</code> · <code>STOCK</code></td><td>product</td><td><code>STOCK_INSUFFICIENT</code> 재고 부족</td></tr>
-<tr><td><code>CART</code> · <code>ORDER</code> · <code>PAYMENT</code></td><td>order</td><td><code>PAYMENT_AMOUNT_MISMATCH</code> 결제 금액 불일치</td></tr>
-<tr><td><code>SETTLE</code></td><td>settlement</td><td><code>SETTLE_ALREADY_AGGREGATED</code> 이미 집계된 주차</td></tr>
+<tr><td><code>AUTH</code> · <code>USER</code> · <code>POINT</code></td><td>user</td><td><code>AUTH_DUPLICATE_EMAIL</code> 이메일 중복 · <code>USER_NOT_FOUND</code> 회원 없음 · <code>POINT_INSUFFICIENT</code> 포인트 부족</td></tr>
+<tr><td><code>APPLY</code> · <code>STORE</code></td><td>store</td><td><code>APPLY_REAPPLY_RESTRICTED</code> 재신청 제한 기간</td></tr>
+<tr><td><code>CATEGORY</code> · <code>PRODUCT</code> · <code>STOCK</code></td><td>product</td><td><code>STOCK_INSUFFICIENT</code> 재고 부족 · <code>CATEGORY_HAS_PRODUCTS</code> 상품이 있는 카테고리 삭제</td></tr>
+<tr><td><code>CART</code> · <code>ORDER</code> · <code>CLAIM</code></td><td>order</td><td><code>ORDER_OUT_OF_STOCK</code> 재고 부족 · <code>CLAIM_NOT_ALLOWED</code> 클레임 불가 상태</td></tr>
+<tr><td><code>PAYMENT</code></td><td>payment</td><td><code>PAYMENT_AMOUNT_MISMATCH</code> 결제 금액 불일치</td></tr>
+<tr><td><code>REVIEW</code> · <code>INQUIRY</code></td><td>review</td><td><code>REVIEW_NOT_ELIGIBLE</code> 작성 자격 없음 · <code>INQUIRY_NOT_FOUND</code></td></tr>
+<tr><td><code>SETTLE</code> · <code>COMMISSION</code></td><td>settlement</td><td><code>SETTLE_ALREADY_AGGREGATED</code> 이미 집계된 주차 · <code>COMMISSION_RATE_INVALID</code></td></tr>
+<tr><td>(없음 — 그대로 전달)</td><td>admin</td><td>하위 서비스가 보낸 <code>ApiResponse</code>의 <code>code</code> · <code>message</code>를 <b>바꾸지 않고 전달</b>, 연결 실패 · 타임아웃만 <code>EXTERNAL_API_ERROR</code></td></tr>
 <tr><td>공통 (도메인 접두어 없음)</td><td>전체</td><td><code>SUCCESS</code> · <code>INVALID_INPUT</code> · <code>UNAUTHORIZED</code> · <code>FORBIDDEN</code> · <code>NOT_FOUND</code> · <code>EXTERNAL_API_ERROR</code> · <code>GLOBAL_ERROR</code></td></tr>
 </table></div>
+<ul class="b"><li>admin-service는 자체 도메인 에러 코드를 만들지 않습니다. 관리자 화면이 받는 코드는 데이터 주인 서비스의 코드 그대로 (<code>APPLY_REAPPLY_RESTRICTED</code> 등)</li></ul>
 <h4>새 도메인 예외 추가 (3단계)</h4>
 <pre><code>// 1. {domain}/exception/OrderErrorCode.java
 @Getter
@@ -438,18 +458,34 @@ public class OrderException extends BusinessException {
 // 3. 서비스에서 throw
 throw new OrderException(OrderErrorCode.ORDER_NOT_FOUND);</code></pre>
 <h4>규칙</h4>
-<ul class="b"><li><code>RuntimeException</code>을 직접 throw 하지 않음</li><li>다른 도메인의 사실을 표현할 때는 그 도메인 예외 사용 허용 (같은 서비스 안에서)</li><li>보안상 구분을 노출하면 안 되는 경우 하나의 코드로 통합 — 로그인 실패는 "이메일 또는 비밀번호가 올바르지 않습니다" 하나</li><li><b>서비스 간 호출 실패</b>: <code>client</code>에서 <code>RestClientResponseException</code>을 잡아 호출한 쪽 도메인 예외로 변환<ul class="b"><li>상대가 보낸 비즈니스 오류(재고 부족 409) → 의미가 같은 내 도메인 코드</li><li>연결 실패 · 타임아웃 · 5xx → <code>EXTERNAL_API_ERROR</code>(502/504) + Saga 보상</li></ul></li><li>게이트웨이 필터 체인(WebFlux) 안에서는 <code>BusinessException</code>을 던지지 않음 — 전용 핸들러가 JSON으로 응답</li></ul>
+<ul class="b"><li><code>RuntimeException</code>을 직접 throw 하지 않음</li><li>다른 도메인의 사실을 표현할 때는 그 도메인 예외 사용 허용 (같은 서비스 안에서)</li><li>보안상 구분을 노출하면 안 되는 경우 하나의 코드로 통합 — 로그인 실패는 "이메일 또는 비밀번호가 올바르지 않습니다" 하나</li><li><b>서비스 간 호출 실패</b>: <code>client</code>에서 <code>RestClientResponseException</code>을 잡아 호출한 쪽 도메인 예외로 변환<ul class="b"><li>상대가 보낸 비즈니스 오류(재고 부족 409) → 의미가 같은 내 도메인 코드</li><li>연결 실패 · 타임아웃 · 5xx · 서킷 열림 → <code>EXTERNAL_API_ERROR</code>(502/504) + Saga 보상 (대시보드 조합은 부분 응답, 2-7)</li><li>예외: admin-service는 변환하지 않고 하위 서비스의 <code>code</code> · HTTP 상태를 그대로 전달</li></ul></li><li>게이트웨이 필터 체인(WebFlux) 안에서는 <code>BusinessException</code>을 던지지 않음 — 전용 핸들러가 JSON으로 응답</li></ul>
 <h3 id="c2-6"><span class="n">2-6</span>트랜잭션 · 데이터 접근</h3>
-<ul class="b"><li><code>@Transactional</code>은 <b>서비스 계층에만</b>. 컨트롤러 · 레포지토리 금지</li><li>조회 전용은 <code>@Transactional(readOnly = true)</code>, DB 쓰기가 없으면 붙이지 않음 (Redis는 JPA 트랜잭션 대상 아님)</li><li><b>원격 호출(다른 서비스 · 포트원 · SNS 발행)을 DB 트랜잭션 안에 넣지 않음</b> — Saga 오케스트레이터 메서드에는 <code>@Transactional</code> 금지</li><li>이벤트 발행은 커밋 이후 — <code>@TransactionalEventListener(phase = AFTER_COMMIT)</code> (또는 Outbox)</li><li>부가 작업 실패가 본 작업을 실패시키면 안 될 때는 격리하고 로그만 (예: 캐시 무효화 실패)</li><li>원자성이 필요한 작업은 한 트랜잭션 (예: 상품주문 상태 변경 + 이력 기록)</li><li>Repository는 Spring Data JPA 쿼리 메서드 네이밍(<code>findByStoreIdAndStatus</code>, <code>existsByEmail</code>)</li><li>동적 조건 검색은 <code>JpaSpecificationExecutor</code> 또는 <code>@Query</code></li><li>동시성: 재고처럼 경합하는 값은 <b>조건부 UPDATE</b>(<code>@Modifying @Query</code>), 엔티티 동시 수정은 <code>@Version</code></li><li><b>서비스 메서드는 <code>userId</code> · <code>storeId</code> 등 원시값을 파라미터로 받음</b> — 테스트 · 스레드 안전성</li></ul>
+<ul class="b"><li><code>@Transactional</code>은 <b>서비스 계층에만</b>. 컨트롤러 · 레포지토리 금지</li><li>조회 전용은 <code>@Transactional(readOnly = true)</code>, DB 쓰기가 없으면 붙이지 않음 (Redis는 JPA 트랜잭션 대상 아님)</li><li><b>원격 호출(다른 서비스 · 포트원 · SNS 발행)을 DB 트랜잭션 안에 넣지 않음</b> — Saga 오케스트레이터 메서드에는 <code>@Transactional</code> 금지</li><li>이벤트 발행은 커밋 이후 — <code>@TransactionalEventListener(phase = AFTER_COMMIT)</code> (또는 Outbox)</li><li>부가 작업 실패가 본 작업을 실패시키면 안 될 때는 격리하고 로그만 (예: 캐시 무효화 실패)</li><li>원자성이 필요한 작업은 한 트랜잭션 (예: 상품주문 상태 변경 + 이력 기록)</li><li>Repository는 Spring Data JPA 쿼리 메서드 네이밍(<code>findByStoreIdAndStatus</code>, <code>existsByEmail</code>)</li><li>동적 조건 검색(카테고리 · 가격 · 키워드 · 정렬 · 페이징)은 <b>QueryDSL</b> — <code>{Entity}RepositoryCustom</code> + <code>{Entity}RepositoryImpl</code>, 조건은 <code>BooleanExpression</code> 메서드로 분리 (null이면 조건 생략)</li><li><b>SQL Injection 방지</b>: JPA · QueryDSL 파라미터 바인딩만 사용. <code>@Query</code> · 네이티브 쿼리에 <b>문자열 이어 붙이기 금지</b> (<code>"... WHERE name LIKE '%" + keyword + "%'"</code> ✗ → <code>:keyword</code> 바인딩), 정렬 컬럼은 허용 목록으로 매핑 — SonarQube가 검출</li><li><b>XSS 방지</b>: 리뷰 · 문의 · 입점 신청 등 사용자가 입력한 HTML은 <b>OWASP Java HTML Sanitizer</b>로 <b>저장 전</b> 정화 (<code>common/util</code>의 정책 하나를 공유). 일반 텍스트 필드는 프론트에서 이스케이프 출력(React 기본), <code>dangerouslySetInnerHTML</code>은 정화된 값에만</li><li>동시성: 재고처럼 경합하는 값은 <b>조건부 UPDATE</b>(<code>@Modifying @Query</code>), 엔티티 동시 수정은 <code>@Version</code></li><li><b>서비스 메서드는 <code>userId</code> · <code>storeId</code> 등 원시값을 파라미터로 받음</b> — 테스트 · 스레드 안전성</li></ul>
 <h3 id="c2-7"><span class="n">2-7</span>MSA 규칙 (신규)</h3>
 <h4>서비스 간 동기 호출</h4>
-<ul class="b"><li>호출은 <code>{domain}/client/{대상}Client</code> 인터페이스(<code>@HttpExchange</code>)로만, service에서만 사용</li><li>받는 쪽은 <code>Internal{X}Controller</code> + <code>/internal/**</code></li><li>주소는 환경 변수 <code>{대상}_SERVICE_URI</code> (클러스터: CoreDNS 이름)</li><li>타임아웃 필수: 연결 2초 · 읽기 3초 (<code>common/config/RestClientConfig</code>)</li><li>화면 조합을 위한 연쇄 호출 금지 — 대시보드처럼 여러 서비스 데이터가 필요하면 프론트가 병렬 호출</li></ul>
+<ul class="b"><li>호출은 <code>{domain}/client/{대상}Client</code> 인터페이스(<code>@HttpExchange</code>)로만, service에서만 사용</li><li>받는 쪽은 <code>Internal{X}Controller</code> + <code>/internal/**</code></li><li>주소는 환경 변수 <code>{대상}_SERVICE_URI</code> (클러스터: CoreDNS 이름)</li><li>호출 깊이는 <b>1홉까지</b> — 호출받은 서비스가 다시 다른 서비스를 부르는 연쇄 호출 금지 (Saga 오케스트레이터 order · 조합 계층 store <code>dashboard</code> · admin이 직접 각 서비스를 호출)</li></ul>
+<h4>Resilience4j 표준 — 모든 동기 호출(Saga · 대시보드 조합 · admin)</h4>
+<div class="tbl"><table>
+<tr><th>항목</th><th>규칙</th></tr>
+<tr><td>타임아웃</td><td>연결 2초 · 읽기 3초 (<code>common/config/RestClientConfig</code>) — 필수</td></tr>
+<tr><td>서킷 브레이커</td><td><b>client(대상 서비스)마다 인스턴스 하나</b>, 이름 = 대상 서비스 (<code>resilience4j.circuitbreaker.instances.product</code>)</td></tr>
+<tr><td>재시도</td><td><b>멱등 GET만</b> (최대 2회). POST · PATCH는 재시도하지 않음 — Saga는 멱등 키 + 보상으로 처리</td></tr>
+<tr><td>폴백</td><td>도메인 예외 <code>EXTERNAL_API_ERROR</code>(502/504), 대시보드는 부분 응답</td></tr>
+<tr><td>설정 위치</td><td><code>application.yml</code>의 <code>resilience4j.*</code> + <code>common/config/Resilience4jConfig</code> — 값 임의 변경 금지</td></tr>
+</table></div>
+<ul class="b"><li>목표: <b>서비스 하나가 죽어도 호출한 쪽은 에러 메시지로 1차 처리</b>하고 나머지 화면 · 기능은 정상</li></ul>
+<h4>대시보드 조합</h4>
+<ul class="b"><li>판매자 대시보드 <code>GET /api/seller/dashboard</code> = store-service <code>dashboard</code> 패키지 / 관리자 대시보드 <code>GET /api/admin/dashboard</code> = admin-service <code>dashboard</code> 패키지</li><li>각 서비스의 <code>/internal/stats/**</code>를 <b>병렬 호출</b>(서비스별 타임아웃), 결과를 한 응답으로 조합</li><li><b>집계 계산은 데이터 주인 서비스가</b> — 조합하는 쪽은 받은 값을 합치기만 (매출 합계는 order, 정산 금액은 settlement)</li><li><b>부분 응답</b>: 실패한 영역만 <code>null</code> + <code>unavailable</code> 목록, 응답은 200 <code>SUCCESS</code></li></ul>
+<pre><code>{ "code": "SUCCESS", "message": "대시보드를 조회했습니다.",
+  "data": { "orders": null, "products": { "onSale": 42 }, "settlement": { "pending": 1250000 },
+            "unavailable": ["order"] } }</code></pre>
+<ul class="b"><li>프론트는 <code>unavailable</code>에 있는 영역에 "일시적으로 불러올 수 없습니다" 표시, 나머지는 정상 렌더링</li></ul>
 <h4>이벤트</h4>
 <ul class="b"><li>이름: <code>{Aggregate}{과거형 동사}</code> — <code>StoreApproved</code> · <code>OrderPaid</code> · <code>OrderItemConfirmed</code></li><li>봉투: <code>{ eventId, eventType, occurredAt, aggregateId, version, payload }</code></li><li><code>occurredAt</code>은 오프셋 포함 ISO-8601 (<code>2026-10-21T09:12:33+09:00</code>)</li><li>payload는 <b>구독자가 다시 호출하지 않아도 되도록</b> 필요한 값 포함 (주문자 이메일 · 금액 등)</li><li>필드 추가는 자유, <b>삭제 · 이름 변경 · 의미 변경 금지</b> (새 이벤트 타입 또는 version 증가)</li><li>이벤트 목록 · payload는 <code>docs/events.md</code>에 먼저 등록 후 구현</li><li>소비자는 <code>processed_event</code> 테이블로 eventId 중복 처리 방지</li></ul>
 <h4>멱등 · Saga</h4>
 <ul class="b"><li>Saga 참여자 API는 <code>sagaId</code>, 결제는 <code>paymentId</code>를 멱등 키로 — 두 번 호출해도 결과 동일</li><li>멱등 테스트(같은 요청 2회) 필수</li><li>Saga 진행 상태는 <code>saga_instance</code> 테이블에 단계마다 기록</li><li>보상은 역순, 모두 멱등</li></ul>
 <h4>스케줄러</h4>
-<ul class="b"><li>클래스 <code>{행위}Scheduler</code>, 메서드 하나에 작업 하나</li><li>cron · 기준 기간은 <code>application.yml</code>(<code>app.scheduler.*</code>)에서 주입, <code>zone = "Asia/Seoul"</code> 명시</li><li>레플리카 2개 대비 <code>@SchedulerLock(name = "{kebab-case}")</code> 필수</li><li>관리자 수동 실행이 필요한 작업은 같은 service 메서드를 Admin API로도 노출</li></ul>
+<ul class="b"><li>클래스 <code>{행위}Scheduler</code>, 메서드 하나에 작업 하나</li><li>cron · 기준 기간은 <code>application.yml</code>(<code>app.scheduler.*</code>)에서 주입, <code>zone = "Asia/Seoul"</code> 명시</li><li>레플리카 2개 대비 <code>@SchedulerLock(name = "{kebab-case}")</code> 필수</li><li>관리자 수동 실행이 필요한 작업은 같은 service 메서드를 <code>/internal/**</code>로도 노출, admin-service가 호출 (예: <code>/internal/settlements/aggregate</code>)</li></ul>
 <h3 id="c2-8"><span class="n">2-8</span>로깅</h3>
 <ul class="b"><li><code>@Slf4j</code> 사용. <code>System.out.println</code> · <code>e.printStackTrace()</code> 금지</li><li>레벨<ul class="b"><li><code>error</code> — 사람이 봐야 하는 실패, 스택트레이스 포함 (<code>log.error("포트원 취소 실패 - paymentId={}", paymentId, e)</code>)</li><li><code>warn</code> — 처리는 됐지만 주의 (재고 부족, 금액 불일치 감지, 재시도)</li><li><code>info</code> — 상태 변화 (주문 PAID, Saga 보상 완료, 정산 집계 완료)</li><li><code>debug</code> — 개발 확인용 (운영 미출력)</li></ul></li><li>로그 메시지에 업무 키 포함: <code>orderNo</code> · <code>sagaId</code> · <code>paymentId</code> (MDC 또는 메시지)</li><li><b>비밀번호 · 토큰 · 포트원 키 · 카드 정보 · 이메일 · 전화 · 주소는 info 이상에 남기지 않음</b></li><li>형식은 JSON (공통 <code>logback-spring.xml</code>), traceId 자동 포함 — 형식 임의 변경 금지</li></ul>
 <h3 id="c2-9"><span class="n">2-9</span>API 문서 (Swagger)</h3>
@@ -462,15 +498,18 @@ throw new OrderException(OrderErrorCode.ORDER_NOT_FOUND);</code></pre>
 <h3 id="c3-1"><span class="n">3-1</span>명명</h3>
 <ul class="b"><li><code>snake_case</code>. 파스칼 · 카멜 케이스 금지</li><li>MySQL 예약어 · 키워드 금지 (<code>order</code> · <code>user</code> · <code>group</code> · <code>key</code> …) — 예외는 <code>orders</code> · <code>users</code> 두 테이블</li><li><code>data</code> · <code>info</code> · <code>field</code> 같은 무의미한 이름 금지</li></ul>
 <h3 id="c3-2"><span class="n">3-2</span>테이블</h3>
-<ul class="b"><li><b>단수형</b> (엔티티 클래스와 1:1): <code>store</code> · <code>product</code> · <code>order_item</code> · <code>settlement</code> — 예외 <code>orders</code> · <code>users</code></li><li>매핑 테이블도 단수형: <code>user_role</code> · <code>product_option</code></li><li>모든 테이블에 <code>COMMENT</code> 필수</li><li>서비스별 스키마: <code>userdb</code> · <code>storedb</code> · <code>productdb</code> · <code>orderdb</code> · <code>settlementdb</code></li></ul>
+<ul class="b"><li><b>단수형</b> (엔티티 클래스와 1:1): <code>store</code> · <code>product</code> · <code>order_item</code> · <code>settlement</code> — 예외 <code>orders</code> · <code>users</code></li><li>하위 · 매핑 테이블도 단수형: <code>product_option</code> · <code>review_image</code></li><li>모든 테이블에 <code>COMMENT</code> 필수</li><li>서비스별 스키마 8개: <code>userdb</code> · <code>storedb</code> · <code>productdb</code> · <code>orderdb</code> · <code>paymentdb</code> · <code>reviewdb</code> · <code>settlementdb</code> · <code>keycloakdb</code></li><li><code>keycloakdb</code>는 Keycloak이 스스로 관리 — 이 문서의 DB 규칙 · Flyway 대상에서 제외, 직접 쿼리 · 수정 금지</li><li>gateway-service · admin-service는 스키마 없음</li></ul>
 <h4>서비스별 테이블 이름</h4>
 <div class="tbl"><table>
 <tr><th>스키마</th><th>테이블</th></tr>
-<tr><td>userdb</td><td><code>users</code> · <code>user_role</code> · <code>address</code></td></tr>
-<tr><td>storedb</td><td><code>store_application</code> · <code>application_document</code> · <code>store</code> · <code>category</code> · <code>category_commission</code> · <code>processed_event</code> · <code>shedlock</code></td></tr>
-<tr><td>productdb</td><td><code>product</code> · <code>product_option</code> · <code>product_image</code> · <code>stock_reservation</code> · <code>processed_event</code></td></tr>
-<tr><td>orderdb</td><td><code>orders</code> · <code>order_item</code> · <code>order_store_shipment</code> · <code>order_item_history</code> · <code>payment</code> · <code>saga_instance</code> · <code>outbox_event</code> · <code>shedlock</code></td></tr>
-<tr><td>settlementdb</td><td><code>settlement_item</code> · <code>settlement</code> · <code>payout</code> · <code>processed_event</code> · <code>shedlock</code></td></tr>
+<tr><td>userdb</td><td><code>users</code>(<code>point_balance</code> · <code>grade</code> 포함) · <code>address</code> · <code>point_history</code></td></tr>
+<tr><td>storedb</td><td><code>store_application</code> · <code>application_document</code> · <code>store</code> · <code>processed_event</code> · <code>shedlock</code></td></tr>
+<tr><td>productdb</td><td><code>category</code> · <code>product</code> · <code>product_option</code> · <code>product_image</code> · <code>stock_reservation</code> · <code>processed_event</code></td></tr>
+<tr><td>orderdb</td><td><code>orders</code> · <code>order_item</code> · <code>order_store_shipment</code> · <code>order_item_history</code> · <code>order_claim</code> · <code>saga_instance</code> · <code>outbox_event</code> · <code>shedlock</code></td></tr>
+<tr><td>paymentdb</td><td><code>payment</code> · <code>payment_cancel</code></td></tr>
+<tr><td>reviewdb</td><td><code>review</code> · <code>review_image</code> · <code>review_eligibility</code> · <code>product_inquiry</code> · <code>processed_event</code></td></tr>
+<tr><td>settlementdb</td><td><code>category_commission</code> · <code>settlement_item</code> · <code>settlement</code> · <code>payout</code> · <code>processed_event</code> · <code>shedlock</code></td></tr>
+<tr><td>keycloakdb</td><td>Keycloak 관리 (계정 · 역할 · 세션)</td></tr>
 </table></div>
 <h3 id="c3-3"><span class="n">3-3</span>컬럼</h3>
 <ul class="b"><li><b>PK: <code>{테이블명}_id</code></b> — <code>store_id</code> · <code>order_item_id</code> (<code>orders</code>는 <code>order_id</code>, <code>users</code>는 <code>user_id</code>)</li><li><b>FK: <code>{참조테이블}_id</code></b>, 같은 테이블을 두 번 참조하면 역할 이름 (<code>buyer_id</code> · <code>seller_id</code>)</li><li>다른 서비스의 ID도 같은 이름 규칙 (<code>order_item.store_id</code>, <code>order_item.product_id</code>)</li><li>날짜 · 시간: <code>_at</code> (<code>created_at</code> · <code>paid_at</code> · <code>confirmed_at</code>), 날짜만: <code>_date</code></li><li>여부: <code>is_</code> · <code>has_</code> · <code>use_</code> (<code>is_thumbnail</code> · <code>is_default</code>)</li><li>카운트: <code>_count</code> + <code>INT UNSIGNED DEFAULT 0</code></li><li>스냅샷 컬럼은 원본 이름 그대로 (<code>product_name</code> · <code>store_name</code>) + COMMENT에 "주문 시점 스냅샷"</li></ul>
@@ -560,7 +599,7 @@ public abstract class BaseTimeEntity {
 <tr><td>테스트</td><td>Vitest + React Testing Library</td><td>대상: 유틸 · zod 스키마 · 핵심 훅</td></tr>
 </table></div>
 <h3 id="c4-2"><span class="n">4-2</span>프로젝트 구조</h3>
-<p>도메인(기능) 기반 구조. <b>백엔드 도메인 패키지와 <code>features/{도메인}</code>이 1:1 대칭.</b></p>
+<p>도메인(기능) 기반 구조. <b>백엔드 서비스와 <code>features/{도메인}</code>이 대칭</b> (payment는 화면이 없어 <code>features/order</code>의 결제 흐름에 포함).</p>
 <pre><code>frontend/src/
 ├── app/                          # 앱 전역
 │   ├── router.jsx                #   전체 라우트 (단일 파일, 도메인별 주석 구획)
@@ -569,16 +608,19 @@ public abstract class BaseTimeEntity {
 │   └── App.jsx
 ├── pages/                        # 라우트 1개 = 페이지 파일 1개. features 조립만
 │   ├── shop/                     #   메인 · 상품 · 스토어 · 장바구니 · 주문서 · 로그인 · 입점 신청
-│   ├── mypage/                   #   주문 · 클레임 · 회원정보 · 배송지
+│   ├── mypage/                   #   주문 · 클레임 · 리뷰 · 회원정보 · 배송지 · 포인트
 │   ├── seller/                   #   판매자센터
 │   └── admin/                    #   관리자
 ├── features/                     # 도메인별 구현 (담당 경계 = 폴더 경계)
 │   ├── auth/                     #   로그인 · 가입 · authStore · 가드
-│   ├── user/                     #   회원정보 · 배송지 · 관리자 회원
-│   ├── store/                    #   입점 신청 · 스토어 · 입점 심사 · 카테고리
-│   ├── product/                  #   상품 목록 · 상세 · 판매자 상품
-│   ├── order/                    #   장바구니 · 주문 · 결제 · 판매자 주문
-│   └── settlement/               #   정산 (판매자 · 관리자)
+│   ├── user/                     #   회원정보 · 배송지 · 포인트 · 등급
+│   ├── store/                    #   입점 신청 · 스토어 · 판매자 대시보드
+│   ├── product/                  #   카테고리 · 상품 목록 · 상세 · 검색 · 판매자 상품
+│   ├── order/                    #   장바구니 · 주문 · 결제 · 클레임 · 판매자 주문
+│   ├── review/                   #   리뷰 · 상품문의 · 판매자 답글
+│   ├── admin/                    #   관리자 화면 전부 (admin-service만 호출)
+│   ├── support/                  #   FAQ (프론트 정적 데이터)
+│   └── settlement/               #   판매자 정산
 │       ├── api/                  #     settlementApi.js
 │       ├── hooks/                #     useSettlementsQuery.js · usePaySettlementMutation.js
 │       ├── components/
@@ -592,14 +634,14 @@ public abstract class BaseTimeEntity {
 ├── mocks/                        # MSW handlers · fixtures
 └── styles/index.css              # Tailwind 진입 · @theme 디자인 토큰</code></pre>
 <h4>운영 규칙</h4>
-<ol class="b"><li><b>관리자 화면도 해당 도메인 feature에 둔다</b> (입점 심사 → <code>features/store</code>, 정산 관리 → <code>features/settlement</code>). <code>features/admin</code> 같은 공유 도메인을 만들지 않음</li><li>다른 사람의 <code>features/</code> 폴더는 PR 없이 수정 금지</li><li>두 도메인 이상에서 쓰이면 <code>shared/</code>로 승격, 승격 시 팀 공지</li><li><code>features</code> 간 직접 import 지양 — 필요하면 <code>shared</code> 경유</li><li><code>shared/components/ui/</code>(목업 컴포넌트)는 수정 전 팀 공지 — 모든 화면에 영향</li></ol>
+<ol class="b"><li><b>관리자 화면은 <code>features/admin</code>에 둔다</b> (입점 심사 · 스토어 · 카테고리 · 수수료 · 정산 · 회원 · 관리자 대시보드). <code>/api/admin/**</code>(admin-service)만 호출, 도메인 서비스 API를 직접 부르지 않음 — 담당 구지훈</li><li>다른 사람의 <code>features/</code> 폴더는 PR 없이 수정 금지</li><li>두 도메인 이상에서 쓰이면 <code>shared/</code>로 승격, 승격 시 팀 공지</li><li><code>features</code> 간 직접 import 지양 — 필요하면 <code>shared</code> 경유</li><li><code>shared/components/ui/</code>(목업 컴포넌트)는 수정 전 팀 공지 — 모든 화면에 영향</li></ol>
 <h3 id="c4-3"><span class="n">4-3</span>라우트 · 권한 가드</h3>
 <div class="tbl"><table>
 <tr><th>경로</th><th>영역</th><th>접근</th></tr>
 <tr><td><code>/</code> · <code>/products</code> · <code>/products/:id</code> · <code>/stores</code> · <code>/store/:id</code></td><td>쇼핑몰</td><td>공개</td></tr>
 <tr><td><code>/login</code> · <code>/signup</code></td><td>인증</td><td>공개</td></tr>
 <tr><td><code>/cart</code> · <code>/checkout</code> · <code>/order/complete</code> · <code>/seller/apply</code></td><td>쇼핑몰</td><td>BUYER</td></tr>
-<tr><td><code>/mypage/**</code></td><td>마이페이지</td><td>BUYER</td></tr>
+<tr><td><code>/mypage/**</code> (<code>/mypage/points</code> 포함)</td><td>마이페이지</td><td>BUYER</td></tr>
 <tr><td><code>/seller</code> · <code>/seller/**</code></td><td>판매자센터</td><td>SELLER</td></tr>
 <tr><td><code>/admin</code> · <code>/admin/**</code></td><td>관리자</td><td>ADMIN</td></tr>
 </table></div>
@@ -607,12 +649,14 @@ public abstract class BaseTimeEntity {
 <h3 id="c4-4"><span class="n">4-4</span>인증</h3>
 <div class="tbl"><table>
 <tr><th>항목</th><th>Access Token</th><th>Refresh Token</th></tr>
-<tr><td>저장</td><td><code>authStore</code>(Zustand) 메모리</td><td>HttpOnly 쿠키 (JS 접근 불가)</td></tr>
+<tr><td>발급</td><td>Keycloak (user-service가 대리 호출)</td><td>Keycloak (user-service가 대리 호출)</td></tr>
+<tr><td>저장</td><td><code>authStore</code>(Zustand) 메모리</td><td>HttpOnly · Secure · SameSite=Strict 쿠키, <code>Path=/api/auth</code> (JS 접근 불가)</td></tr>
 <tr><td>전송</td><td><code>Authorization: Bearer {AT}</code></td><td>브라우저 자동 (같은 출처 · Vercel rewrite)</td></tr>
-<tr><td>서버 저장</td><td>없음 (로그아웃 시 blacklist만)</td><td>Redis <code>refresh:{userId}:{tokenId}</code></td></tr>
-<tr><td>재발급</td><td><code>POST /api/auth/refresh</code></td><td>로테이션</td></tr>
+<tr><td>서버 저장</td><td>없음 (즉시 로그아웃 <code>blacklist:{jti}</code>는 Could)</td><td>Keycloak 세션 (user-service 경유) — Redis에 두지 않음</td></tr>
+<tr><td>재발급</td><td><code>POST /api/auth/refresh</code></td><td>Keycloak 로테이션</td></tr>
+<tr><td>수명</td><td>30분</td><td>14일</td></tr>
 </table></div>
-<ul class="b"><li>부팅: <code>app/bootstrap.js</code>가 <code>/api/auth/refresh</code>를 1회 호출 → 성공 시 로그인 복구, 401이면 비로그인 상태</li><li>AT 만료(401): axios 응답 인터셉터가 single-flight(<code>shared/api/refresh.js</code>)로 재발급 후 원 요청 재시도</li><li>AT를 <code>localStorage</code> · <code>sessionStorage</code>에 저장 금지. RT는 프론트 코드에서 다루지 않음</li><li>판매자 전환(입점 승인) 후에는 refresh로 새 roles를 받음</li></ul>
+<ul class="b"><li>로그인 화면은 React 자체 폼 — Keycloak 로그인 페이지로 리다이렉트하지 않음</li><li>부팅: <code>app/bootstrap.js</code>가 <code>/api/auth/refresh</code>를 1회 호출 → 성공 시 로그인 복구, 401이면 비로그인 상태</li><li>AT 만료(401): axios 응답 인터셉터가 single-flight(<code>shared/api/refresh.js</code>)로 재발급 후 원 요청 재시도</li><li>AT를 <code>localStorage</code> · <code>sessionStorage</code>에 저장 금지. RT는 프론트 코드에서 다루지 않음</li><li>판매자 전환(입점 승인) 후에는 refresh로 새 roles를 받음</li></ul>
 <h3 id="c4-5"><span class="n">4-5</span>네이밍</h3>
 <div class="tbl"><table>
 <tr><th>대상</th><th>규칙</th><th>예시</th></tr>
@@ -722,8 +766,8 @@ function AdminStoreListPage() {
 <tr><td>IAM 역할 (IRSA)</td><td><code>sesac-team1-{service}-irsa</code></td><td><code>sesac-team1-order-irsa</code></td></tr>
 <tr><td>Secrets Manager</td><td><code>sesac-team1/{service}</code></td><td><code>sesac-team1/order-service</code></td></tr>
 <tr><td>SSM 파라미터</td><td><code>/sesac-team1/dev/{종류}/{이름}</code></td><td><code>/sesac-team1/dev/sqs/notification-queue-arn</code></td></tr>
-<tr><td>S3 버킷</td><td><code>sesac-team1-{용도}-{계정ID 끝 4자리}</code> (전역 유일)</td><td><code>sesac-team1-product-images-1234</code></td></tr>
-<tr><td>DynamoDB</td><td><code>sesac-team1-{용도}</code></td><td><code>sesac-team1-notifications</code></td></tr>
+<tr><td>S3 버킷</td><td><code>sesac-team1-{용도}-{계정ID 끝 4자리}</code> (전역 유일)</td><td><code>sesac-team1-images-1234</code>(prefix <code>products/</code> · <code>reviews/</code>) · <code>sesac-team1-seller-docs-1234</code> · <code>sesac-team1-reports-1234</code> · <code>sesac-team1-log-archive-1234</code></td></tr>
+<tr><td>DynamoDB</td><td><code>sesac-team1-{용도}</code></td><td><code>sesac-team1-notifications</code> · <code>sesac-team1-settlement-reports</code> (그 외 테이블 없음)</td></tr>
 </table></div>
 <h3 id="c5-2"><span class="n">5-2</span>Terraform</h3>
 <ul class="b"><li>파일: 자원 종류별 snake_case (<code>sns_sqs.tf</code> · <code>irsa.tf</code>), 폴더마다 <code>provider.tf</code> · <code>variables.tf</code> · <code>outputs.tf</code></li><li>자원 로컬 이름: snake_case, 타입 반복 금지 (<code>aws_s3_bucket.product_images</code> ○ / <code>aws_s3_bucket.product_images_bucket</code> ✗)</li><li>변수 · output: snake_case + <code>description</code> 필수</li><li>커밋 전 <code>terraform fmt -recursive</code> · <code>terraform validate</code></li><li>apply는 AWS 담당만, 다른 사람은 plan까지</li><li><code>.terraform.lock.hcl</code> 커밋, <code>*.tfstate</code> · <code>.terraform/</code> 커밋 금지</li></ul>
@@ -732,16 +776,16 @@ function AdminStoreListPage() {
 <h3 id="c5-4"><span class="n">5-4</span>환경 변수 · 설정</h3>
 <ul class="b"><li>환경 변수: UPPER_SNAKE (<code>DB_HOST</code> · <code>PRODUCT_SERVICE_URI</code> · <code>PORTONE_API_SECRET</code>)</li><li>다른 서비스 주소: <code>{대상}_SERVICE_URI</code></li><li><code>application.yml</code> 커스텀 키: <code>app.{영역}.{이름}</code> kebab-case (<code>app.order.auto-confirm-after</code>)</li><li>프론트: <code>VITE_{이름}</code> (<code>VITE_PORTONE_STORE_ID</code>)</li></ul>
 <h3 id="c5-5"><span class="n">5-5</span>Serverless · CI</h3>
-<ul class="b"><li>함수 폴더: kebab-case (<code>order-notification</code>), 서비스 이름 <code>sesac-team1-{폴더명}</code></li><li>핸들러 파일 camelCase (<code>notify.js</code>), export 이름 <code>handler</code></li><li>워크플로 파일: 영역 이름 kebab-case (<code>backend.yml</code>), job 이름 kebab-case (<code>bump-tag</code>)</li><li>GitHub Secrets: UPPER_SNAKE (<code>AWS_ROLE_ARN</code> · <code>SERVERLESS_ACCESS_KEY</code>)</li></ul>
+<ul class="b"><li>함수 폴더: kebab-case — <code>order-notification</code> · <code>settlement-report</code> · <code>log-archive</code> (3개, 사용자 API 없음), 서비스 이름 <code>sesac-team1-{폴더명}</code></li><li>핸들러 파일 camelCase (<code>notify.js</code>), export 이름 <code>handler</code></li><li>워크플로 파일: 영역 이름 kebab-case (<code>backend.yml</code>), job 이름 kebab-case (<code>bump-tag</code>)</li><li>GitHub Secrets: UPPER_SNAKE (<code>AWS_ROLE_ARN</code> · <code>SERVERLESS_ACCESS_KEY</code>)</li></ul>
 </section>
 <section id="c6">
 <h2><span class="n">06</span>리뷰 체크리스트</h2>
 <h4>백엔드</h4>
-<ul class="b"><li class="chk">도메인 패키지 안에 controller · service · repository · entity · dto · exception 구조인가?</li><li class="chk">컨트롤러가 얇은가? <code>@CurrentUser</code>로 받아 원시값을 서비스에 넘기는가?</li><li class="chk">응답이 <code>ResponseEntity&lt;ApiResponse&lt;T&gt;&gt;</code>인가? 컨트롤러에서 <code>error()</code>를 직접 호출하지 않는가?</li><li class="chk"><code>RuntimeException</code> 대신 도메인 예외 + ErrorCode를 쓰는가? 새 코드가 <code>{도메인}_{상황}</code> 형식이고 <code>docs/api/error-codes.md</code>에 있는가?</li><li class="chk">엔티티에 <code>@Setter</code>가 없고 상태 변경이 의미 있는 메서드인가?</li><li class="chk"><code>@Transactional</code>이 서비스에만 있고, 원격 호출이 트랜잭션 밖에 있는가?</li><li class="chk">다른 서비스 호출에 타임아웃이 있고 실패가 도메인 예외로 변환되는가?</li><li class="chk">소유권 검사(storeId · userId)가 있는가?</li><li class="chk">이벤트 · Saga 참여 API가 멱등이고 테스트가 있는가?</li><li class="chk">비밀 값 · 개인정보가 로그에 없는가?</li></ul>
+<ul class="b"><li class="chk">도메인 패키지 안에 controller · service · repository · entity · dto · exception 구조인가?</li><li class="chk">컨트롤러가 얇은가? <code>@CurrentUser</code>로 받아 원시값을 서비스에 넘기는가?</li><li class="chk">응답이 <code>ResponseEntity&lt;ApiResponse&lt;T&gt;&gt;</code>인가? 컨트롤러에서 <code>error()</code>를 직접 호출하지 않는가?</li><li class="chk"><code>RuntimeException</code> 대신 도메인 예외 + ErrorCode를 쓰는가? 새 코드가 <code>{도메인}_{상황}</code> 형식이고 <code>docs/api/error-codes.md</code>에 있는가?</li><li class="chk">엔티티에 <code>@Setter</code>가 없고 상태 변경이 의미 있는 메서드인가?</li><li class="chk"><code>@Transactional</code>이 서비스에만 있고, 원격 호출이 트랜잭션 밖에 있는가?</li><li class="chk">다른 서비스 호출에 Resilience4j 표준(타임아웃 · 서킷 브레이커 · 멱등 GET만 재시도 · 폴백)이 적용되고 실패가 도메인 예외로 변환되는가?</li><li class="chk">대시보드 조합이 병렬 호출이고, 한 서비스가 실패해도 <code>unavailable</code> 부분 응답(200)을 주는가? 연쇄 호출(2홉 이상)이 없는가?</li><li class="chk">admin-service에 entity · repository · DB 접근이 없고, 도메인 서비스에 <code>/api/admin/**</code>이 없는가?</li><li class="chk">동적 검색이 QueryDSL이고, <code>@Query</code> · 네이티브 쿼리에 문자열 이어 붙이기가 없는가?</li><li class="chk">사용자 입력 HTML(리뷰 · 문의 · 입점 신청)을 저장 전에 Sanitizer로 정화하는가?</li><li class="chk">소유권 검사(storeId · userId)가 있는가?</li><li class="chk">이벤트 · Saga 참여 API가 멱등이고 테스트가 있는가?</li><li class="chk">비밀 값 · 개인정보가 로그에 없는가?</li></ul>
 <h4>DB</h4>
 <ul class="b"><li class="chk">테이블명이 단수형 snake_case인가? (<code>orders</code> · <code>users</code>만 예외)</li><li class="chk">PK가 <code>{테이블}_id</code> 단일 BIGINT AUTO_INCREMENT인가?</li><li class="chk">같은 서비스 참조에는 FK, 다른 서비스 ID에는 인덱스 + COMMENT가 있는가?</li><li class="chk">유일해야 하는 값에 UNIQUE가 있는가?</li><li class="chk">시간 컬럼이 DATETIME(6)이고 TIMESTAMP가 없는가?</li><li class="chk"><code>created_at</code>은 DEFAULT, <code>updated_at</code>은 DEFAULT + ON UPDATE, 비즈니스 시각은 DEFAULT 없음인가?</li><li class="chk">ENUM 대신 VARCHAR + COMMENT(허용값)인가?</li><li class="chk">금액 BIGINT · 비율 DECIMAL · 카운트 UNSIGNED인가?</li><li class="chk">utf8mb4 · InnoDB · 컬럼 순서 · 모든 COMMENT가 있는가?</li><li class="chk">머지된 Flyway 파일을 수정하지 않았는가?</li></ul>
 <h4>프론트엔드</h4>
-<ul class="b"><li class="chk">컴포넌트는 <code>.jsx</code>, 그 외는 <code>.js</code>인가? (TypeScript 파일이 섞이지 않았는가)</li><li class="chk">페이지는 <code>pages/</code>, 로직은 <code>features/{도메인}</code>에 있는가?</li><li class="chk">queryKey를 팩토리에서만 만들었는가?</li><li class="chk">변경 후 관련 queryKey를 무효화하는가?</li><li class="chk">서버 데이터를 Zustand에 복사하지 않았는가?</li><li class="chk">TanStack Table <code>state</code>의 배열 · 함수 참조가 안정적인가?</li><li class="chk">로딩 · 에러 · 빈 상태를 처리했는가?</li><li class="chk">목업 디자인 토큰 · 공통 클래스를 썼는가? 375px에서 깨지지 않는가?</li><li class="chk">다른 도메인 <code>features/</code>를 수정하지 않았는가?</li></ul>
+<ul class="b"><li class="chk">컴포넌트는 <code>.jsx</code>, 그 외는 <code>.js</code>인가? (TypeScript 파일이 섞이지 않았는가)</li><li class="chk">페이지는 <code>pages/</code>, 로직은 <code>features/{도메인}</code>에 있는가? 관리자 화면은 <code>features/admin</code>에서 <code>/api/admin/**</code>만 호출하는가?</li><li class="chk">queryKey를 팩토리에서만 만들었는가?</li><li class="chk">변경 후 관련 queryKey를 무효화하는가?</li><li class="chk">서버 데이터를 Zustand에 복사하지 않았는가?</li><li class="chk">TanStack Table <code>state</code>의 배열 · 함수 참조가 안정적인가?</li><li class="chk">로딩 · 에러 · 빈 상태를 처리했는가?</li><li class="chk">목업 디자인 토큰 · 공통 클래스를 썼는가? 375px에서 깨지지 않는가?</li><li class="chk">다른 도메인 <code>features/</code>를 수정하지 않았는가?</li></ul>
 </section>
 
 </main>

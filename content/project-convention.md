@@ -11,8 +11,8 @@
 ### 0-1. 판단 원칙
 
 - **"어떻게 쓰나"는 팀 기존 규칙 우선** — 코드 스타일 · 네이밍 · 응답 형식 · 예외 구조 · DB 규칙
-- **"무엇을 만드나"는 프로젝트 스펙 유지** — 서비스 6개 · 엔드포인트 · 이벤트 · 인프라 구성
-- **MSA 전용 규칙 추가** — 서비스 간 호출 · 이벤트 · Saga · 멱등성 · 인프라 네이밍
+- **"무엇을 만드나"는 프로젝트 스펙 유지** — 서비스 9개 + Keycloak · 엔드포인트 · 이벤트 · 인프라 구성
+- **MSA 전용 규칙 추가** — 서비스 간 호출 · Resilience4j · 대시보드 조합 · 이벤트 · Saga · 멱등성 · 인프라 네이밍
 - 규칙끼리 충돌하면 이 문서가 우선, 다른 문서는 이 문서에 맞춰 수정
 
 ### 0-2. 기존 컨벤션 대비 변경 사항
@@ -20,7 +20,7 @@
 | 항목 | 기존(따숨) | 곳간 | 이유 |
 |---|---|---|---|
 | 패키지 | 도메인형, 엔티티는 `domain/` | 도메인형, 엔티티는 **`entity/`**, 서비스 호출용 **`client/`** 추가 | 팀 합의(엔티티 패키지명) · 서비스 간 HTTP 호출 |
-| 보안 위치 | 각 앱 `common/security` | **게이트웨이에만** Spring Security, 업무 서비스는 `common/auth`(헤더 → 사용자) | JWT 검증은 게이트웨이 한 곳 |
+| 보안 위치 | 각 앱 `common/security` | **게이트웨이에만** Spring Security, 업무 서비스는 `common/auth`(헤더 → 사용자) | 토큰 발급은 Keycloak, JWT 검증은 게이트웨이 한 곳 |
 | 로그인 사용자 | `SecurityUtil.getMemberId()` | `@CurrentUser AuthUser` (게이트웨이가 넣은 `X-User-*` 헤더) | 업무 서비스에 SecurityContext 없음 |
 | FK 제약 | 참조 컬럼 FK 필수 | **같은 서비스 안에서만 FK 필수**, 다른 서비스 ID는 논리 참조 + 인덱스 | DB per Service |
 | 회원 테이블 · 패키지 | `member` · `member/` | **`users` · `user/`** | 서비스(user-service) · 스키마(userdb) 이름과 일치 |
@@ -29,7 +29,7 @@
 | 시드 데이터 | `db/seed` V100~ | `db/seed/R__*.sql` (반복 실행) | 내용 수정 시 체크섬 오류 없음 |
 | 프론트 언어 | TypeScript | **JavaScript** (`.js` / `.jsx`) | 목업 그대로 이식 · 입문자 부담 최소화 |
 | 프론트 UI 키트 | shadcn/ui · recharts · sonner | **목업 컴포넌트 · 목업 SVG 차트 · 목업 토스트** | 목업 디자인 원칙 유지 |
-| 프론트 관리자 | `features/admin` 공유 도메인 | **관리자 화면도 각 도메인 feature에** (`features/store`의 입점 심사 등) | 도메인 담당 = 폴더 담당, 공유 폴더 충돌 없음 |
+| 프론트 관리자 | `features/admin` 공유 도메인 | **`features/admin`** — admin-service(`/api/admin/**`)만 호출, 담당 구지훈 | 백엔드 admin-service와 1:1 대칭, 담당 = 폴더 담당 |
 | 프론트 페이지 | — | `pages/{shop,mypage,seller,admin}` | 4개 화면 영역 |
 
 ### 0-3. 확정 컨벤션 요약
@@ -45,7 +45,20 @@
 | 5 | 에러 코드 형식 | 의미형 `{도메인}_{상황}` — `ORDER_OUT_OF_STOCK` | 2-5 |
 | 6 | 프론트 언어 | JavaScript (`.js` / `.jsx`) — 목업 그대로 | 4-1 |
 | 7 | 프론트 페이지 위치 | `pages/{shop · mypage · seller · admin}/` — 로직은 `features/` | 4-2 |
-| 8 | Redis 키 이름 | `refresh:` · `blacklist:` — `{용도}:{식별자}` | 2-2 |
+| 8 | Redis 키 이름 | `{용도}:{식별자}` — `cart:{userId}` · `blacklist:{jti}`(Could). 리프레시 토큰 키는 폐지(Keycloak이 관리) | 2-2 |
+
+### 0-4. 10/12 추가 확정
+
+| 항목 | 확정 규칙 | 관련 절 |
+|---|---|---|
+| 서비스 구성 | Spring 9개(gateway · user · store · product · order · payment · review · settlement · admin) + Keycloak | 2-1 · 3-2 |
+| admin-service | DB 없는 조합 계층 — 관리자 API 진입점, 각 서비스 `/internal/**`을 호출해 조합만 | 2-1 · 2-4 · 2-7 |
+| 카테고리 · 수수료 | 카테고리는 product-service, 카테고리별 수수료는 settlement-service | 2-1 · 3-2 |
+| 대시보드 | 판매자는 store, 관리자는 admin 안에서 조합 — 병렬 호출 + 실패 영역만 빼고 부분 응답 | 2-7 |
+| 서비스 간 호출 | Resilience4j 표준 (타임아웃 · 서킷 브레이커 · 멱등 GET만 재시도 · 폴백) | 2-7 |
+| 동적 검색 | QueryDSL | 2-6 |
+| XSS | 사용자 입력 HTML은 OWASP Java HTML Sanitizer로 저장 전 정화 | 2-6 |
+| 코드 품질 | SonarQube Cloud — main 대상 PR에 품질 게이트 | 1-3 |
 
 ---
 
@@ -56,7 +69,7 @@
 - `main` — 보호 브랜치. 직접 push 금지, PR + 승인 1명 + CI 통과 후 Squash merge
 - 작업 브랜치: `feat/{도메인}-{작업}` (예: `feat/order-payment-verify`, `feat/infra-eks-cluster`)
 - 그 외: `fix/` · `refactor/` · `docs/` · `chore/`(빌드 · 설정)
-- 도메인 값: `auth` `user` `store` `product` `order` `settlement` `gateway` `front`(프론트 공통) `infra` `cicd` `obs`(관측성) `sls`(서버리스)
+- 도메인 값: `auth` `user` `store` `product` `order` `payment` `review` `settlement` `admin` `gateway` `front`(프론트 공통) `infra`(Keycloak 설정 포함, 예: `feat/infra-keycloak-realm`) `cicd` `obs`(관측성) `sls`(서버리스)
 
 ### 1-2. 커밋 메시지
 
@@ -77,6 +90,7 @@
   - 팀원 확인 사항 — 다른 팀원이 알아야 할 것
 - **프론트 · 다른 서비스에 영향 있는 변경(응답 형식 · 에러 코드 · 이벤트 payload · API 경로)은 PR 제목에 `[영향]` 표시**, 영향받는 담당자 리뷰 필수
 - PR 하나에 기능 하나, 변경 300줄 이하 권장
+- main 대상 PR은 CI에서 **SonarQube Cloud 품질 게이트**를 통과해야 머지 (이슈는 PR 코멘트로 확인)
 
 ### 1-4. 폴더 소유권
 
@@ -99,10 +113,10 @@
 도메인형 구조. 최상위를 계층(controller/service …)으로 나누지 않습니다.
 
 ```
-com.sesac.team1.{service}            # service = gateway · user · store · product · order · settlement
+com.sesac.team1.{service}            # service = gateway · user · store · product · order · payment · review · settlement · admin
 ├── {Service}Application.java
 ├── common                           # 도메인에 속하지 않는 공통 모듈 (서비스 템플릿에서 복사)
-│   ├── config                       # @Configuration — Redis · RestClient · Scheduling(ShedLock) · WebMvc · Swagger · AWS
+│   ├── config                       # @Configuration — Redis · RestClient · Resilience4j · QueryDSL · Scheduling(ShedLock) · WebMvc · Swagger · AWS
 │   ├── dto                          # ApiResponse · PageResponse
 │   ├── exception                    # ErrorCode · CommonErrorCode · BusinessException · GlobalExceptionHandler
 │   ├── auth                         # @CurrentUser · AuthUser · CurrentUserArgumentResolver
@@ -123,17 +137,23 @@ com.sesac.team1.{service}            # service = gateway · user · store · pro
 ```
 
 - 해당 도메인에 필요 없는 패키지는 만들지 않음 (예: `cart`는 `entity` 없음)
-- gateway-service는 예외: `config` · `filter` · `exception`만, DB 없음
+- **DB가 없는 서비스 두 곳**
+  - gateway-service: `config` · `filter` · `exception`만
+  - admin-service: 도메인 패키지에 `controller` · `service` · `client` · `dto`만 — **`entity` · `repository` 없음**, 데이터는 각 서비스 `/internal/**` 호출로만 다룸
 
 **서비스별 도메인**
 
-| 서비스 | 도메인 패키지 |
-|---|---|
-| user-service | `auth`(가입 · 로그인 · 토큰) · `user`(회원 · 배송지 · 관리자 회원) |
-| store-service | `apply`(입점 신청 · 심사 · 서류) · `store` · `category`(카테고리 · 수수료) |
-| product-service | `product` · `option`(옵션 · 재고) · `stock`(예약 · 해제) · `image` |
-| order-service | `cart` · `order` · `payment` · `saga` |
-| settlement-service | `settlement`(적재 · 집계 · 지급 · 보류) |
+| 서비스 | DB | 도메인 패키지 |
+|---|---|---|
+| gateway-service | 없음 | — (`config` · `filter` · `exception`) |
+| user-service | userdb | `auth`(가입 · 로그인 · refresh · 로그아웃 — Keycloak 대리 호출) · `user`(회원 프로필 · 등급) · `address`(배송지) · `point`(적립 · 사용 · 환원) |
+| store-service | storedb | `apply`(입점 신청 · 심사 · 서류) · `store`(상태 · 배송정책) · `dashboard`(판매자 대시보드 조합) |
+| product-service | productdb | `category`(상위/하위) · `product`(QueryDSL 검색 포함) · `option` · `stock`(예약 · 해제) · `image` |
+| order-service | orderdb | `cart` · `order` · `claim`(취소 · 반품 · 교환) · `saga` |
+| payment-service | paymentdb | `payment`(포트원 V2 검증 · 취소 · 웹훅) |
+| review-service | reviewdb | `review`(사진 · 별점 · 판매자 답글) · `inquiry`(상품문의 · 답변) · `eligibility`(리뷰 작성 자격) |
+| settlement-service | settlementdb | `settlement`(적재 · 집계 · 지급 · 보류) · `commission`(카테고리별 수수료) |
+| admin-service | 없음 | `application` · `store` · `category` · `settlement` · `user` · `dashboard` — 모두 `/internal/**` 호출 조합 |
 
 **도메인 경계 기준**
 
@@ -152,12 +172,14 @@ com.sesac.team1.{service}            # service = gateway · user · store · pro
 
 | 종류 | 규칙 | 예시 |
 |---|---|---|
-| 컨트롤러 | 구매자 · 공개 `{X}Controller` / 판매자 `Seller{X}Controller` / 관리자 `Admin{X}Controller` / 내부 `Internal{X}Controller` | `OrderController` · `SellerOrderItemController` · `InternalStockController` |
+| 컨트롤러 | 구매자 · 공개 `{X}Controller` / 판매자 `Seller{X}Controller` / 관리자 `Admin{X}Controller`(**admin-service에만**) / 내부 `Internal{X}Controller` | `OrderController` · `SellerOrderItemController` · `AdminApplicationController` · `InternalStockController` |
 | 서비스 | `{X}Service` · Saga `{행위}Saga` · 스케줄러 `{행위}Scheduler` | `PaymentService` · `PlaceOrderSaga` · `AutoConfirmScheduler` |
 | 레포지토리 | `{Entity}Repository` · Redis `{X}RedisRepository` | `OrderItemRepository` · `CartRedisRepository` |
-| 클라이언트 | `{대상}Client` | `ProductClient` · `PortOneClient` |
+| 클라이언트 | `{대상}Client` | `ProductClient` · `PaymentClient` · `PortOneClient` |
 | 이벤트 리스너 | `{이벤트}Listener` | `StoreApprovedListener` |
-| 설정 | `{대상}Config` | `RestClientConfig` |
+| 설정 | `{대상}Config` | `RestClientConfig` · `Resilience4jConfig` |
+
+- 관리자 컨트롤러 `Admin{X}Controller`는 **admin-service 안에만** 둡니다. 도메인 서비스는 관리자 기능을 `Internal{X}Controller`(`/internal/**`)로 노출하고, admin-service가 이를 호출 (예: store `InternalApplicationController` ← admin `AdminApplicationController`)
 
 **DTO**
 
@@ -204,12 +226,12 @@ com.sesac.team1.{service}            # service = gateway · user · store · pro
 
 | 키 | 서비스 | 용도 |
 |---|---|---|
-| `refresh:{userId}:{tokenId}` | user | 리프레시 토큰 |
-| `blacklist:{jti}` | user · gateway | 로그아웃한 Access Token |
-| `cart:{userId}` | order | 장바구니 Hash |
-| `product::{productId}` | product | `@Cacheable` 캐시 (Spring 기본 형식) |
+| `cart:{userId}` | order | 장바구니 Hash (Must) |
+| `blacklist:{jti}` | gateway | 로그아웃한 Access Token 즉시 무효화 (Could) |
 
 - 한 Redis를 여러 서비스가 공유하므로 **다른 서비스의 키 접두어 사용 금지**
+- 리프레시 토큰은 Keycloak이 관리 — Redis에 `refresh:` 키를 만들지 않음. 상품 캐시 키도 없음
+- 새 키가 필요하면 이 표에 먼저 추가 (PR `[영향]`)
 
 ### 2-3. 문법 스타일
 
@@ -262,10 +284,12 @@ if (isAmountMismatch) {
 |---|---|---|
 | 구매자 · 공개 | `/api/{자원}` | `GET /api/products/101` · `POST /api/orders` |
 | 판매자 | `/api/seller/{자원}` | `PATCH /api/seller/order-items/ship` |
-| 관리자 | `/api/admin/{자원}` | `PATCH /api/admin/applications/7/approve` |
-| 서비스 간 | `/internal/{자원}` | `POST /internal/stock/reservations` — 게이트웨이에 라우트 없음 |
-| 본인 | `/me` | `GET /api/users/me` · `GET /api/orders/me` |
+| 관리자 | `/api/admin/{자원}` — **admin-service만** | `PATCH /api/admin/applications/7/approve` → admin → store `/internal/applications/7/approve` |
+| 서비스 간 | `/internal/{자원}` | `POST /internal/stock/reservations` · `GET /internal/stats/orders` — 게이트웨이에 라우트 없음 |
+| 본인 | `/me` | `GET /api/users/me` |
 
+- **도메인 서비스는 `/api/admin/**`을 노출하지 않음.** 관리자 기능은 `/internal/**`로 열고 admin-service가 조합 (게이트웨이는 `/api/admin/**` 전부를 admin으로 라우팅)
+- 브라우저는 payment-service를 직접 부르지 않음 — 결제 확인은 order(`POST /api/orders/{orderNo}/payment/confirm`) 경유 (포트원 웹훅 `/api/payments/webhook`만 예외)
 - 자원은 **복수형 명사 · kebab-case**, 행위는 HTTP 메서드
 - 상태 전이처럼 행위 중심 API는 동사 하위 경로 허용 (`/approve` · `/confirm` · `/ship` · `/api/auth/login`)
 - 경로 변수는 외부 노출 번호 우선 (`/api/orders/{orderNo}`), 내부 PK 노출 최소화
@@ -354,12 +378,17 @@ RuntimeException
 
 | 도메인 접두어 | 서비스 | 예 |
 |---|---|---|
-| `AUTH` · `USER` | user | `AUTH_DUPLICATE_EMAIL` 이메일 중복 · `USER_NOT_FOUND` 회원 없음 |
-| `APPLY` · `STORE` · `CATEGORY` | store | `APPLY_REAPPLY_RESTRICTED` 재신청 제한 기간 |
-| `PRODUCT` · `STOCK` | product | `STOCK_INSUFFICIENT` 재고 부족 |
-| `CART` · `ORDER` · `PAYMENT` | order | `PAYMENT_AMOUNT_MISMATCH` 결제 금액 불일치 |
-| `SETTLE` | settlement | `SETTLE_ALREADY_AGGREGATED` 이미 집계된 주차 |
+| `AUTH` · `USER` · `POINT` | user | `AUTH_DUPLICATE_EMAIL` 이메일 중복 · `USER_NOT_FOUND` 회원 없음 · `POINT_INSUFFICIENT` 포인트 부족 |
+| `APPLY` · `STORE` | store | `APPLY_REAPPLY_RESTRICTED` 재신청 제한 기간 |
+| `CATEGORY` · `PRODUCT` · `STOCK` | product | `STOCK_INSUFFICIENT` 재고 부족 · `CATEGORY_HAS_PRODUCTS` 상품이 있는 카테고리 삭제 |
+| `CART` · `ORDER` · `CLAIM` | order | `ORDER_OUT_OF_STOCK` 재고 부족 · `CLAIM_NOT_ALLOWED` 클레임 불가 상태 |
+| `PAYMENT` | payment | `PAYMENT_AMOUNT_MISMATCH` 결제 금액 불일치 |
+| `REVIEW` · `INQUIRY` | review | `REVIEW_NOT_ELIGIBLE` 작성 자격 없음 · `INQUIRY_NOT_FOUND` |
+| `SETTLE` · `COMMISSION` | settlement | `SETTLE_ALREADY_AGGREGATED` 이미 집계된 주차 · `COMMISSION_RATE_INVALID` |
+| (없음 — 그대로 전달) | admin | 하위 서비스가 보낸 `ApiResponse`의 `code` · `message`를 **바꾸지 않고 전달**, 연결 실패 · 타임아웃만 `EXTERNAL_API_ERROR` |
 | 공통 (도메인 접두어 없음) | 전체 | `SUCCESS` · `INVALID_INPUT` · `UNAUTHORIZED` · `FORBIDDEN` · `NOT_FOUND` · `EXTERNAL_API_ERROR` · `GLOBAL_ERROR` |
+
+- admin-service는 자체 도메인 에러 코드를 만들지 않습니다. 관리자 화면이 받는 코드는 데이터 주인 서비스의 코드 그대로 (`APPLY_REAPPLY_RESTRICTED` 등)
 
 **새 도메인 예외 추가 (3단계)**
 
@@ -399,7 +428,8 @@ throw new OrderException(OrderErrorCode.ORDER_NOT_FOUND);
 - 보안상 구분을 노출하면 안 되는 경우 하나의 코드로 통합 — 로그인 실패는 "이메일 또는 비밀번호가 올바르지 않습니다" 하나
 - **서비스 간 호출 실패**: `client`에서 `RestClientResponseException`을 잡아 호출한 쪽 도메인 예외로 변환
   - 상대가 보낸 비즈니스 오류(재고 부족 409) → 의미가 같은 내 도메인 코드
-  - 연결 실패 · 타임아웃 · 5xx → `EXTERNAL_API_ERROR`(502/504) + Saga 보상
+  - 연결 실패 · 타임아웃 · 5xx · 서킷 열림 → `EXTERNAL_API_ERROR`(502/504) + Saga 보상 (대시보드 조합은 부분 응답, 2-7)
+  - 예외: admin-service는 변환하지 않고 하위 서비스의 `code` · HTTP 상태를 그대로 전달
 - 게이트웨이 필터 체인(WebFlux) 안에서는 `BusinessException`을 던지지 않음 — 전용 핸들러가 JSON으로 응답
 
 ### 2-6. 트랜잭션 · 데이터 접근
@@ -411,7 +441,9 @@ throw new OrderException(OrderErrorCode.ORDER_NOT_FOUND);
 - 부가 작업 실패가 본 작업을 실패시키면 안 될 때는 격리하고 로그만 (예: 캐시 무효화 실패)
 - 원자성이 필요한 작업은 한 트랜잭션 (예: 상품주문 상태 변경 + 이력 기록)
 - Repository는 Spring Data JPA 쿼리 메서드 네이밍(`findByStoreIdAndStatus`, `existsByEmail`)
-- 동적 조건 검색은 `JpaSpecificationExecutor` 또는 `@Query`
+- 동적 조건 검색(카테고리 · 가격 · 키워드 · 정렬 · 페이징)은 **QueryDSL** — `{Entity}RepositoryCustom` + `{Entity}RepositoryImpl`, 조건은 `BooleanExpression` 메서드로 분리 (null이면 조건 생략)
+- **SQL Injection 방지**: JPA · QueryDSL 파라미터 바인딩만 사용. `@Query` · 네이티브 쿼리에 **문자열 이어 붙이기 금지** (`"... WHERE name LIKE '%" + keyword + "%'"` ✗ → `:keyword` 바인딩), 정렬 컬럼은 허용 목록으로 매핑 — SonarQube가 검출
+- **XSS 방지**: 리뷰 · 문의 · 입점 신청 등 사용자가 입력한 HTML은 **OWASP Java HTML Sanitizer**로 **저장 전** 정화 (`common/util`의 정책 하나를 공유). 일반 텍스트 필드는 프론트에서 이스케이프 출력(React 기본), `dangerouslySetInnerHTML`은 정화된 값에만
 - 동시성: 재고처럼 경합하는 값은 **조건부 UPDATE**(`@Modifying @Query`), 엔티티 동시 수정은 `@Version`
 - **서비스 메서드는 `userId` · `storeId` 등 원시값을 파라미터로 받음** — 테스트 · 스레드 안전성
 
@@ -422,8 +454,34 @@ throw new OrderException(OrderErrorCode.ORDER_NOT_FOUND);
 - 호출은 `{domain}/client/{대상}Client` 인터페이스(`@HttpExchange`)로만, service에서만 사용
 - 받는 쪽은 `Internal{X}Controller` + `/internal/**`
 - 주소는 환경 변수 `{대상}_SERVICE_URI` (클러스터: CoreDNS 이름)
-- 타임아웃 필수: 연결 2초 · 읽기 3초 (`common/config/RestClientConfig`)
-- 화면 조합을 위한 연쇄 호출 금지 — 대시보드처럼 여러 서비스 데이터가 필요하면 프론트가 병렬 호출
+- 호출 깊이는 **1홉까지** — 호출받은 서비스가 다시 다른 서비스를 부르는 연쇄 호출 금지 (Saga 오케스트레이터 order · 조합 계층 store `dashboard` · admin이 직접 각 서비스를 호출)
+
+**Resilience4j 표준 — 모든 동기 호출(Saga · 대시보드 조합 · admin)**
+
+| 항목 | 규칙 |
+|---|---|
+| 타임아웃 | 연결 2초 · 읽기 3초 (`common/config/RestClientConfig`) — 필수 |
+| 서킷 브레이커 | **client(대상 서비스)마다 인스턴스 하나**, 이름 = 대상 서비스 (`resilience4j.circuitbreaker.instances.product`) |
+| 재시도 | **멱등 GET만** (최대 2회). POST · PATCH는 재시도하지 않음 — Saga는 멱등 키 + 보상으로 처리 |
+| 폴백 | 도메인 예외 `EXTERNAL_API_ERROR`(502/504), 대시보드는 부분 응답 |
+| 설정 위치 | `application.yml`의 `resilience4j.*` + `common/config/Resilience4jConfig` — 값 임의 변경 금지 |
+
+- 목표: **서비스 하나가 죽어도 호출한 쪽은 에러 메시지로 1차 처리**하고 나머지 화면 · 기능은 정상
+
+**대시보드 조합**
+
+- 판매자 대시보드 `GET /api/seller/dashboard` = store-service `dashboard` 패키지 / 관리자 대시보드 `GET /api/admin/dashboard` = admin-service `dashboard` 패키지
+- 각 서비스의 `/internal/stats/**`를 **병렬 호출**(서비스별 타임아웃), 결과를 한 응답으로 조합
+- **집계 계산은 데이터 주인 서비스가** — 조합하는 쪽은 받은 값을 합치기만 (매출 합계는 order, 정산 금액은 settlement)
+- **부분 응답**: 실패한 영역만 `null` + `unavailable` 목록, 응답은 200 `SUCCESS`
+
+```json
+{ "code": "SUCCESS", "message": "대시보드를 조회했습니다.",
+  "data": { "orders": null, "products": { "onSale": 42 }, "settlement": { "pending": 1250000 },
+            "unavailable": ["order"] } }
+```
+
+- 프론트는 `unavailable`에 있는 영역에 "일시적으로 불러올 수 없습니다" 표시, 나머지는 정상 렌더링
 
 **이벤트**
 
@@ -447,7 +505,7 @@ throw new OrderException(OrderErrorCode.ORDER_NOT_FOUND);
 - 클래스 `{행위}Scheduler`, 메서드 하나에 작업 하나
 - cron · 기준 기간은 `application.yml`(`app.scheduler.*`)에서 주입, `zone = "Asia/Seoul"` 명시
 - 레플리카 2개 대비 `@SchedulerLock(name = "{kebab-case}")` 필수
-- 관리자 수동 실행이 필요한 작업은 같은 service 메서드를 Admin API로도 노출
+- 관리자 수동 실행이 필요한 작업은 같은 service 메서드를 `/internal/**`로도 노출, admin-service가 호출 (예: `/internal/settlements/aggregate`)
 
 ### 2-8. 로깅
 
@@ -490,19 +548,24 @@ throw new OrderException(OrderErrorCode.ORDER_NOT_FOUND);
 ### 3-2. 테이블
 
 - **단수형** (엔티티 클래스와 1:1): `store` · `product` · `order_item` · `settlement` — 예외 `orders` · `users`
-- 매핑 테이블도 단수형: `user_role` · `product_option`
+- 하위 · 매핑 테이블도 단수형: `product_option` · `review_image`
 - 모든 테이블에 `COMMENT` 필수
-- 서비스별 스키마: `userdb` · `storedb` · `productdb` · `orderdb` · `settlementdb`
+- 서비스별 스키마 8개: `userdb` · `storedb` · `productdb` · `orderdb` · `paymentdb` · `reviewdb` · `settlementdb` · `keycloakdb`
+- `keycloakdb`는 Keycloak이 스스로 관리 — 이 문서의 DB 규칙 · Flyway 대상에서 제외, 직접 쿼리 · 수정 금지
+- gateway-service · admin-service는 스키마 없음
 
 **서비스별 테이블 이름**
 
 | 스키마 | 테이블 |
 |---|---|
-| userdb | `users` · `user_role` · `address` |
-| storedb | `store_application` · `application_document` · `store` · `category` · `category_commission` · `processed_event` · `shedlock` |
-| productdb | `product` · `product_option` · `product_image` · `stock_reservation` · `processed_event` |
-| orderdb | `orders` · `order_item` · `order_store_shipment` · `order_item_history` · `payment` · `saga_instance` · `outbox_event` · `shedlock` |
-| settlementdb | `settlement_item` · `settlement` · `payout` · `processed_event` · `shedlock` |
+| userdb | `users`(`point_balance` · `grade` 포함) · `address` · `point_history` |
+| storedb | `store_application` · `application_document` · `store` · `processed_event` · `shedlock` |
+| productdb | `category` · `product` · `product_option` · `product_image` · `stock_reservation` · `processed_event` |
+| orderdb | `orders` · `order_item` · `order_store_shipment` · `order_item_history` · `order_claim` · `saga_instance` · `outbox_event` · `shedlock` |
+| paymentdb | `payment` · `payment_cancel` |
+| reviewdb | `review` · `review_image` · `review_eligibility` · `product_inquiry` · `processed_event` |
+| settlementdb | `category_commission` · `settlement_item` · `settlement` · `payout` · `processed_event` · `shedlock` |
+| keycloakdb | Keycloak 관리 (계정 · 역할 · 세션) |
 
 ### 3-3. 컬럼
 
@@ -668,7 +731,7 @@ public abstract class BaseTimeEntity {
 
 ### 4-2. 프로젝트 구조
 
-도메인(기능) 기반 구조. **백엔드 도메인 패키지와 `features/{도메인}`이 1:1 대칭.**
+도메인(기능) 기반 구조. **백엔드 서비스와 `features/{도메인}`이 대칭** (payment는 화면이 없어 `features/order`의 결제 흐름에 포함).
 
 ```
 frontend/src/
@@ -679,16 +742,19 @@ frontend/src/
 │   └── App.jsx
 ├── pages/                        # 라우트 1개 = 페이지 파일 1개. features 조립만
 │   ├── shop/                     #   메인 · 상품 · 스토어 · 장바구니 · 주문서 · 로그인 · 입점 신청
-│   ├── mypage/                   #   주문 · 클레임 · 회원정보 · 배송지
+│   ├── mypage/                   #   주문 · 클레임 · 리뷰 · 회원정보 · 배송지 · 포인트
 │   ├── seller/                   #   판매자센터
 │   └── admin/                    #   관리자
 ├── features/                     # 도메인별 구현 (담당 경계 = 폴더 경계)
 │   ├── auth/                     #   로그인 · 가입 · authStore · 가드
-│   ├── user/                     #   회원정보 · 배송지 · 관리자 회원
-│   ├── store/                    #   입점 신청 · 스토어 · 입점 심사 · 카테고리
-│   ├── product/                  #   상품 목록 · 상세 · 판매자 상품
-│   ├── order/                    #   장바구니 · 주문 · 결제 · 판매자 주문
-│   └── settlement/               #   정산 (판매자 · 관리자)
+│   ├── user/                     #   회원정보 · 배송지 · 포인트 · 등급
+│   ├── store/                    #   입점 신청 · 스토어 · 판매자 대시보드
+│   ├── product/                  #   카테고리 · 상품 목록 · 상세 · 검색 · 판매자 상품
+│   ├── order/                    #   장바구니 · 주문 · 결제 · 클레임 · 판매자 주문
+│   ├── review/                   #   리뷰 · 상품문의 · 판매자 답글
+│   ├── admin/                    #   관리자 화면 전부 (admin-service만 호출)
+│   ├── support/                  #   FAQ (프론트 정적 데이터)
+│   └── settlement/               #   판매자 정산
 │       ├── api/                  #     settlementApi.js
 │       ├── hooks/                #     useSettlementsQuery.js · usePaySettlementMutation.js
 │       ├── components/
@@ -705,7 +771,7 @@ frontend/src/
 
 **운영 규칙**
 
-1. **관리자 화면도 해당 도메인 feature에 둔다** (입점 심사 → `features/store`, 정산 관리 → `features/settlement`). `features/admin` 같은 공유 도메인을 만들지 않음
+1. **관리자 화면은 `features/admin`에 둔다** (입점 심사 · 스토어 · 카테고리 · 수수료 · 정산 · 회원 · 관리자 대시보드). `/api/admin/**`(admin-service)만 호출, 도메인 서비스 API를 직접 부르지 않음 — 담당 구지훈
 2. 다른 사람의 `features/` 폴더는 PR 없이 수정 금지
 3. 두 도메인 이상에서 쓰이면 `shared/`로 승격, 승격 시 팀 공지
 4. `features` 간 직접 import 지양 — 필요하면 `shared` 경유
@@ -718,7 +784,7 @@ frontend/src/
 | `/` · `/products` · `/products/:id` · `/stores` · `/store/:id` | 쇼핑몰 | 공개 |
 | `/login` · `/signup` | 인증 | 공개 |
 | `/cart` · `/checkout` · `/order/complete` · `/seller/apply` | 쇼핑몰 | BUYER |
-| `/mypage/**` | 마이페이지 | BUYER |
+| `/mypage/**` (`/mypage/points` 포함) | 마이페이지 | BUYER |
 | `/seller` · `/seller/**` | 판매자센터 | SELLER |
 | `/admin` · `/admin/**` | 관리자 | ADMIN |
 
@@ -731,11 +797,14 @@ frontend/src/
 
 | 항목 | Access Token | Refresh Token |
 |---|---|---|
-| 저장 | `authStore`(Zustand) 메모리 | HttpOnly 쿠키 (JS 접근 불가) |
+| 발급 | Keycloak (user-service가 대리 호출) | Keycloak (user-service가 대리 호출) |
+| 저장 | `authStore`(Zustand) 메모리 | HttpOnly · Secure · SameSite=Strict 쿠키, `Path=/api/auth` (JS 접근 불가) |
 | 전송 | `Authorization: Bearer {AT}` | 브라우저 자동 (같은 출처 · Vercel rewrite) |
-| 서버 저장 | 없음 (로그아웃 시 blacklist만) | Redis `refresh:{userId}:{tokenId}` |
-| 재발급 | `POST /api/auth/refresh` | 로테이션 |
+| 서버 저장 | 없음 (즉시 로그아웃 `blacklist:{jti}`는 Could) | Keycloak 세션 (user-service 경유) — Redis에 두지 않음 |
+| 재발급 | `POST /api/auth/refresh` | Keycloak 로테이션 |
+| 수명 | 30분 | 14일 |
 
+- 로그인 화면은 React 자체 폼 — Keycloak 로그인 페이지로 리다이렉트하지 않음
 - 부팅: `app/bootstrap.js`가 `/api/auth/refresh`를 1회 호출 → 성공 시 로그인 복구, 401이면 비로그인 상태
 - AT 만료(401): axios 응답 인터셉터가 single-flight(`shared/api/refresh.js`)로 재발급 후 원 요청 재시도
 - AT를 `localStorage` · `sessionStorage`에 저장 금지. RT는 프론트 코드에서 다루지 않음
@@ -897,8 +966,8 @@ function AdminStoreListPage() {
 | IAM 역할 (IRSA) | `sesac-team1-{service}-irsa` | `sesac-team1-order-irsa` |
 | Secrets Manager | `sesac-team1/{service}` | `sesac-team1/order-service` |
 | SSM 파라미터 | `/sesac-team1/dev/{종류}/{이름}` | `/sesac-team1/dev/sqs/notification-queue-arn` |
-| S3 버킷 | `sesac-team1-{용도}-{계정ID 끝 4자리}` (전역 유일) | `sesac-team1-product-images-1234` |
-| DynamoDB | `sesac-team1-{용도}` | `sesac-team1-notifications` |
+| S3 버킷 | `sesac-team1-{용도}-{계정ID 끝 4자리}` (전역 유일) | `sesac-team1-images-1234`(prefix `products/` · `reviews/`) · `sesac-team1-seller-docs-1234` · `sesac-team1-reports-1234` · `sesac-team1-log-archive-1234` |
+| DynamoDB | `sesac-team1-{용도}` | `sesac-team1-notifications` · `sesac-team1-settlement-reports` (그 외 테이블 없음) |
 
 ### 5-2. Terraform
 
@@ -929,7 +998,7 @@ function AdminStoreListPage() {
 
 ### 5-5. Serverless · CI
 
-- 함수 폴더: kebab-case (`order-notification`), 서비스 이름 `sesac-team1-{폴더명}`
+- 함수 폴더: kebab-case — `order-notification` · `settlement-report` · `log-archive` (3개, 사용자 API 없음), 서비스 이름 `sesac-team1-{폴더명}`
 - 핸들러 파일 camelCase (`notify.js`), export 이름 `handler`
 - 워크플로 파일: 영역 이름 kebab-case (`backend.yml`), job 이름 kebab-case (`bump-tag`)
 - GitHub Secrets: UPPER_SNAKE (`AWS_ROLE_ARN` · `SERVERLESS_ACCESS_KEY`)
@@ -946,7 +1015,11 @@ function AdminStoreListPage() {
 - [ ] `RuntimeException` 대신 도메인 예외 + ErrorCode를 쓰는가? 새 코드가 `{도메인}_{상황}` 형식이고 `docs/api/error-codes.md`에 있는가?
 - [ ] 엔티티에 `@Setter`가 없고 상태 변경이 의미 있는 메서드인가?
 - [ ] `@Transactional`이 서비스에만 있고, 원격 호출이 트랜잭션 밖에 있는가?
-- [ ] 다른 서비스 호출에 타임아웃이 있고 실패가 도메인 예외로 변환되는가?
+- [ ] 다른 서비스 호출에 Resilience4j 표준(타임아웃 · 서킷 브레이커 · 멱등 GET만 재시도 · 폴백)이 적용되고 실패가 도메인 예외로 변환되는가?
+- [ ] 대시보드 조합이 병렬 호출이고, 한 서비스가 실패해도 `unavailable` 부분 응답(200)을 주는가? 연쇄 호출(2홉 이상)이 없는가?
+- [ ] admin-service에 entity · repository · DB 접근이 없고, 도메인 서비스에 `/api/admin/**`이 없는가?
+- [ ] 동적 검색이 QueryDSL이고, `@Query` · 네이티브 쿼리에 문자열 이어 붙이기가 없는가?
+- [ ] 사용자 입력 HTML(리뷰 · 문의 · 입점 신청)을 저장 전에 Sanitizer로 정화하는가?
 - [ ] 소유권 검사(storeId · userId)가 있는가?
 - [ ] 이벤트 · Saga 참여 API가 멱등이고 테스트가 있는가?
 - [ ] 비밀 값 · 개인정보가 로그에 없는가?
@@ -967,7 +1040,7 @@ function AdminStoreListPage() {
 **프론트엔드**
 
 - [ ] 컴포넌트는 `.jsx`, 그 외는 `.js`인가? (TypeScript 파일이 섞이지 않았는가)
-- [ ] 페이지는 `pages/`, 로직은 `features/{도메인}`에 있는가?
+- [ ] 페이지는 `pages/`, 로직은 `features/{도메인}`에 있는가? 관리자 화면은 `features/admin`에서 `/api/admin/**`만 호출하는가?
 - [ ] queryKey를 팩토리에서만 만들었는가?
 - [ ] 변경 후 관련 queryKey를 무효화하는가?
 - [ ] 서버 데이터를 Zustand에 복사하지 않았는가?
