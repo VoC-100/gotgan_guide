@@ -177,7 +177,7 @@ com.sesac.gojigi.{service}            # service = gateway · user · store · pr
 | 레포지토리 | `{Entity}Repository` · Redis `{X}RedisRepository` | `OrderItemRepository` · `CartRedisRepository` |
 | 클라이언트 | `{대상}Client` | `ProductClient` · `PaymentClient` · `PortOneClient` |
 | 이벤트 리스너 | `{이벤트}Listener` | `StoreApprovedListener` |
-| 설정 | `{대상}Config` | `RestClientConfig` · `Resilience4jConfig` |
+| 설정 | `{대상}Config` | `RestClientConfig` · `WebMvcConfig` |
 
 - 관리자 컨트롤러 `Admin{X}Controller`는 **admin-service 안에만** 둡니다. 도메인 서비스는 관리자 기능을 `Internal{X}Controller`(`/internal/**`)로 노출하고, admin-service가 이를 호출 (예: store `InternalApplicationController` ← admin `AdminApplicationController`)
 
@@ -464,7 +464,7 @@ throw new OrderException(OrderErrorCode.ORDER_NOT_FOUND);
 | 서킷 브레이커 | **client(대상 서비스)마다 인스턴스 하나**, 이름 = 대상 서비스 (`resilience4j.circuitbreaker.instances.product`) |
 | 재시도 | **멱등 GET만** (최대 2회). POST · PATCH는 재시도하지 않음 — Saga는 멱등 키 + 보상으로 처리 |
 | 폴백 | 도메인 예외 `EXTERNAL_API_ERROR`(502/504), 대시보드는 부분 응답 |
-| 설정 위치 | `application.yml`의 `resilience4j.*` + `common/config/Resilience4jConfig` — 값 임의 변경 금지 |
+| 설정 위치 | `application.yml`의 `resilience4j.*` (별도 Config 클래스 없음, 서킷 브레이커 인스턴스 이름 `{대상}Client`) — 값 임의 변경 금지 |
 
 - 목표: **서비스 하나가 죽어도 호출한 쪽은 에러 메시지로 1차 처리**하고 나머지 화면 · 기능은 정상
 
@@ -696,7 +696,7 @@ public abstract class BaseTimeEntity {
 - 경로: `src/main/resources/db/migration/V{n}__{설명}.sql` — 설명은 snake_case (`V3__add_saga_instance.sql`)
 - **머지된 마이그레이션은 수정 금지** — 바꿀 때는 새 번호
 - 같은 서비스를 두 명이 작업하면 PR 머지 전 번호 확인
-- 시드: `db/seed/R__demo_seed.sql` (local · dev 프로필만, 수정하면 재실행)
+- 시드: `db/seed/R__demo_seed.sql` (local · k8s(dev 클러스터) 프로필만, 수정하면 재실행)
 - 컬럼 삭제 · 이름 변경은 두 번 배포로 (추가 → 코드 전환 → 삭제)
 - JPA `ddl-auto: validate`
 
@@ -715,8 +715,8 @@ public abstract class BaseTimeEntity {
 | 분류 | 기술 | 규칙 |
 |---|---|---|
 | 언어 | JavaScript (ES2022) | 목업 그대로 — 컴포넌트 `.jsx`, 그 외 `.js`. TypeScript 도입 안 함 |
-| 빌드 | Vite 6 · Node.js 20 LTS | `import.meta.env.VITE_*` |
-| 라우팅 | React Router v7 | 라우트 정의는 `app/router.jsx` **단일 파일** |
+| 빌드 | Vite 6 · Node.js 22 LTS | `import.meta.env.VITE_*` |
+| 라우팅 | React Router v7 (목업은 v6 — 이식하면서 올림) | 라우트 정의는 `app/router.jsx` **단일 파일** |
 | 서버 상태 | TanStack Query v5 | API 데이터는 전부 여기서 (4-6) |
 | 클라이언트 상태 | Zustand | `authStore` — accessToken · user · isAuthReady / UI 상태 |
 | 표 | TanStack Table v8 | 4-7 |

@@ -184,13 +184,13 @@ svg .ah2{fill:var(--point)}
 <h4>범위 · 일정</h4>
 <ul class="b">
   <li>포함: 구매자 쇼핑몰 · 판매자센터 · 스토어 관리자 콘솔, Spring 서비스 9개(gateway + 업무 8) + Keycloak, AWS 인프라, CI/CD · SonarQube Cloud, 관측성 · 헬스 체크 대시보드, 서버리스 3종(배치 · 로깅)</li>
-  <li>기간: <b>2026-10-12(월) ~ 11-20(금)</b> · 개발은 <b>11-13(금) 기능 동결</b>까지 · 11-16 ~ 11-20 QA · 발표 준비 · <b>11-20 발표</b></li>
+  <li>기간: <b>2026-10-12(월) ~ 11-20(금)</b> — <b>1~2주차 인프라</b>(AWS IaC → CI/CD · 로깅 연계) → <b>3~5주차 도메인 개발(프론트 포함)</b> → <b>6주차 QA · 발표</b> · 개발은 <b>11-13(금) 기능 동결</b>까지 · 11-16 ~ 11-20 QA · 발표 준비 · <b>11-20 발표</b></li>
   <li>제외(Won't): 찜 · 쿠폰 · 비회원 구매 · 회원 신고 · 오토스케일링 · 파티셔닝 · CQRS/캐시 · Elasticsearch · NL2SQL · 썸네일 · 택배사 연동 · 실결제 · 소셜 로그인 · Cognito · 모바일 앱 · 운영(prod) 환경</li>
 </ul>
 <h4>우선순위 정의</h4>
 <div class="tbl"><table>
 <tr><th>표기</th><th>MoSCoW</th><th>의미</th><th>완료 시점</th></tr>
-<tr><td><span class="p p0">P0</span></td><td>Must</td><td>필수. 없으면 전체 흐름 · 시연이 끊김</td><td>4주차 말(11-06) E2E 전체 흐름 1회 완주</td></tr>
+<tr><td><span class="p p0">P0</span></td><td>Must</td><td>필수. 없으면 전체 흐름 · 시연이 끊김</td><td>5주차 11-11(수) E2E 전체 흐름 1회 완주</td></tr>
 <tr><td><span class="p p1">P1</span></td><td>Should</td><td>권장. 서비스 완성도 · 운영에 필요</td><td>11-13 기능 동결 전</td></tr>
 <tr><td><span class="p p2">P2</span></td><td>Could</td><td>선택. 여유 있을 때</td><td>5주차, 남는 시간</td></tr>
 <tr><td><span class="p px">제외</span></td><td>Won't</td><td>이번 프로젝트 범위 밖</td><td>—</td></tr>
@@ -480,7 +480,7 @@ svg .ah2{fill:var(--point)}
     ├── main/java/com/sesac/gojigi/order/
     │   ├── OrderApplication.java
     │   ├── common/                          서비스 공통 (서비스 템플릿에서 복사)
-    │   │   ├── config/                      JpaConfig(JPAQueryFactory) · RedisConfig · RestClientConfig(타임아웃) · Resilience4jConfig
+    │   │   ├── config/                      JpaConfig(JPAQueryFactory) · RedisConfig · RestClientConfig(타임아웃) — Resilience4j 설정은 application.yml
     │   │   │                                SchedulingConfig(ShedLock) · WebConfig · SwaggerConfig · AwsConfig
     │   │   ├── dto/                         ApiResponse · PageResponse
     │   │   ├── exception/                   ErrorCode(인터페이스) · CommonErrorCode · BusinessException · GlobalExceptionHandler
@@ -582,7 +582,7 @@ svg .ah2{fill:var(--point)}
 <div class="tbl"><table>
 <tr><th>구분</th><th>사용</th><th>쓰는 곳</th></tr>
 <tr><td>언어</td><td>JavaScript (ES2022) — 컴포넌트 <code>.jsx</code>, 그 외 <code>.js</code></td><td>목업 그대로 · TypeScript 도입 안 함</td></tr>
-<tr><td>런타임 · 빌드</td><td>Node.js 20 LTS · Vite 6</td><td>개발 서버 · 빌드</td></tr>
+<tr><td>런타임 · 빌드</td><td>Node.js 22 LTS · Vite 6</td><td>개발 서버 · 빌드</td></tr>
 <tr><td>UI · 라우팅</td><td>React 18 · React Router v7</td><td>MockupPage 그대로 이식 · 라우트는 <code>app/router.jsx</code> 단일 파일</td></tr>
 <tr><td>스타일</td><td>Tailwind CSS 4 · 목업 디자인 토큰(<code>@theme</code>) · lucide-react</td><td>Pretendard · IBM Plex Mono(숫자)</td></tr>
 <tr><td>서버 상태</td><td>TanStack Query v5</td><td>API 데이터 전부 (캐시 · 재시도 · 무효화)</td></tr>
@@ -952,7 +952,7 @@ services/{service}/src/main/resources/
 <tr><td><code>resources/application-k8s.yml</code></td><td>클러스터: Loki 전송 · 트레이스 샘플링</td><td>ConfigMap <code>SPRING_PROFILES_ACTIVE=k8s</code></td></tr>
 <tr><td><code>resources/logback-spring.xml</code></td><td>JSON 로그 형식 · traceId 포함 · k8s 프로필에서 Loki appender</td><td>전 서비스 같은 파일</td></tr>
 <tr><td><code>resources/db/migration/V{n}__*.sql</code></td><td>Flyway 스키마 버전 — 기동 시 미적용분만 실행, <b>적용 후 수정 금지</b></td><td>앱 기동 시</td></tr>
-<tr><td><code>resources/db/seed/R__demo_seed.sql</code></td><td>시연용 데이터 (목업 데이터 변환) · 내용 바뀌면 재실행</td><td>local · dev 프로필</td></tr>
+<tr><td><code>resources/db/seed/R__demo_seed.sql</code></td><td>시연용 데이터 (목업 데이터 변환) · 내용 바뀌면 재실행</td><td>local · k8s(dev 클러스터) 프로필</td></tr>
 <tr><td><code>src/test/java/…</code></td><td>main과 같은 패키지 구조 — entity 단위 테스트 · service 테스트 · Testcontainers 통합 테스트</td><td>PR CI</td></tr>
 <tr><td><code>src/test/resources/application-test.yml</code></td><td>테스트용 설정 (Testcontainers 연결)</td><td>테스트 실행 시</td></tr>
 </table></div>
@@ -1343,7 +1343,7 @@ services/{service}/src/main/resources/
 <tr><th>ID</th><th>요구사항</th><th>상세</th><th>우선</th><th>화면 · API</th></tr>
 <tr data-p="0"><td class="id">ADM-01</td><td><b>관리자 API 진입점</b><span class="tag">관리자</span></td><td><ul><li><code>/api/admin/**</code>는 전부 게이트웨이 → admin-service (ADMIN)</li><li>기능별 컨트롤러가 대상 서비스 <code>/internal/**</code>를 호출해 결과 전달 — 입점 심사 · 스토어 · 카테고리 · 수수료 · 정산 · 회원 · 상품 (각 기능 요구사항은 데이터 주인 도메인 표에)</li></ul></td><td><span class="p p0">P0</span></td><td class="ref">/api/admin/**<br>→ /internal/**</td></tr>
 <tr data-p="0"><td class="id">ADM-02</td><td><b>관리자 대시보드 (조합)</b><span class="tag">관리자</span></td><td><ul><li>admin <code>dashboard</code> 패키지가 store(심사대기) · order(거래액 · 주문 수) · settlement(지급예정 · 수수료 수익 · 카테고리별 거래액) · product <code>/internal/stats/**</code> 병렬 호출</li><li>실패 영역만 <code>null</code> + <code>unavailable</code> 부분 응답(200)</li></ul></td><td><span class="p p0">P0</span></td><td class="ref">GET /api/admin/dashboard<br>/admin</td></tr>
-<tr data-p="0"><td class="id">ADM-03</td><td><b>대상 서비스 장애 시 폴백</b><span class="tag">시스템</span></td><td><ul><li>Resilience4j 타임아웃(연결 2s · 읽기 3s) · 서킷 브레이커 · 재시도는 멱등 GET만</li><li>목록 · 실행 API는 <code>EXTERNAL_API_ERROR</code>("일시적으로 처리할 수 없습니다")로 1차 처리 — 다른 관리자 메뉴는 정상</li></ul></td><td><span class="p p0">P0</span></td><td class="ref">Resilience4jConfig</td></tr>
+<tr data-p="0"><td class="id">ADM-03</td><td><b>대상 서비스 장애 시 폴백</b><span class="tag">시스템</span></td><td><ul><li>Resilience4j 타임아웃(연결 2s · 읽기 3s) · 서킷 브레이커 · 재시도는 멱등 GET만</li><li>목록 · 실행 API는 <code>EXTERNAL_API_ERROR</code>("일시적으로 처리할 수 없습니다")로 1차 처리 — 다른 관리자 메뉴는 정상</li></ul></td><td><span class="p p0">P0</span></td><td class="ref">application.yml resilience4j.*</td></tr>
 <tr data-p="2"><td class="id">ADM-04</td><td><b>매출 차트</b><span class="tag">판매자</span><span class="tag">관리자</span></td><td><ul><li>최근 30일 일별 매출 (order <code>/internal/stats</code> · 목업 SVG 차트 재사용)</li></ul></td><td><span class="p p2">P2</span></td><td class="ref">/seller · /admin</td></tr>
 <tr data-p="x"><td class="id">ADM-05</td><td><b>관리자 화면 "시스템 상태" 페이지 · 관리자 권한 세분화</b></td><td><ul><li>헬스 체크는 Grafana System Status로 대체(SYS-01) · 관리자 화면에는 링크만</li></ul></td><td><span class="p px">제외</span></td><td class="ref">—</td></tr>
 </table></div>
@@ -1547,7 +1547,7 @@ services/{service}/src/main/resources/
 </table></div>
 
 <h3>P0(Must) 완료 기준 — E2E 시나리오</h3>
-<p class="lead">4주차 말(11-06)까지 아래 흐름을 한 번에 완주합니다. Should 기능(포인트 · 알림 메일 · 상품문의)은 붙어 있으면 함께 확인합니다.</p>
+<p class="lead">5주차 11-11(수)까지 아래 흐름을 한 번에 완주합니다. Should 기능(포인트 · 알림 메일 · 상품문의)은 붙어 있으면 함께 확인합니다.</p>
 <div class="tbl"><table>
 <tr><th>#</th><th>시나리오</th><th>관련 ID</th></tr>
 <tr><td>1</td><td>자체 화면에서 회원 가입 → 로그인 → 입점 신청(서류 업로드) → 관리자 승인(admin) → refresh 후 판매자센터 진입</td><td class="ref">USR-01~06 · STR-01~05 · ADM-01</td></tr>

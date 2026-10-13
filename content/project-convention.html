@@ -306,7 +306,7 @@ main h3 + .tbl, main h4 + .tbl{margin-top:6px}
 <tr><td>레포지토리</td><td><code>{Entity}Repository</code> · Redis <code>{X}RedisRepository</code></td><td><code>OrderItemRepository</code> · <code>CartRedisRepository</code></td></tr>
 <tr><td>클라이언트</td><td><code>{대상}Client</code></td><td><code>ProductClient</code> · <code>PaymentClient</code> · <code>PortOneClient</code></td></tr>
 <tr><td>이벤트 리스너</td><td><code>{이벤트}Listener</code></td><td><code>StoreApprovedListener</code></td></tr>
-<tr><td>설정</td><td><code>{대상}Config</code></td><td><code>RestClientConfig</code> · <code>Resilience4jConfig</code></td></tr>
+<tr><td>설정</td><td><code>{대상}Config</code></td><td><code>RestClientConfig</code> · <code>WebMvcConfig</code></td></tr>
 </table></div>
 <ul class="b"><li>관리자 컨트롤러 <code>Admin{X}Controller</code>는 <b>admin-service 안에만</b> 둡니다. 도메인 서비스는 관리자 기능을 <code>Internal{X}Controller</code>(<code>/internal/**</code>)로 노출하고, admin-service가 이를 호출 (예: store <code>InternalApplicationController</code> ← admin <code>AdminApplicationController</code>)</li></ul>
 <h4>DTO</h4>
@@ -471,7 +471,7 @@ throw new OrderException(OrderErrorCode.ORDER_NOT_FOUND);</code></pre>
 <tr><td>서킷 브레이커</td><td><b>client(대상 서비스)마다 인스턴스 하나</b>, 이름 = 대상 서비스 (<code>resilience4j.circuitbreaker.instances.product</code>)</td></tr>
 <tr><td>재시도</td><td><b>멱등 GET만</b> (최대 2회). POST · PATCH는 재시도하지 않음 — Saga는 멱등 키 + 보상으로 처리</td></tr>
 <tr><td>폴백</td><td>도메인 예외 <code>EXTERNAL_API_ERROR</code>(502/504), 대시보드는 부분 응답</td></tr>
-<tr><td>설정 위치</td><td><code>application.yml</code>의 <code>resilience4j.*</code> + <code>common/config/Resilience4jConfig</code> — 값 임의 변경 금지</td></tr>
+<tr><td>설정 위치</td><td><code>application.yml</code>의 <code>resilience4j.*</code> (별도 Config 클래스 없음, 서킷 브레이커 인스턴스 이름 <code>{대상}Client</code>) — 값 임의 변경 금지</td></tr>
 </table></div>
 <ul class="b"><li>목표: <b>서비스 하나가 죽어도 호출한 쪽은 에러 메시지로 1차 처리</b>하고 나머지 화면 · 기능은 정상</li></ul>
 <h4>대시보드 조합</h4>
@@ -574,7 +574,7 @@ public abstract class BaseTimeEntity {
 <h3 id="c3-9"><span class="n">3-9</span>테이블 옵션 · 컬럼 순서</h3>
 <ul class="b"><li>모든 테이블: <code>ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci</code> (스키마 생성 스크립트도 같은 collation)</li><li>컬럼 순서 고정<ol class="b"><li>PK</li><li>FK (같은 서비스)</li><li>다른 서비스 ID</li><li>비즈니스 컬럼 (핵심 → 부가)</li><li>상태 · 플래그 (<code>status</code> · <code>is_xxx</code>)</li><li>도메인 시간 (<code>paid_at</code> 등)</li><li>감사 컬럼 (<code>created_at → updated_at → deleted_at</code>)</li><li><code>version</code> (낙관적 락)</li></ol></li></ul>
 <h3 id="c3-10"><span class="n">3-10</span>Flyway</h3>
-<ul class="b"><li>경로: <code>src/main/resources/db/migration/V{n}__{설명}.sql</code> — 설명은 snake_case (<code>V3__add_saga_instance.sql</code>)</li><li><b>머지된 마이그레이션은 수정 금지</b> — 바꿀 때는 새 번호</li><li>같은 서비스를 두 명이 작업하면 PR 머지 전 번호 확인</li><li>시드: <code>db/seed/R__demo_seed.sql</code> (local · dev 프로필만, 수정하면 재실행)</li><li>컬럼 삭제 · 이름 변경은 두 번 배포로 (추가 → 코드 전환 → 삭제)</li><li>JPA <code>ddl-auto: validate</code></li></ul>
+<ul class="b"><li>경로: <code>src/main/resources/db/migration/V{n}__{설명}.sql</code> — 설명은 snake_case (<code>V3__add_saga_instance.sql</code>)</li><li><b>머지된 마이그레이션은 수정 금지</b> — 바꿀 때는 새 번호</li><li>같은 서비스를 두 명이 작업하면 PR 머지 전 번호 확인</li><li>시드: <code>db/seed/R__demo_seed.sql</code> (local · k8s(dev 클러스터) 프로필만, 수정하면 재실행)</li><li>컬럼 삭제 · 이름 변경은 두 번 배포로 (추가 → 코드 전환 → 삭제)</li><li>JPA <code>ddl-auto: validate</code></li></ul>
 <h3 id="c3-11"><span class="n">3-11</span>외부 API 필드</h3>
 <ul class="b"><li>DB 컬럼명은 이 규칙을 따르고, 포트원 등 외부 필드명 매핑은 <code>client</code>의 DTO에서 처리</li><li>외부 숫자형 문자열 ID는 <code>VARCHAR</code> (<code>pg_tx_id</code>)</li><li>외부 ID가 PK 이름(<code>{테이블}_id</code>)과 겹치면 출처 접두어를 붙임 — 포트원 <code>paymentId</code> → <code>payment.portone_payment_id</code></li></ul>
 </section>
@@ -584,8 +584,8 @@ public abstract class BaseTimeEntity {
 <div class="tbl"><table>
 <tr><th>분류</th><th>기술</th><th>규칙</th></tr>
 <tr><td>언어</td><td>JavaScript (ES2022)</td><td>목업 그대로 — 컴포넌트 <code>.jsx</code>, 그 외 <code>.js</code>. TypeScript 도입 안 함</td></tr>
-<tr><td>빌드</td><td>Vite 6 · Node.js 20 LTS</td><td><code>import.meta.env.VITE_*</code></td></tr>
-<tr><td>라우팅</td><td>React Router v7</td><td>라우트 정의는 <code>app/router.jsx</code> <b>단일 파일</b></td></tr>
+<tr><td>빌드</td><td>Vite 6 · Node.js 22 LTS</td><td><code>import.meta.env.VITE_*</code></td></tr>
+<tr><td>라우팅</td><td>React Router v7 (목업은 v6 — 이식하면서 올림)</td><td>라우트 정의는 <code>app/router.jsx</code> <b>단일 파일</b></td></tr>
 <tr><td>서버 상태</td><td>TanStack Query v5</td><td>API 데이터는 전부 여기서 (4-6)</td></tr>
 <tr><td>클라이언트 상태</td><td>Zustand</td><td><code>authStore</code> — accessToken · user · isAuthReady / UI 상태</td></tr>
 <tr><td>표</td><td>TanStack Table v8</td><td>4-7</td></tr>
