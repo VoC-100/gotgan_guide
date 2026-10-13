@@ -361,10 +361,10 @@ svg .ah2{fill:var(--point)}
 <h4>기술 스택</h4>
 <div class="tbl"><table>
 <tr><th>구분</th><th>사용</th><th>비고</th></tr>
-<tr><td>언어 · 빌드</td><td>Java 21 · Gradle (Groovy)</td><td>서비스마다 독립 Gradle 프로젝트</td></tr>
+<tr><td>언어 · 빌드</td><td>Java 21 · Gradle 9.5 (Groovy)</td><td>서비스마다 독립 Gradle 프로젝트</td></tr>
 <tr><td>프레임워크</td><td>Spring Boot 4.1.1 · Spring Cloud 2025.1.3</td><td>스타터 이름 Boot 4 기준 (<code>spring-boot-starter-webmvc</code> 등)</td></tr>
 <tr><td>게이트웨이</td><td>Spring Cloud Gateway (WebFlux)</td><td>설정 접두어 <code>spring.cloud.gateway.server.webflux</code></td></tr>
-<tr><td>인증</td><td>Keycloak 26 (IdP) · Spring Security 7 <code>oauth2-resource-server</code></td><td>Keycloak이 토큰 발급(RS256) · 게이트웨이가 JWKS 검증 · Access 30분 · Refresh(SSO 세션) 14일</td></tr>
+<tr><td>인증</td><td>Keycloak 26.8 (IdP) · Spring Security 7 <code>spring-boot-starter-security-oauth2-resource-server</code></td><td>Keycloak이 토큰 발급(RS256) · 게이트웨이가 JWKS 검증 · Access 30분 · Refresh(SSO 세션) 14일</td></tr>
 <tr><td>데이터</td><td>Spring Data JPA · QueryDSL 5 (jakarta) · MySQL 8.4 · Flyway · Spring Data Redis (Redis 7)</td><td><code>ddl-auto: validate</code> · 조건 검색은 QueryDSL</td></tr>
 <tr><td>서비스 간 호출</td><td>HTTP 인터페이스 클라이언트 (<code>@HttpExchange</code> + RestClient)</td><td>타임아웃 연결 2s · 읽기 3s</td></tr>
 <tr><td>장애 격리</td><td>Resilience4j (Spring Cloud CircuitBreaker)</td><td>모든 동기 호출: 타임아웃 · 서킷 브레이커 · 폴백 · 재시도는 멱등 GET만</td></tr>
@@ -563,12 +563,12 @@ svg .ah2{fill:var(--point)}
 <p class="lead">각 도메인 패키지 안은 위와 같이 controller · service · dto · repository · entity · exception (+ 필요 시 client · util). 해당 도메인에 없는 패키지는 만들지 않음 (예: cart는 entity 없음, admin은 repository 없음).</p>
 
 <h4>모노레포 구조</h4>
-<pre><code>sesac-gojigi-gotgan/
+<pre><code>gotgan/
 ├── services/            gateway · user · store · product · order · payment · review · settlement · admin  (2-1)
 ├── frontend/            React · Vercel                                          (2-2)
 ├── infra/terraform/     AWS 자원                                                (2-3)
 ├── serverless/          Lambda 3개 (알림 · 명세서 · 로그 아카이브)               (2-3)
-├── deploy/              k8s 기본 계층 · keycloak · helm 앱 계층 · argocd        (2-4)
+├── deploy/              k8s 기본 계층(keycloak 포함) · helm 앱 계층 · argocd        (2-4)
 │   └── observability/   Prometheus · Loki · Zipkin · Grafana · System Status     (2-5)
 ├── .github/             workflows · CODEOWNERS · 템플릿                          (2-4)
 ├── docs/                adr/ · api/(OpenAPI) · events.md
@@ -870,7 +870,7 @@ services/{service}/src/main/resources/
 <p class="lead">저장소 하나(모노레포)에 들어가는 모든 폴더와 파일이 무슨 일을 하는지, 언제 누가 쓰는지 정리합니다. 02장이 파트별 "무엇으로", 이 장은 "어디에 무엇이".</p>
 
 <h3>한눈에 보기</h3>
-<pre><code>sesac-gojigi-gotgan/
+<pre><code>gotgan/
 ├── README.md · .gitignore · .gitattributes · docker-compose.yml
 ├── docs/                     adr/ · api/ · events.md
 ├── scripts/                  build-and-push.sh · scale-nodes.sh · duckdns-update.sh
@@ -879,8 +879,7 @@ services/{service}/src/main/resources/
 ├── frontend/                 React · Vite · Vercel
 ├── infra/terraform/          global/s3 · vpc · ecr · cluster · cicd · app
 ├── deploy/
-│   ├── k8s/                  namespace · configmap · external-secrets · db
-│   ├── keycloak/             keycloak.yaml · realm-gotgan.json
+│   ├── k8s/                  namespace · configmap · external-secrets · db · keycloak(keycloak.yaml · realm-gotgan.json)
 │   ├── observability/        prometheus · kube-state-metrics · blackbox · loki · zipkin · grafana · dashboards · alerting
 │   ├── helm/sesac-gojigi-app/ Chart.yaml · values.yaml · templates/
 │   └── argocd/               application.yaml
@@ -892,7 +891,7 @@ services/{service}/src/main/resources/
 <tr><td><code>frontend/</code></td><td>정적 웹사이트</td><td>Vercel</td><td>2-2</td></tr>
 <tr><td><code>infra/terraform/</code></td><td>AWS 자원</td><td>AWS 담당 (terraform apply)</td><td>2-3</td></tr>
 <tr><td><code>serverless/</code></td><td>Lambda 3개</td><td>GitHub Actions (serverless deploy)</td><td>2-3</td></tr>
-<tr><td><code>deploy/k8s/</code> · <code>keycloak/</code> · <code>observability/</code></td><td>클러스터 기본 계층 · Keycloak · 모니터링</td><td>사람 (kubectl, 1회)</td><td>2-4 · 2-5</td></tr>
+<tr><td><code>deploy/k8s/</code>(keycloak 포함) · <code>observability/</code></td><td>클러스터 기본 계층 · Keycloak · 모니터링</td><td>사람 (kubectl, 1회)</td><td>2-4 · 2-5</td></tr>
 <tr><td><code>deploy/helm/</code> · <code>argocd/</code></td><td>앱 Deployment · Service</td><td>ArgoCD</td><td>2-4</td></tr>
 <tr><td><code>.github/</code></td><td>CI 파이프라인 · 협업 규칙</td><td>GitHub</td><td>2-4</td></tr>
 </table></div>
@@ -1037,8 +1036,8 @@ services/{service}/src/main/resources/
 <tr><td><code>k8s/db/mysql.yaml</code></td><td>Headless Service + StatefulSet(1) + PVC 템플릿 + 초기화 스크립트 마운트</td><td>kubectl 1회</td></tr>
 <tr><td><code>k8s/db/init-schemas.sh</code></td><td>최초 기동 시 스키마 8개(서비스 7 + keycloakdb) · 계정 8개 · 권한 생성 (docker-compose도 재사용)</td><td>ConfigMap으로 마운트</td></tr>
 <tr><td><code>k8s/db/redis.yaml</code></td><td>Redis Service + Deployment(1)</td><td>kubectl 1회</td></tr>
-<tr><td><code>keycloak/keycloak.yaml</code></td><td>Keycloak Deployment(1) + ClusterIP Service · keycloakdb 연결 · <code>KC_HOSTNAME=http://keycloak:8080</code> · 외부 미노출</td><td>kubectl 1회</td></tr>
-<tr><td><code>keycloak/realm-gotgan.json</code></td><td>realm import — 역할 3종 · 클라이언트 <code>gotgan-backend</code> · 프로토콜 매퍼 · ADMIN 시드 계정 (비밀 값은 Secret에서 주입)</td><td>기동 시 import</td></tr>
+<tr><td><code>k8s/keycloak/keycloak.yaml</code></td><td>Keycloak Deployment(1) + ClusterIP Service · keycloakdb 연결 · <code>KC_HOSTNAME=http://keycloak:8080</code> · 외부 미노출</td><td>kubectl 1회</td></tr>
+<tr><td><code>k8s/keycloak/realm-gotgan.json</code></td><td>realm import — 역할 3종 · 클라이언트 <code>gotgan-backend</code> · 프로토콜 매퍼 · ADMIN 시드 계정 (비밀 값은 Secret에서 주입)</td><td>기동 시 import</td></tr>
 <tr><td><code>observability/00-namespace.yaml</code></td><td><code>monitoring</code> 네임스페이스</td><td>kubectl 1회</td></tr>
 <tr><td><code>observability/prometheus.yaml</code></td><td>수집 설정(파드 어노테이션 발견 · 15초) · RBAC · Deployment · PVC</td><td>kubectl</td></tr>
 <tr><td><code>observability/kube-state-metrics.yaml</code> · <code>blackbox-exporter.yaml</code></td><td>레플리카 · 파드 Ready 지표 / 게이트웨이 health 외부 체크 (System Status 데이터)</td><td>kubectl</td></tr>
@@ -1116,7 +1115,7 @@ services/{service}/src/main/resources/
 <tr data-p="0"><td class="id">USR-03</td><td><b>토큰 재발급 · 로그아웃</b><span class="tag">전체</span></td><td><ul><li>refresh: user-service가 refresh_token grant 대리 → 새 쿠키 · 새 Access Token</li><li>로그아웃: Keycloak logout(Refresh 폐기) + 쿠키 삭제</li><li>프론트 부팅 시 refresh 1회로 로그인 상태 복구 · 판매자 전환 후 refresh로 새 클레임</li></ul></td><td><span class="p p0">P0</span></td><td class="ref">POST /api/auth/refresh<br>POST /api/auth/logout</td></tr>
 <tr data-p="0"><td class="id">USR-04</td><td><b>게이트웨이 인증 · 역할 기반 접근 제어</b><span class="tag">시스템</span></td><td><ul><li>Spring Security <code>oauth2ResourceServer</code> — issuer <code>http://keycloak:8080/realms/gotgan</code> JWKS로 서명 · 만료 검증</li><li>경로 권한은 03장 라우팅 표(8-3) 그대로: <code>/api/seller/**</code> SELLER · <code>/api/admin/**</code> ADMIN · 공개 GET permitAll</li><li>클라이언트가 보낸 <code>X-User-*</code> 제거 후 클레임으로 <code>X-User-Id</code> · <code>X-User-Roles</code> · <code>X-Store-Id</code> 주입 → 서비스는 <code>@CurrentUser AuthUser</code></li><li>프론트 역할별 라우트 가드(UX 장치)</li></ul></td><td><span class="p p0">P0</span></td><td class="ref">gateway SecurityConfig · UserHeaderFilter</td></tr>
 <tr data-p="0"><td class="id">USR-05</td><td><b>판매자 전환</b><span class="tag">시스템</span></td><td><ul><li><code>StoreApproved</code> 수신 → Keycloak Admin API로 SELLER 역할 + <code>store_id</code> 속성 부여</li><li>판매자가 refresh하면 새 클레임 반영 · eventId 멱등(processed_event)</li></ul></td><td><span class="p p0">P0</span></td><td class="ref">SQS 소비</td></tr>
-<tr data-p="0"><td class="id">USR-06</td><td><b>Keycloak realm 구성 · 관리자 계정</b><span class="tag">시스템</span></td><td><ul><li>realm <code>gotgan</code> · 역할 BUYER · SELLER · ADMIN · 프로토콜 매퍼(user_id · store_id · roles)</li><li>클라이언트 <code>gotgan-backend</code>(confidential): Direct Access Grants on · 서비스 계정 + <code>manage-users</code></li><li>realm export JSON을 <code>deploy/keycloak/</code>에 두고 import · ADMIN 계정은 import 시드로만 생성(가입 불가)</li><li>ClusterIP만, 외부 미노출 · 관리 콘솔은 <code>kubectl port-forward</code></li></ul></td><td><span class="p p0">P0</span></td><td class="ref">deploy/keycloak/realm-gotgan.json</td></tr>
+<tr data-p="0"><td class="id">USR-06</td><td><b>Keycloak realm 구성 · 관리자 계정</b><span class="tag">시스템</span></td><td><ul><li>realm <code>gotgan</code> · 역할 BUYER · SELLER · ADMIN · 프로토콜 매퍼(user_id · store_id · roles)</li><li>클라이언트 <code>gotgan-backend</code>(confidential): Direct Access Grants on · 서비스 계정 + <code>manage-users</code></li><li>realm export JSON을 <code>deploy/k8s/keycloak/</code>에 두고 import · ADMIN 계정은 import 시드로만 생성(가입 불가)</li><li>ClusterIP만, 외부 미노출 · 관리 콘솔은 <code>kubectl port-forward</code></li></ul></td><td><span class="p p0">P0</span></td><td class="ref">deploy/k8s/keycloak/realm-gotgan.json</td></tr>
 <tr data-p="1"><td class="id">USR-07</td><td><b>내 정보 조회 · 수정</b><span class="tag">구매자</span></td><td><ul><li>이름 · 휴대폰(userdb) 수정</li><li>비밀번호 변경: 현재 비밀번호 확인 후 Admin API로 재설정</li></ul></td><td><span class="p p1">P1</span></td><td class="ref">GET/PATCH /api/users/me<br>/mypage/profile</td></tr>
 <tr data-p="1"><td class="id">USR-08</td><td><b>배송지 관리</b><span class="tag">구매자</span></td><td><ul><li>등록 · 수정 · 삭제 · 기본 배송지 지정</li><li>주문서에서 선택 (없으면 주문서 직접 입력)</li></ul></td><td><span class="p p1">P1</span></td><td class="ref">GET/POST /api/users/me/addresses<br>/mypage/addresses</td></tr>
 <tr data-p="1"><td class="id">USR-09</td><td><b>회원 목록 · 상세</b><span class="tag">관리자</span></td><td><ul><li>검색(이름 · 이메일) · 상태 필터 · 서버 페이징</li><li>admin-service → user <code>/internal/users</code></li></ul></td><td><span class="p p1">P1</span></td><td class="ref">GET /api/admin/users<br>/admin/users</td></tr>

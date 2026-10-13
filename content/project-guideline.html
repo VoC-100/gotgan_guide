@@ -1374,7 +1374,7 @@ public class ProductClientAdapter {
 <tr><td>서비스 복구(파드 재기동)</td><td>10초 뒤 HALF_OPEN → 시험 호출 성공 → CLOSED</td><td>사람 개입 없이 정상화. Grafana에 서킷 상태 변화가 보임</td></tr>
 </table></div>
 <div class="box warn"><b class="t">Boot 4 호환 확인</b>
-Resilience4j의 Spring Boot 스타터는 Boot 버전별 아티팩트(<code>resilience4j-spring-boot3</code> 등)로 나오고, Spring Cloud CircuitBreaker(<code>spring-cloud-starter-circuitbreaker-resilience4j</code>)는 Spring Cloud 릴리스 트레인에 묶입니다. <b>1주차에 서비스 템플릿을 만들 때 Boot 4.x와 맞는 버전(Boot 4 전용 아티팩트 또는 Boot 4를 지원하는 Spring Cloud 릴리스)을 먼저 확인</b>하고 템플릿에 고정합니다. 맞는 스타터가 없으면 <code>resilience4j-circuitbreaker</code> · <code>resilience4j-retry</code> 코어 모듈 + <code>Resilience4jConfig</code>에서 레지스트리를 직접 빈으로 등록해 데코레이터로 감싸는 방식으로 대신합니다(어노테이션 대신 코드). 어느 쪽이든 위 설정 값은 같습니다.</div>
+Resilience4j의 Spring Boot 스타터는 Boot 버전별 아티팩트(<code>resilience4j-spring-boot4</code> — 2.4.0부터 Boot 4 전용 아티팩트 제공)로 나오고, Spring Cloud CircuitBreaker(<code>spring-cloud-starter-circuitbreaker-resilience4j</code>)는 Spring Cloud 릴리스 트레인에 묶입니다. <b>1주차에 서비스 템플릿을 만들 때 Boot 4.x와 맞는 버전(Boot 4 전용 아티팩트 또는 Boot 4를 지원하는 Spring Cloud 릴리스)을 먼저 확인</b>하고 템플릿에 고정합니다. 맞는 스타터가 없으면 <code>resilience4j-circuitbreaker</code> · <code>resilience4j-retry</code> 코어 모듈 + <code>Resilience4jConfig</code>에서 레지스트리를 직접 빈으로 등록해 데코레이터로 감싸는 방식으로 대신합니다(어노테이션 대신 코드). 어느 쪽이든 위 설정 값은 같습니다.</div>
 
 <div class="box warn"><b class="t">Saga · 장애 격리 코드 리뷰 체크리스트</b>
 <ul>
@@ -1650,7 +1650,7 @@ Cognito는 검토했으나 제외했습니다. 서버리스를 배치 · 로깅�
 <h3>Keycloak 설정 (realm <code>gotgan</code>)</h3>
 <div class="tbl"><table>
 <tr><th>항목</th><th>설정</th></tr>
-<tr><td>Realm</td><td><code>gotgan</code>. 설정 전체를 <code>deploy/keycloak/realm-gotgan.json</code>으로 Git 관리, 시작 시 import</td></tr>
+<tr><td>Realm</td><td><code>gotgan</code>. 설정 전체를 <code>deploy/k8s/keycloak/realm-gotgan.json</code>으로 Git 관리, 시작 시 import</td></tr>
 <tr><td>Realm 역할</td><td><code>BUYER</code>(가입 시) · <code>SELLER</code>(입점 승인 시 추가) · <code>ADMIN</code>(시드로만). 한 사람이 BUYER + SELLER를 함께 가짐</td></tr>
 <tr><td>사용자 속성</td><td><code>user_id</code>(userdb BIGINT) · <code>store_id</code>(판매자만). Keycloak 24+는 <b>User Profile에 선언한 속성만 저장</b>하므로 realm의 User Profile에 두 속성을 선언하고 편집 권한은 관리자만</td></tr>
 <tr><td>프로토콜 매퍼</td><td>User Attribute <code>user_id</code> → 클레임 <code>user_id</code>(JSON 타입 long) · <code>store_id</code> → <code>store_id</code> · User Realm Role → 클레임 <code>roles</code>(multivalued). Access Token에 추가 켬</td></tr>
@@ -1794,14 +1794,14 @@ public class UserHeaderFilter implements GlobalFilter, Ordered {
 <tr><td>주소 · HTTP</td><td><code>KC_HOSTNAME=http://keycloak:8080</code>(issuer 고정) · <code>KC_HTTP_ENABLED=true</code>(클러스터 내부 HTTP)</td></tr>
 <tr><td>헬스</td><td><code>KC_HEALTH_ENABLED=true</code> → 관리 포트 9000의 <code>/health/started</code> · <code>/health/ready</code> · <code>/health/live</code>를 startup · readiness · liveness probe로</td></tr>
 <tr><td>자원</td><td>메모리 requests · limits <b>1Gi</b> (04장 파드 예산 포함). JVM 기동이 30~60초라 startupProbe 여유 있게</td></tr>
-<tr><td>Realm import</td><td><code>deploy/keycloak/realm-gotgan.json</code> → ConfigMap → <code>/opt/keycloak/data/import</code> 마운트. 이미 realm이 있으면 import를 건너뜀 → 설정을 바꾸면 콘솔에서 고친 뒤 <b>다시 export해 Git에 커밋</b></td></tr>
-<tr><td>관리 콘솔</td><td><code>kubectl -n sesac-gojigi port-forward svc/keycloak 8081:8080</code> → <code>http://localhost:8081</code>. 초기 관리자는 <code>KC_BOOTSTRAP_ADMIN_USERNAME</code> · <code>KC_BOOTSTRAP_ADMIN_PASSWORD</code>(ESO Secret)</td></tr>
+<tr><td>Realm import</td><td><code>deploy/k8s/keycloak/realm-gotgan.json</code> → ConfigMap → <code>/opt/keycloak/data/import</code> 마운트. 이미 realm이 있으면 import를 건너뜀 → 설정을 바꾸면 콘솔에서 고친 뒤 <b>다시 export해 Git에 커밋</b></td></tr>
+<tr><td>관리 콘솔</td><td><code>kubectl -n sesac-gojigi port-forward svc/keycloak 8180:8080</code> → <code>http://localhost:8180</code> (8081은 user-service 포트). 초기 관리자는 <code>KC_BOOTSTRAP_ADMIN_USERNAME</code> · <code>KC_BOOTSTRAP_ADMIN_PASSWORD</code>(ESO Secret)</td></tr>
 <tr><td>로컬 개발</td><td>docker-compose에 같은 이미지 + 같은 realm JSON. 로컬에서도 서비스 이름 <code>keycloak</code>으로 접근해 issuer를 맞춤</td></tr>
 </table></div>
-<p class="cap">deploy/keycloak/deployment.yaml (핵심만)</p>
+<p class="cap">deploy/k8s/keycloak/keycloak.yaml (핵심만)</p>
 <pre><code>containers:
   - name: keycloak
-    image: quay.io/keycloak/keycloak:26.4          # 최신 패치 확인
+    image: quay.io/keycloak/keycloak:26.8          # docker-compose · 클러스터 같은 버전
     args: ["start", "--import-realm"]
     env:
       - { name: KC_DB, value: mysql }
@@ -2335,7 +2335,7 @@ public Review create(ReviewCreateRequest request, AuthUser user) {
 <tr><td>브랜치</td><td><code>main</code>(보호) + <code>feat/{도메인}-{작업}</code> · <code>fix/</code> · <code>refactor/</code> · <code>docs/</code> · <code>chore/</code>. 모든 변경은 <b>PR → main</b></td></tr>
 <tr><td>main 보호</td><td>직접 push 금지, PR 필수, 승인 1명, CI(테스트 · SonarQube 품질 게이트 · gitleaks) 통과 필수, <b>Squash merge</b></td></tr>
 <tr><td>커밋 · PR 제목</td><td>Conventional Commits <code>{type}({scope}): {요약}</code> — type <code>feat</code> <code>fix</code> <code>refactor</code> <code>docs</code> <code>test</code> <code>chore</code> <code>ci</code> <code>infra</code>, 요약은 한국어 명사형 50자 이내 (예: <code>feat(order): 포트원 결제 검증 API</code>). 다른 담당에 영향 있는 변경은 PR 제목에 <code>[영향]</code></td></tr>
-<tr><td>CODEOWNERS</td><td><code>/infra/</code> · <code>/services/settlement-service/</code> · <code>/services/admin-service/</code> · <code>/serverless/order-notification/</code> · <code>/serverless/settlement-report/</code> → 구지훈 / <code>/.github/</code> · <code>/deploy/helm/</code> · <code>/deploy/keycloak/</code> · <code>/services/gateway-service/</code> · <code>/services/user-service/</code> → 이경석 / <code>/deploy/observability/</code> · <code>/services/store-service/</code> · <code>/services/product-service/</code> · <code>/serverless/log-archive/</code> → 박지연 / <code>/services/order-service/</code> · <code>/services/payment-service/</code> · <code>/services/review-service/</code> → 이종빈. 프론트 <code>features/</code>도 같은 담당(14장)</td></tr>
+<tr><td>CODEOWNERS</td><td><code>/infra/</code> · <code>/services/settlement-service/</code> · <code>/services/admin-service/</code> · <code>/serverless/order-notification/</code> · <code>/serverless/settlement-report/</code> → 구지훈 / <code>/.github/</code> · <code>/deploy/helm/</code> · <code>/deploy/k8s/keycloak/</code> · <code>/services/gateway-service/</code> · <code>/services/user-service/</code> → 이경석 / <code>/deploy/observability/</code> · <code>/services/store-service/</code> · <code>/services/product-service/</code> · <code>/serverless/log-archive/</code> → 박지연 / <code>/services/order-service/</code> · <code>/services/payment-service/</code> · <code>/services/review-service/</code> → 이종빈. 프론트 <code>features/</code>도 같은 담당(14장)</td></tr>
 <tr><td>이슈 · 칸반</td><td>GitHub Projects (Todo / In Progress / Review / Done), 이슈 제목 <code>[요구사항 ID] 작업</code>, 마일스톤 = 주차</td></tr>
 <tr><td>비밀 유출 방지</td><td><code>.gitignore</code>(tfstate, *.pem, .env, 02-secret.yaml) + gitleaks</td></tr>
 </table></div>
@@ -2552,7 +2552,7 @@ nginx 컨테이너를 EKS에 올리는 방법도 있지만, 정적 파일은 Ver
 <p class="lead">14장이 프론트였다면, 이 장은 그 밖의 전부입니다. Spring Boot 서비스 9개와 Keycloak, <code>build.gradle</code>, Dockerfile, 쿠버네티스(EKS) YAML · Helm · ArgoCD, Terraform, Serverless를 한 저장소에 어떻게 두고 누가 언제 실행하는지 정리합니다. 패키지 구조 · 이름 규칙은 코드 컨벤션 2장 · 5장과 같으며, 이 장은 그것을 실제 폴더 · 파일에 펼친 것입니다.</p>
 
 <h3>1. 모노레포 전체 구조</h3>
-<pre><code>sesac-gojigi-gotgan/                          GitHub 모노레포 하나
+<pre><code>gotgan/                                      GitHub 모노레포 하나 (sesac-final-1/gotgan)
 ├── services/                               Spring Boot 서비스 9개 (폴더 1개 = 이미지 1개 = Deployment 1개)
 │   ├── gateway-service/                    :8080 Spring Cloud Gateway · JWT 검증(Keycloak JWKS) · 사용자 헤더 주입 · CORS
 │   ├── user-service/                       :8081 회원 · 가입/로그인(Keycloak 대리 호출) · 배송지 · 포인트 · 등급
@@ -2622,7 +2622,7 @@ nginx 컨테이너를 EKS에 올리는 방법도 있지만, 정적 파일은 Ver
 <p>서비스마다 <b>독립된 Gradle 프로젝트</b>입니다. 멀티 모듈로 묶지 않아야 CI가 서비스별로 따로 빌드되고, 한 서비스의 빌드 오류가 다른 서비스 배포를 막지 않습니다. 패키지는 컨벤션 2-1대로 <b>도메인별로 먼저 나누고</b>(<code>cart</code> · <code>order</code> · <code>claim</code> · <code>saga</code>), 그 안을 <code>controller</code> · <code>service</code> · <code>repository</code> · <code>entity</code> · <code>dto</code> · <code>exception</code> · <code>client</code>로 나눕니다. 도메인에 필요 없는 패키지는 만들지 않습니다.</p>
 <pre><code>services/order-service/
 ├── build.gradle · settings.gradle · gradle.properties   의존성 · 프로젝트 이름 · 버전 변수
-├── gradlew · gradle/wrapper/               Initializr가 생성 (gradle-wrapper.jar 반드시 커밋)
+├── gradlew · gradle/wrapper/               Gradle 9.5.1 래퍼 (gradle-wrapper.jar 반드시 커밋)
 ├── Dockerfile · .dockerignore              멀티 스테이지 빌드 (build/, .gradle/ 제외)
 └── src/
     ├── main/
@@ -2707,7 +2707,7 @@ nginx 컨테이너를 EKS에 올리는 방법도 있지만, 정적 파일은 Ver
     id 'jacoco'                                                 // SonarQube Cloud 커버리지 리포트
     id 'org.springframework.boot' version '4.1.1'              // 전 서비스 같은 버전
     id 'io.spring.dependency-management' version '1.1.7'
-    id 'org.sonarqube' version '6.2.0.5505'                    // 12장 — 최신 버전 확인 후 전 서비스 통일
+    id 'org.sonarqube' version '7.5.0.8588'                    // 12장 — 전 서비스 통일
 }
 
 group = 'com.sesac.gojigi'
@@ -2719,10 +2719,7 @@ java {
 
 repositories { mavenCentral() }
 
-ext {
-    set('springCloudVersion', '2025.1.3')
-    set('awsSdkVersion', '2.x.y')                               // AWS SDK v2 최신 버전으로 채움
-}
+// 버전 변수(springCloudVersion · awsSdkVersion · resilience4jVersion …)는 gradle.properties 에 — 전 서비스 같은 값 (아래)
 
 dependencyManagement {
     imports {
@@ -2744,14 +2741,17 @@ dependencies {
     runtimeOnly    'com.mysql:mysql-connector-j'
 
     // 복원력 — 모든 동기 호출의 표준 (06장 · 13장)
-    implementation "io.github.resilience4j:resilience4j-spring-boot3:${resilience4jVersion}"   // Boot 4 전용 아티팩트가 나왔는지 확인
+    implementation "io.github.resilience4j:resilience4j-spring-boot4:${resilience4jVersion}"   // Boot 4 전용 아티팩트 (2.4.0)
     implementation 'org.springframework.boot:spring-boot-starter-aspectj'                       // @CircuitBreaker 등 애너테이션용 (Boot 3의 starter-aop)
 
     // 관측성 (13장)
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
-    implementation 'io.micrometer:micrometer-registry-prometheus'
+    runtimeOnly    'io.micrometer:micrometer-registry-prometheus'
     implementation 'org.springframework.boot:spring-boot-starter-zipkin'
-    implementation 'com.github.loki4j:loki-logback-appender:1.5.1'
+    implementation "com.github.loki4j:loki-logback-appender:${loki4jVersion}"
+    // Lombok — 생성자 주입(@RequiredArgsConstructor) · @Getter · @Slf4j (컨벤션 2-3)
+    compileOnly         'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
 
     // AWS: 이벤트 발행 (10장)
     implementation 'software.amazon.awssdk:sns'
@@ -2765,7 +2765,8 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
     testImplementation 'org.springframework.boot:spring-boot-testcontainers'
-    testImplementation 'org.testcontainers:testcontainers-mysql'   // Testcontainers 1.x 라면 'org.testcontainers:mysql'
+    testImplementation "org.testcontainers:testcontainers-junit-jupiter:${testcontainersVersion}"   // Testcontainers 2.x
+    testImplementation "org.testcontainers:testcontainers-mysql:${testcontainersVersion}"
     testRuntimeOnly    'org.junit.platform:junit-platform-launcher'
 }
 
@@ -2780,6 +2781,17 @@ tasks.named('bootJar') { archiveFileName = 'app.jar' }   // Dockerfile에서 파
 tasks.named('jar')     { enabled = false }                // -plain.jar 를 만들지 않음
 tasks.named('test')    { useJUnitPlatform(); finalizedBy jacocoTestReport }
 jacocoTestReport       { reports { xml.required = true } }   // Sonar가 읽는 XML</code></pre>
+<p class="cap">services/{service}/gradle.properties — 전 서비스 같은 값 (Maven Central 확인 2026-10-13)</p>
+<pre><code>springCloudVersion=2025.1.3
+awsSdkVersion=2.55.15
+resilience4jVersion=2.4.0
+shedlockVersion=7.10.1
+springdocVersion=3.1.1
+querydslVersion=7.7
+htmlSanitizerVersion=20261011.1
+loki4jVersion=2.1.0
+testcontainersVersion=2.0.5
+org.gradle.jvmargs=-Xmx1g</code></pre>
 <p class="cap">product-service · store-service · review-service에만 추가하는 부분</p>
 <pre><code>dependencies {
     // QueryDSL (product 검색) — Boot 4 / Jakarta 호환 아티팩트를 쓴다.
@@ -2795,13 +2807,13 @@ jacocoTestReport       { reports { xml.required = true } }   // Sonar가 읽는 
 <p class="cap">gateway-service에만 있는 부분 (webmvc · JPA 없음)</p>
 <pre><code>dependencies {
     implementation 'org.springframework.cloud:spring-cloud-starter-gateway-server-webflux'
-    implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'   // Keycloak JWKS로 JWT 검증 (08장)
+    implementation 'org.springframework.boot:spring-boot-starter-security-oauth2-resource-server'   // Keycloak JWKS로 JWT 검증 (08장)
 }</code></pre>
 <p>버전 변수(<code>shedlockVersion</code> · <code>resilience4jVersion</code> · <code>querydslVersion</code> · <code>htmlSanitizerVersion</code> 등)는 각 서비스의 <code>gradle.properties</code>에 같은 값으로 둡니다. 서비스마다 필요한 의존성만 고릅니다.</p>
 <div class="tbl"><table>
 <tr><th>의존성</th><th>gateway</th><th>user</th><th>store</th><th>product</th><th>order</th><th>payment</th><th>review</th><th>settlement</th><th>admin</th></tr>
 <tr><td>webmvc · validation · springdoc</td><td>—</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr>
-<tr><td>gateway-server-webflux · oauth2-resource-server</td><td>✓</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+<tr><td>gateway-server-webflux · security-oauth2-resource-server</td><td>✓</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
 <tr><td>data-jpa · flyway · mysql</td><td>—</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>— (DB 없음)</td></tr>
 <tr><td>QueryDSL</td><td>—</td><td>—</td><td>—</td><td>✓ 검색</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
 <tr><td>data-redis</td><td>(blacklist, Could)</td><td>—</td><td>—</td><td>—</td><td>✓ 장바구니</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
@@ -3073,7 +3085,7 @@ spec:
     spec:
       containers:
         - name: keycloak
-          image: quay.io/keycloak/keycloak:26.4          # 로컬 docker-compose와 같은 버전으로 고정
+          image: quay.io/keycloak/keycloak:26.8          # 로컬 docker-compose와 같은 버전으로 고정
           args: ["start", "--import-realm"]              # realm이 이미 있으면 가져오기는 건너뜀
           env:
             - { name: KC_DB, value: mysql }
@@ -3204,7 +3216,7 @@ Terraform으로 <code>aws_secretsmanager_secret_version</code>에 비밀번호�
     ports: ["6379:6379"]
 
   keycloak:
-    image: quay.io/keycloak/keycloak:26.4      # 클러스터와 같은 버전
+    image: quay.io/keycloak/keycloak:26.8      # 클러스터와 같은 버전
     command: ["start-dev", "--import-realm"]   # 개발 모드: HTTP · 캐시 끔 · 빠른 기동
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin       # 로컬 전용 값
