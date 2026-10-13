@@ -228,7 +228,7 @@ svg .ah2{fill:var(--point)}
 <path class="dl" d="M170,36 V20 H943 V32" marker-end="url(#a2)"/><text x="560" y="16" class="s">결제창 (브라우저 ↔ 포트원)</text>
 <!-- lane 2 -->
 <rect class="lane" x="0" y="100" width="1036" height="280"/>
-<text x="10" y="120" class="lbl">EKS</text><text x="10" y="136" class="s">sesac-team1</text><text x="10" y="150" class="s">t3.large ×2</text>
+<text x="10" y="120" class="lbl">EKS</text><text x="10" y="136" class="s">sesac-gojigi</text><text x="10" y="150" class="s">t3.large ×2</text>
 <rect class="hl" x="262" y="112" width="514" height="40"/><text x="519" y="130" text-anchor="middle" class="b">gateway-service ×2 :8080</text><text x="519" y="145" text-anchor="middle" class="s">JWT 검증(Keycloak JWKS) · 경로 라우팅 · X-User-* 헤더 주입</text>
 <path class="ln" d="M711,80 V108" marker-end="url(#a1)"/>
 <path class="ln" d="M195,166 H931"/><path class="ln" d="M519,152 V166"/>
@@ -324,7 +324,7 @@ svg .ah2{fill:var(--point)}
 <tr><td><code>SettlementPaid</code></td><td>settlement</td><td>정산 명세서 Lambda</td><td>명세서 생성 → S3 → 메일</td></tr>
 </table></div>
 <ul class="b">
-  <li>토픽 3개: <code>sesac-team1-store-events</code> · <code>sesac-team1-order-events</code> · <code>sesac-team1-settlement-events</code>, 구독자별 SQS 큐 + DLQ(3회) · 봉투 형식은 컨벤션 2-7</li>
+  <li>토픽 3개: <code>sesac-gojigi-store-events</code> · <code>sesac-gojigi-order-events</code> · <code>sesac-gojigi-settlement-events</code>, 구독자별 SQS 큐 + DLQ(3회) · 봉투 형식은 컨벤션 2-7</li>
 </ul>
 
 <h3>대표 흐름: 주문 · 결제 Saga</h3>
@@ -477,7 +477,7 @@ svg .ah2{fill:var(--point)}
 ├── build.gradle · settings.gradle · gradle.properties · gradlew · gradle/
 ├── Dockerfile · .dockerignore
 └── src/
-    ├── main/java/com/sesac/team1/order/
+    ├── main/java/com/sesac/gojigi/order/
     │   ├── OrderApplication.java
     │   ├── common/                          서비스 공통 (서비스 템플릿에서 복사)
     │   │   ├── config/                      JpaConfig(JPAQueryFactory) · RedisConfig · RestClientConfig(타임아웃) · Resilience4jConfig
@@ -518,7 +518,7 @@ svg .ah2{fill:var(--point)}
     │   ├── application.yml · application-local.yml · application-k8s.yml   (resilience4j.* 설정 포함)
     │   ├── logback-spring.xml
     │   └── db/migration/V1__init.sql …  · db/seed/R__demo_seed.sql
-    └── test/java/com/sesac/team1/order/   main과 같은 패키지 구조 (entity 단위 · service · Testcontainers 통합 테스트)</code></pre>
+    └── test/java/com/sesac/gojigi/order/   main과 같은 패키지 구조 (entity 단위 · service · Testcontainers 통합 테스트)</code></pre>
 <div class="tbl"><table>
 <tr><th>패키지</th><th>담는 것</th><th>담지 않는 것</th></tr>
 <tr><td><code>controller</code></td><td>@RestController · 경로 · <code>@Valid</code> · <code>@CurrentUser</code> · 상태 코드 — 구매자 · <code>Seller*</code> · <code>Admin*</code> · <code>Internal*Controller</code></td><td>업무 로직, entity 직접 반환</td></tr>
@@ -563,7 +563,7 @@ svg .ah2{fill:var(--point)}
 <p class="lead">각 도메인 패키지 안은 위와 같이 controller · service · dto · repository · entity · exception (+ 필요 시 client · util). 해당 도메인에 없는 패키지는 만들지 않음 (예: cart는 entity 없음, admin은 repository 없음).</p>
 
 <h4>모노레포 구조</h4>
-<pre><code>sesac-team1-gotgan/
+<pre><code>sesac-gojigi-gotgan/
 ├── services/            gateway · user · store · product · order · payment · review · settlement · admin  (2-1)
 ├── frontend/            React · Vercel                                          (2-2)
 ├── infra/terraform/     AWS 자원                                                (2-3)
@@ -666,22 +666,22 @@ svg .ah2{fill:var(--point)}
 <tr><td>애드온</td><td>VPC CNI · CoreDNS · kube-proxy · EBS CSI(IRSA) · metrics-server · LBC(IRSA) · External Secrets(IRSA)</td></tr>
 <tr><td>로드 밸런서</td><td>gateway Service → LBC → NLB(internet-facing · ip 타깃 · 교차 영역) + <b>EIP 2개 고정</b></td></tr>
 <tr><td>도메인</td><td>API: DuckDNS → EIP · 프론트: Vercel 기본 도메인</td></tr>
-<tr><td>이름 규칙</td><td><code>sesac-team1-*</code> · 태그 <code>Project=sesac-team1</code> 모든 자원</td></tr>
+<tr><td>이름 규칙</td><td><code>sesac-gojigi-*</code> · 태그 <code>Project=sesac-gojigi</code> 모든 자원</td></tr>
 <tr><td>비용 가드</td><td>AWS Budgets 50 · 80 · 100% 알림 · 야간·주말 노드 0 · 발표 후 전체 destroy</td></tr>
 </table></div>
 <h4>자원 목록</h4>
 <div class="tbl"><table>
 <tr><th>자원</th><th>구성</th><th>사용처</th></tr>
 <tr><td>ECR</td><td>저장소 9개 (gateway · user · store · product · order · payment · review · settlement · admin) · 최근 10개 이미지 보관 · Keycloak은 공식 이미지</td><td>CI push · 노드 pull</td></tr>
-<tr><td>S3</td><td><code>sesac-team1-images-{계정4}</code>(prefix <code>products/</code> · <code>reviews/</code>) · <code>sesac-team1-seller-docs-{계정4}</code>(비공개) · <code>sesac-team1-reports-{계정4}</code>(비공개) · <code>sesac-team1-log-archive-{계정4}</code>(90일 후 Glacier)</td><td>presigned 업로드 · 서류 · 명세서 · 로그 보관</td></tr>
-<tr><td>SNS</td><td><code>sesac-team1-store-events</code> · <code>sesac-team1-order-events</code> · <code>sesac-team1-settlement-events</code></td><td>도메인 이벤트 발행</td></tr>
+<tr><td>S3</td><td><code>sesac-gojigi-images-{계정4}</code>(prefix <code>products/</code> · <code>reviews/</code>) · <code>sesac-gojigi-seller-docs-{계정4}</code>(비공개) · <code>sesac-gojigi-reports-{계정4}</code>(비공개) · <code>sesac-gojigi-log-archive-{계정4}</code>(90일 후 Glacier)</td><td>presigned 업로드 · 서류 · 명세서 · 로그 보관</td></tr>
+<tr><td>SNS</td><td><code>sesac-gojigi-store-events</code> · <code>sesac-gojigi-order-events</code> · <code>sesac-gojigi-settlement-events</code></td><td>도메인 이벤트 발행</td></tr>
 <tr><td>SQS</td><td>구독자별 큐 (user · product · settlement · review · 알림 Lambda · 명세서 Lambda) + DLQ(최대 수신 3) · 필터 정책 · raw delivery</td><td>이벤트 소비</td></tr>
-<tr><td>DynamoDB</td><td><code>sesac-team1-notifications</code>(PK USER# · SK 시각#eventId · TTL 90일 — 알림 멱등 · 이력) · <code>sesac-team1-settlement-reports</code>(명세서 발송 이력) · On-Demand · 그 외 테이블 없음</td><td>Lambda 데이터 · 멱등</td></tr>
+<tr><td>DynamoDB</td><td><code>sesac-gojigi-notifications</code>(PK USER# · SK 시각#eventId · TTL 90일 — 알림 멱등 · 이력) · <code>sesac-gojigi-settlement-reports</code>(명세서 발송 이력) · On-Demand · 그 외 테이블 없음</td><td>Lambda 데이터 · 멱등</td></tr>
 <tr><td>SES</td><td>발신 이메일 자격 증명 · 샌드박스(검증된 주소로만 발송)</td><td>알림 · 명세서 메일</td></tr>
-<tr><td>KMS</td><td>고객 관리형 키 1개 (<code>alias/sesac-team1</code>)</td><td>Secrets Manager 암호화 · ESO · 서비스 역할에 <code>kms:Decrypt</code></td></tr>
-<tr><td>Secrets Manager</td><td>서비스별 1개(<code>sesac-team1/{service}</code>) · <code>sesac-team1/keycloak</code>(관리자 · DB 비밀번호 · <code>gotgan-backend</code> 클라이언트 시크릿) — 값은 CLI로 입력(tfstate 노출 방지)</td><td>ESO → K8s Secret</td></tr>
+<tr><td>KMS</td><td>고객 관리형 키 1개 (<code>alias/sesac-gojigi</code>)</td><td>Secrets Manager 암호화 · ESO · 서비스 역할에 <code>kms:Decrypt</code></td></tr>
+<tr><td>Secrets Manager</td><td>서비스별 1개(<code>sesac-gojigi/{service}</code>) · <code>sesac-gojigi/keycloak</code>(관리자 · DB 비밀번호 · <code>gotgan-backend</code> 클라이언트 시크릿) — 값은 CLI로 입력(tfstate 노출 방지)</td><td>ESO → K8s Secret</td></tr>
 <tr><td>IAM</td><td>서비스별 IRSA 역할 · GitHub Actions OIDC 역할 · Lambda 함수별 역할</td><td>최소 권한</td></tr>
-<tr><td>SSM Parameter Store</td><td><code>/sesac-team1/dev/...</code> — 큐 · 테이블 · 버킷 ARN</td><td>serverless.yml이 읽음</td></tr>
+<tr><td>SSM Parameter Store</td><td><code>/sesac-gojigi/dev/...</code> — 큐 · 테이블 · 버킷 ARN</td><td>serverless.yml이 읽음</td></tr>
 <tr><td>EIP</td><td>2개 (퍼블릭 서브넷별)</td><td>NLB 고정 IP · DuckDNS</td></tr>
 </table></div>
 <h4>IRSA 권한</h4>
@@ -694,7 +694,7 @@ svg .ah2{fill:var(--point)}
 <tr><td>review-service</td><td>S3 images <code>reviews/*</code> Put(presign) · SQS 수신(order-events 큐)</td></tr>
 <tr><td>settlement-service</td><td>SQS 수신(order · store 이벤트 큐) · SNS settlement-events Publish</td></tr>
 <tr><td>payment · admin · gateway</td><td>AWS 권한 없음 (포트원 · 내부 호출만)</td></tr>
-<tr><td>external-secrets · grafana</td><td>Secrets Manager <code>sesac-team1/*</code> 읽기 + <code>kms:Decrypt</code> · CloudWatch 읽기</td></tr>
+<tr><td>external-secrets · grafana</td><td>Secrets Manager <code>sesac-gojigi/*</code> 읽기 + <code>kms:Decrypt</code> · CloudWatch 읽기</td></tr>
 </table></div>
 <h4>서버리스 — 배치 · 로깅만, 사용자 API 없음</h4>
 <div class="tbl"><table>
@@ -772,7 +772,7 @@ deploy/
 │   ├── external-secrets/        cluster-secret-store.yaml · {service}.yaml · keycloak.yaml
 │   └── db/                      storageclass.yaml · mysql.yaml · init-schemas.sh · redis.yaml
 ├── keycloak/                    기본 계층 — keycloak.yaml(Deployment · ClusterIP) · realm-gotgan.json(realm import)
-├── helm/sesac-team1-app/        앱 계층 — ArgoCD가 관리
+├── helm/sesac-gojigi-app/        앱 계층 — ArgoCD가 관리
 │   ├── Chart.yaml
 │   ├── values.yaml              services.{name}: repository · tag · port · replicas · resources · probes · serviceAccount · secretName
 │   └── templates/               deployment.yaml(롤링 전략 · probe · preStop) · service.yaml · serviceaccount.yaml
@@ -870,7 +870,7 @@ services/{service}/src/main/resources/
 <p class="lead">저장소 하나(모노레포)에 들어가는 모든 폴더와 파일이 무슨 일을 하는지, 언제 누가 쓰는지 정리합니다. 02장이 파트별 "무엇으로", 이 장은 "어디에 무엇이".</p>
 
 <h3>한눈에 보기</h3>
-<pre><code>sesac-team1-gotgan/
+<pre><code>sesac-gojigi-gotgan/
 ├── README.md · .gitignore · .gitattributes · docker-compose.yml
 ├── docs/                     adr/ · api/ · events.md
 ├── scripts/                  build-and-push.sh · scale-nodes.sh · duckdns-update.sh
@@ -882,7 +882,7 @@ services/{service}/src/main/resources/
 │   ├── k8s/                  namespace · configmap · external-secrets · db
 │   ├── keycloak/             keycloak.yaml · realm-gotgan.json
 │   ├── observability/        prometheus · kube-state-metrics · blackbox · loki · zipkin · grafana · dashboards · alerting
-│   ├── helm/sesac-team1-app/ Chart.yaml · values.yaml · templates/
+│   ├── helm/sesac-gojigi-app/ Chart.yaml · values.yaml · templates/
 │   └── argocd/               application.yaml
 ├── serverless/               order-notification · settlement-report · log-archive
 └── .github/                  workflows/ · CODEOWNERS · 템플릿</code></pre>
@@ -925,7 +925,7 @@ services/{service}/src/main/resources/
 <tr><td><code>Dockerfile</code></td><td>멀티 스테이지: JDK에서 빌드 → 레이어 분리 → JRE · non-root로 실행</td><td>CI 빌드 시</td></tr>
 <tr><td><code>.dockerignore</code></td><td><code>build/</code> · <code>.gradle/</code> · <code>.idea/</code>를 빌드 컨텍스트에서 제외</td><td>1회</td></tr>
 </table></div>
-<h4>Java 소스 (<code>src/main/java/com/sesac/team1/{service}/</code>)</h4>
+<h4>Java 소스 (<code>src/main/java/com/sesac/gojigi/{service}/</code>)</h4>
 <div class="tbl"><table>
 <tr><th>경로</th><th>역할</th></tr>
 <tr><td><code>{Service}Application.java</code></td><td>Spring Boot 시작점 (<code>@SpringBootApplication</code>)</td></tr>
@@ -1029,7 +1029,7 @@ services/{service}/src/main/resources/
 <h3 id="f-deploy"><span class="n">03-5</span>deploy/</h3>
 <div class="tbl"><table>
 <tr><th>경로</th><th>역할</th><th>적용</th></tr>
-<tr><td><code>k8s/00-namespace.yaml</code></td><td><code>sesac-team1</code> 네임스페이스</td><td>kubectl 1회</td></tr>
+<tr><td><code>k8s/00-namespace.yaml</code></td><td><code>sesac-gojigi</code> 네임스페이스</td><td>kubectl 1회</td></tr>
 <tr><td><code>k8s/01-configmap.yaml</code></td><td><code>app-config</code>: 프로필 · DB/Redis 호스트 · 서비스 주소(CoreDNS) · Keycloak issuer · Loki/Zipkin 주소 · 데모 주기 값</td><td>kubectl · 변경 후 <code>rollout restart</code></td></tr>
 <tr><td><code>k8s/external-secrets/cluster-secret-store.yaml</code></td><td>ESO가 Secrets Manager에 접속하는 방법(리전 · IRSA)</td><td>kubectl 1회</td></tr>
 <tr><td><code>k8s/external-secrets/{service}.yaml</code></td><td>ExternalSecret — Secrets Manager 키 → K8s Secret(<code>{service}-secret</code>)</td><td>kubectl · 1시간마다 동기화</td></tr>
@@ -1047,8 +1047,8 @@ services/{service}/src/main/resources/
 <tr><td><code>observability/grafana.yaml</code></td><td>Grafana + 데이터소스 자동 등록(Prometheus · Loki · Zipkin · CloudWatch)</td><td>kubectl</td></tr>
 <tr><td><code>observability/dashboards/*.json</code></td><td>대시보드 정의 (System Status · RED · JVM · 비즈니스 · 클러스터 · Lambda)</td><td>ConfigMap으로 프로비저닝</td></tr>
 <tr><td><code>observability/alerting/</code></td><td>알림 규칙 · 연락처(Discord/Slack 웹훅)</td><td>ConfigMap으로 프로비저닝</td></tr>
-<tr><td><code>helm/sesac-team1-app/Chart.yaml</code></td><td>차트 이름 · 버전 (ArgoCD가 Helm 앱으로 인식하는 기준)</td><td>ArgoCD</td></tr>
-<tr><td><code>helm/sesac-team1-app/values.yaml</code></td><td>서비스별 이미지 저장소 · <b>태그(CI가 수정)</b> · 포트 · 레플리카 · 자원 · IRSA 역할 · Secret 이름 · gateway NLB 어노테이션</td><td>ArgoCD</td></tr>
+<tr><td><code>helm/sesac-gojigi-app/Chart.yaml</code></td><td>차트 이름 · 버전 (ArgoCD가 Helm 앱으로 인식하는 기준)</td><td>ArgoCD</td></tr>
+<tr><td><code>helm/sesac-gojigi-app/values.yaml</code></td><td>서비스별 이미지 저장소 · <b>태그(CI가 수정)</b> · 포트 · 레플리카 · 자원 · IRSA 역할 · Secret 이름 · gateway NLB 어노테이션</td><td>ArgoCD</td></tr>
 <tr><td><code>helm/…/templates/deployment.yaml</code></td><td>서비스마다 Deployment — 롤링 전략(maxUnavailable 0 · maxSurge 1) · 이미지 · envFrom(ConfigMap · Secret) · startup/readiness/liveness probe · preStop · Downward API · 노드 분산</td><td>ArgoCD</td></tr>
 <tr><td><code>helm/…/templates/service.yaml</code></td><td>서비스마다 Service — 기본 ClusterIP, gateway만 LoadBalancer(NLB)</td><td>ArgoCD</td></tr>
 <tr><td><code>helm/…/templates/serviceaccount.yaml</code></td><td>IRSA 역할이 있는 서비스의 ServiceAccount</td><td>ArgoCD</td></tr>
@@ -1187,7 +1187,7 @@ services/{service}/src/main/resources/
 <h3 id="d-prd"><span class="n">PRD</span>상품</h3>
 <div class="dom-head">
   <div>서비스</div><div>product-service</div>
-  <div>저장소</div><div>productdb(product · product_option · product_image · stock_reservation · processed_event) · S3 <code>sesac-team1-images-{계정4}</code>(<code>products/</code>)</div>
+  <div>저장소</div><div>productdb(product · product_option · product_image · stock_reservation · processed_event) · S3 <code>sesac-gojigi-images-{계정4}</code>(<code>products/</code>)</div>
   <div>화면</div><div>/ · /products · /products/:id · /seller/products · /seller/products/new · /seller/products/:id/edit</div>
 </div>
 <div class="tbl req"><table>
@@ -1328,7 +1328,7 @@ services/{service}/src/main/resources/
 <tr data-p="0"><td class="id">STL-07</td><td><b>판매자 정산 내역</b><span class="tag">판매자</span></td><td><ul><li>본인 스토어 주차별 목록 · 상세(건별 매출 · 수수료)</li></ul></td><td><span class="p p0">P0</span></td><td class="ref">GET /api/seller/settlements<br>/seller/settlements</td></tr>
 <tr data-p="0"><td class="id">STL-08</td><td><b>정산 통계 (내부)</b><span class="tag">시스템</span></td><td><ul><li>스토어별 이번 주 정산 예정액 · 지급예정 건수 · 수수료 수익 · 카테고리별 거래액 — 대시보드용</li></ul></td><td><span class="p p0">P0</span></td><td class="ref">GET /internal/stats/settlements</td></tr>
 <tr data-p="1"><td class="id">STL-09</td><td><b>지급 보류 · 해제</b><span class="tag">관리자</span><span class="tag">시스템</span></td><td><ul><li>관리자 수동 보류(사유) · 해제</li><li><code>StoreStatusChanged</code>(휴면 · 정지) 수신 시 자동 보류</li></ul></td><td><span class="p p1">P1</span></td><td class="ref">PATCH /api/admin/settlements/{id}/hold</td></tr>
-<tr data-p="1"><td class="id">STL-10</td><td><b>정산 명세서 생성 · 메일</b><span class="tag">시스템</span></td><td><ul><li><code>SettlementPaid</code> → Lambda → CSV → S3 reports → 판매자에게 다운로드 링크(7일 presigned) 메일</li><li>스토어 × 주차 중복 발송 방지(DynamoDB <code>sesac-team1-settlement-reports</code>)</li></ul></td><td><span class="p p1">P1</span></td><td class="ref">Lambda settlement-report</td></tr>
+<tr data-p="1"><td class="id">STL-10</td><td><b>정산 명세서 생성 · 메일</b><span class="tag">시스템</span></td><td><ul><li><code>SettlementPaid</code> → Lambda → CSV → S3 reports → 판매자에게 다운로드 링크(7일 presigned) 메일</li><li>스토어 × 주차 중복 발송 방지(DynamoDB <code>sesac-gojigi-settlement-reports</code>)</li></ul></td><td><span class="p p1">P1</span></td><td class="ref">Lambda settlement-report</td></tr>
 <tr data-p="2"><td class="id">STL-11</td><td><b>수수료 변경 예약 · 신규 입점 수수료 지원</b><span class="tag">관리자</span></td><td><ul><li>공지 7일 후 적용(적용 시작일 이력) · 입점 후 3개월 판매수수료 50%</li></ul></td><td><span class="p p2">P2</span></td><td class="ref">category_commission</td></tr>
 <tr data-p="x"><td class="id">STL-12</td><td><b>실제 계좌 이체 · 세금계산서</b></td><td><ul><li>범위 밖 (지급은 상태 변경으로 표현)</li></ul></td><td><span class="p px">제외</span></td><td class="ref">—</td></tr>
 </table></div>
@@ -1353,7 +1353,7 @@ services/{service}/src/main/resources/
 <h3 id="d-ntf"><span class="n">NTF</span>알림 · 서버리스</h3>
 <div class="dom-head">
   <div>서비스</div><div>Lambda order-notification · log-archive (사용자 API 없음, 배치 · 로깅만)</div>
-  <div>저장소</div><div>DynamoDB <code>sesac-team1-notifications</code> · S3 log-archive · SES</div>
+  <div>저장소</div><div>DynamoDB <code>sesac-gojigi-notifications</code> · S3 log-archive · SES</div>
   <div>트리거</div><div>SQS(order-events · store-events 구독) · EventBridge 매일 03:00</div>
 </div>
 <div class="tbl req"><table>

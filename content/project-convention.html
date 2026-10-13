@@ -258,7 +258,7 @@ main h3 + .tbl, main h4 + .tbl{margin-top:6px}
 <h2><span class="n">02</span>백엔드</h2>
 <h3 id="c2-1"><span class="n">2-1</span>패키지 구조</h3>
 <p>도메인형 구조. 최상위를 계층(controller/service …)으로 나누지 않습니다.</p>
-<pre><code>com.sesac.team1.{service}            # service = gateway · user · store · product · order · payment · review · settlement · admin
+<pre><code>com.sesac.gojigi.{service}            # service = gateway · user · store · product · order · payment · review · settlement · admin
 ├── {Service}Application.java
 ├── common                           # 도메인에 속하지 않는 공통 모듈 (서비스 템플릿에서 복사)
 │   ├── config                       # @Configuration — Redis · RestClient · Resilience4j · QueryDSL · Scheduling(ShedLock) · WebMvc · Swagger · AWS
@@ -757,26 +757,26 @@ function AdminStoreListPage() {
 <section id="c5">
 <h2><span class="n">05</span>인프라 · 배포 네이밍</h2>
 <h3 id="c5-1"><span class="n">5-1</span>AWS 자원</h3>
-<ul class="b"><li>이름: <code>sesac-team1-{용도}</code> (kebab-case) — <code>sesac-team1-eks-cluster</code> · <code>sesac-team1-order-events</code></li><li>모든 자원 태그: <code>Project=sesac-team1</code> · <code>ManagedBy=terraform</code> (콘솔에서 만든 자원은 <code>ManagedBy=manual</code> + 이슈 기록)</li><li>계정 ID · 리전 하드코딩 금지 — <code>data.aws_caller_identity</code> · 변수 사용</li></ul>
+<ul class="b"><li>이름: <code>sesac-gojigi-{용도}</code> (kebab-case) — <code>sesac-gojigi-eks-cluster</code> · <code>sesac-gojigi-order-events</code></li><li>모든 자원 태그: <code>Project=sesac-gojigi</code> · <code>ManagedBy=terraform</code> (콘솔에서 만든 자원은 <code>ManagedBy=manual</code> + 이슈 기록)</li><li>계정 ID · 리전 하드코딩 금지 — <code>data.aws_caller_identity</code> · 변수 사용</li></ul>
 <div class="tbl"><table>
 <tr><th>자원</th><th>규칙</th><th>예</th></tr>
-<tr><td>SNS 토픽</td><td><code>sesac-team1-{도메인}-events</code></td><td><code>sesac-team1-order-events</code></td></tr>
-<tr><td>SQS 큐</td><td><code>sesac-team1-{소비자}-{도메인}-events</code></td><td><code>sesac-team1-settlement-order-events</code></td></tr>
-<tr><td>DLQ</td><td>큐 이름 + <code>-dlq</code></td><td><code>sesac-team1-settlement-order-events-dlq</code></td></tr>
-<tr><td>IAM 역할 (IRSA)</td><td><code>sesac-team1-{service}-irsa</code></td><td><code>sesac-team1-order-irsa</code></td></tr>
-<tr><td>Secrets Manager</td><td><code>sesac-team1/{service}</code></td><td><code>sesac-team1/order-service</code></td></tr>
-<tr><td>SSM 파라미터</td><td><code>/sesac-team1/dev/{종류}/{이름}</code></td><td><code>/sesac-team1/dev/sqs/notification-queue-arn</code></td></tr>
-<tr><td>S3 버킷</td><td><code>sesac-team1-{용도}-{계정ID 끝 4자리}</code> (전역 유일)</td><td><code>sesac-team1-images-1234</code>(prefix <code>products/</code> · <code>reviews/</code>) · <code>sesac-team1-seller-docs-1234</code> · <code>sesac-team1-reports-1234</code> · <code>sesac-team1-log-archive-1234</code></td></tr>
-<tr><td>DynamoDB</td><td><code>sesac-team1-{용도}</code></td><td><code>sesac-team1-notifications</code> · <code>sesac-team1-settlement-reports</code> (그 외 테이블 없음)</td></tr>
+<tr><td>SNS 토픽</td><td><code>sesac-gojigi-{도메인}-events</code></td><td><code>sesac-gojigi-order-events</code></td></tr>
+<tr><td>SQS 큐</td><td><code>sesac-gojigi-{소비자}-{도메인}-events</code></td><td><code>sesac-gojigi-settlement-order-events</code></td></tr>
+<tr><td>DLQ</td><td>큐 이름 + <code>-dlq</code></td><td><code>sesac-gojigi-settlement-order-events-dlq</code></td></tr>
+<tr><td>IAM 역할 (IRSA)</td><td><code>sesac-gojigi-{service}-irsa</code></td><td><code>sesac-gojigi-order-irsa</code></td></tr>
+<tr><td>Secrets Manager</td><td><code>sesac-gojigi/{service}</code></td><td><code>sesac-gojigi/order-service</code></td></tr>
+<tr><td>SSM 파라미터</td><td><code>/sesac-gojigi/dev/{종류}/{이름}</code></td><td><code>/sesac-gojigi/dev/sqs/notification-queue-arn</code></td></tr>
+<tr><td>S3 버킷</td><td><code>sesac-gojigi-{용도}-{계정ID 끝 4자리}</code> (전역 유일)</td><td><code>sesac-gojigi-images-1234</code>(prefix <code>products/</code> · <code>reviews/</code>) · <code>sesac-gojigi-seller-docs-1234</code> · <code>sesac-gojigi-reports-1234</code> · <code>sesac-gojigi-log-archive-1234</code></td></tr>
+<tr><td>DynamoDB</td><td><code>sesac-gojigi-{용도}</code></td><td><code>sesac-gojigi-notifications</code> · <code>sesac-gojigi-settlement-reports</code> (그 외 테이블 없음)</td></tr>
 </table></div>
 <h3 id="c5-2"><span class="n">5-2</span>Terraform</h3>
 <ul class="b"><li>파일: 자원 종류별 snake_case (<code>sns_sqs.tf</code> · <code>irsa.tf</code>), 폴더마다 <code>provider.tf</code> · <code>variables.tf</code> · <code>outputs.tf</code></li><li>자원 로컬 이름: snake_case, 타입 반복 금지 (<code>aws_s3_bucket.product_images</code> ○ / <code>aws_s3_bucket.product_images_bucket</code> ✗)</li><li>변수 · output: snake_case + <code>description</code> 필수</li><li>커밋 전 <code>terraform fmt -recursive</code> · <code>terraform validate</code></li><li>apply는 AWS 담당만, 다른 사람은 plan까지</li><li><code>.terraform.lock.hcl</code> 커밋, <code>*.tfstate</code> · <code>.terraform/</code> 커밋 금지</li></ul>
 <h3 id="c5-3"><span class="n">5-3</span>Kubernetes · Helm</h3>
-<ul class="b"><li>리소스 이름: 서비스 이름 그대로 kebab-case (<code>order-service</code>)</li><li>라벨: <code>app: {service}</code> 필수 (Service selector · Prometheus · 로그 라벨 기준)</li><li>파일 이름: 적용 순서가 있으면 <code>{nn}-{종류}.yaml</code> (<code>00-namespace.yaml</code>), 그 외 <code>{대상}.yaml</code></li><li>YAML 들여쓰기 2칸, 탭 금지</li><li>네임스페이스: 앱 <code>sesac-team1</code> · 모니터링 <code>monitoring</code> · <code>argocd</code></li><li>Helm <code>values.yaml</code> 키는 camelCase, 서비스 키는 서비스 이름 (<code>services.order-service.tag</code>)</li><li>이미지 태그: 커밋 SHA 7자리. <code>latest</code> 금지</li><li>모든 컨테이너에 <code>resources.requests</code> 필수, 메모리 <code>limits</code> 필수</li></ul>
+<ul class="b"><li>리소스 이름: 서비스 이름 그대로 kebab-case (<code>order-service</code>)</li><li>라벨: <code>app: {service}</code> 필수 (Service selector · Prometheus · 로그 라벨 기준)</li><li>파일 이름: 적용 순서가 있으면 <code>{nn}-{종류}.yaml</code> (<code>00-namespace.yaml</code>), 그 외 <code>{대상}.yaml</code></li><li>YAML 들여쓰기 2칸, 탭 금지</li><li>네임스페이스: 앱 <code>sesac-gojigi</code> · 모니터링 <code>monitoring</code> · <code>argocd</code></li><li>Helm <code>values.yaml</code> 키는 camelCase, 서비스 키는 서비스 이름 (<code>services.order-service.tag</code>)</li><li>이미지 태그: 커밋 SHA 7자리. <code>latest</code> 금지</li><li>모든 컨테이너에 <code>resources.requests</code> 필수, 메모리 <code>limits</code> 필수</li></ul>
 <h3 id="c5-4"><span class="n">5-4</span>환경 변수 · 설정</h3>
 <ul class="b"><li>환경 변수: UPPER_SNAKE (<code>DB_HOST</code> · <code>PRODUCT_SERVICE_URI</code> · <code>PORTONE_API_SECRET</code>)</li><li>다른 서비스 주소: <code>{대상}_SERVICE_URI</code></li><li><code>application.yml</code> 커스텀 키: <code>app.{영역}.{이름}</code> kebab-case (<code>app.order.auto-confirm-after</code>)</li><li>프론트: <code>VITE_{이름}</code> (<code>VITE_PORTONE_STORE_ID</code>)</li></ul>
 <h3 id="c5-5"><span class="n">5-5</span>Serverless · CI</h3>
-<ul class="b"><li>함수 폴더: kebab-case — <code>order-notification</code> · <code>settlement-report</code> · <code>log-archive</code> (3개, 사용자 API 없음), 서비스 이름 <code>sesac-team1-{폴더명}</code></li><li>핸들러 파일 camelCase (<code>notify.js</code>), export 이름 <code>handler</code></li><li>워크플로 파일: 영역 이름 kebab-case (<code>backend.yml</code>), job 이름 kebab-case (<code>bump-tag</code>)</li><li>GitHub Secrets: UPPER_SNAKE (<code>AWS_ROLE_ARN</code> · <code>SERVERLESS_ACCESS_KEY</code>)</li></ul>
+<ul class="b"><li>함수 폴더: kebab-case — <code>order-notification</code> · <code>settlement-report</code> · <code>log-archive</code> (3개, 사용자 API 없음), 서비스 이름 <code>sesac-gojigi-{폴더명}</code></li><li>핸들러 파일 camelCase (<code>notify.js</code>), export 이름 <code>handler</code></li><li>워크플로 파일: 영역 이름 kebab-case (<code>backend.yml</code>), job 이름 kebab-case (<code>bump-tag</code>)</li><li>GitHub Secrets: UPPER_SNAKE (<code>AWS_ROLE_ARN</code> · <code>SERVERLESS_ACCESS_KEY</code>)</li></ul>
 </section>
 <section id="c6">
 <h2><span class="n">06</span>리뷰 체크리스트</h2>

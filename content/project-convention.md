@@ -113,7 +113,7 @@
 도메인형 구조. 최상위를 계층(controller/service …)으로 나누지 않습니다.
 
 ```
-com.sesac.team1.{service}            # service = gateway · user · store · product · order · payment · review · settlement · admin
+com.sesac.gojigi.{service}            # service = gateway · user · store · product · order · payment · review · settlement · admin
 ├── {Service}Application.java
 ├── common                           # 도메인에 속하지 않는 공통 모듈 (서비스 템플릿에서 복사)
 │   ├── config                       # @Configuration — Redis · RestClient · Resilience4j · QueryDSL · Scheduling(ShedLock) · WebMvc · Swagger · AWS
@@ -954,20 +954,20 @@ function AdminStoreListPage() {
 
 ### 5-1. AWS 자원
 
-- 이름: `sesac-team1-{용도}` (kebab-case) — `sesac-team1-eks-cluster` · `sesac-team1-order-events`
-- 모든 자원 태그: `Project=sesac-team1` · `ManagedBy=terraform` (콘솔에서 만든 자원은 `ManagedBy=manual` + 이슈 기록)
+- 이름: `sesac-gojigi-{용도}` (kebab-case) — `sesac-gojigi-eks-cluster` · `sesac-gojigi-order-events`
+- 모든 자원 태그: `Project=sesac-gojigi` · `ManagedBy=terraform` (콘솔에서 만든 자원은 `ManagedBy=manual` + 이슈 기록)
 - 계정 ID · 리전 하드코딩 금지 — `data.aws_caller_identity` · 변수 사용
 
 | 자원 | 규칙 | 예 |
 |---|---|---|
-| SNS 토픽 | `sesac-team1-{도메인}-events` | `sesac-team1-order-events` |
-| SQS 큐 | `sesac-team1-{소비자}-{도메인}-events` | `sesac-team1-settlement-order-events` |
-| DLQ | 큐 이름 + `-dlq` | `sesac-team1-settlement-order-events-dlq` |
-| IAM 역할 (IRSA) | `sesac-team1-{service}-irsa` | `sesac-team1-order-irsa` |
-| Secrets Manager | `sesac-team1/{service}` | `sesac-team1/order-service` |
-| SSM 파라미터 | `/sesac-team1/dev/{종류}/{이름}` | `/sesac-team1/dev/sqs/notification-queue-arn` |
-| S3 버킷 | `sesac-team1-{용도}-{계정ID 끝 4자리}` (전역 유일) | `sesac-team1-images-1234`(prefix `products/` · `reviews/`) · `sesac-team1-seller-docs-1234` · `sesac-team1-reports-1234` · `sesac-team1-log-archive-1234` |
-| DynamoDB | `sesac-team1-{용도}` | `sesac-team1-notifications` · `sesac-team1-settlement-reports` (그 외 테이블 없음) |
+| SNS 토픽 | `sesac-gojigi-{도메인}-events` | `sesac-gojigi-order-events` |
+| SQS 큐 | `sesac-gojigi-{소비자}-{도메인}-events` | `sesac-gojigi-settlement-order-events` |
+| DLQ | 큐 이름 + `-dlq` | `sesac-gojigi-settlement-order-events-dlq` |
+| IAM 역할 (IRSA) | `sesac-gojigi-{service}-irsa` | `sesac-gojigi-order-irsa` |
+| Secrets Manager | `sesac-gojigi/{service}` | `sesac-gojigi/order-service` |
+| SSM 파라미터 | `/sesac-gojigi/dev/{종류}/{이름}` | `/sesac-gojigi/dev/sqs/notification-queue-arn` |
+| S3 버킷 | `sesac-gojigi-{용도}-{계정ID 끝 4자리}` (전역 유일) | `sesac-gojigi-images-1234`(prefix `products/` · `reviews/`) · `sesac-gojigi-seller-docs-1234` · `sesac-gojigi-reports-1234` · `sesac-gojigi-log-archive-1234` |
+| DynamoDB | `sesac-gojigi-{용도}` | `sesac-gojigi-notifications` · `sesac-gojigi-settlement-reports` (그 외 테이블 없음) |
 
 ### 5-2. Terraform
 
@@ -984,7 +984,7 @@ function AdminStoreListPage() {
 - 라벨: `app: {service}` 필수 (Service selector · Prometheus · 로그 라벨 기준)
 - 파일 이름: 적용 순서가 있으면 `{nn}-{종류}.yaml` (`00-namespace.yaml`), 그 외 `{대상}.yaml`
 - YAML 들여쓰기 2칸, 탭 금지
-- 네임스페이스: 앱 `sesac-team1` · 모니터링 `monitoring` · `argocd`
+- 네임스페이스: 앱 `sesac-gojigi` · 모니터링 `monitoring` · `argocd`
 - Helm `values.yaml` 키는 camelCase, 서비스 키는 서비스 이름 (`services.order-service.tag`)
 - 이미지 태그: 커밋 SHA 7자리. `latest` 금지
 - 모든 컨테이너에 `resources.requests` 필수, 메모리 `limits` 필수
@@ -998,7 +998,7 @@ function AdminStoreListPage() {
 
 ### 5-5. Serverless · CI
 
-- 함수 폴더: kebab-case — `order-notification` · `settlement-report` · `log-archive` (3개, 사용자 API 없음), 서비스 이름 `sesac-team1-{폴더명}`
+- 함수 폴더: kebab-case — `order-notification` · `settlement-report` · `log-archive` (3개, 사용자 API 없음), 서비스 이름 `sesac-gojigi-{폴더명}`
 - 핸들러 파일 camelCase (`notify.js`), export 이름 `handler`
 - 워크플로 파일: 영역 이름 kebab-case (`backend.yml`), job 이름 kebab-case (`bump-tag`)
 - GitHub Secrets: UPPER_SNAKE (`AWS_ROLE_ARN` · `SERVERLESS_ACCESS_KEY`)

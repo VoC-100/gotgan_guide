@@ -253,7 +253,7 @@ svg .arrowhead2{fill:var(--accent)}
 <path class="ln2" d="M390,132 H410 V68 H636" marker-end="url(#ah2)"/>
 <!-- EKS -->
 <rect class="ns" x="420" y="100" width="760" height="388"/><text x="432" y="120" class="b">EKS · 워커 t3.large × 2 (최대 3)</text>
-<rect class="ns" x="432" y="130" width="508" height="346"/><text x="442" y="148" class="s">namespace sesac-team1</text>
+<rect class="ns" x="432" y="130" width="508" height="346"/><text x="442" y="148" class="s">namespace sesac-gojigi</text>
 <rect class="bx" x="446" y="158" width="144" height="40"/><text x="518" y="176" text-anchor="middle" class="b">Keycloak</text><text x="518" y="191" text-anchor="middle" class="s">내부 전용 · keycloakdb</text>
 <rect class="hl" x="618" y="158" width="308" height="40"/><text x="772" y="176" text-anchor="middle" class="b">gateway-service × 2</text><text x="772" y="191" text-anchor="middle" class="s">Keycloak JWKS로 JWT 검증 · 라우팅 · CORS</text>
 <path class="ln" d="M725,80 V154" marker-end="url(#ah)"/>
@@ -319,7 +319,7 @@ svg .arrowhead2{fill:var(--accent)}
 <tr><td>2</td><td>게이트웨이가 Keycloak이 발급한 Access Token을 JWKS로 검증(서명 · 만료 · 역할)하고 <code>X-User-Id</code>, <code>X-User-Roles</code>, <code>X-Store-Id</code> 헤더를 붙여 order-service로 전달. 로그인 · 가입 자체는 <code>/api/auth/**</code> → user-service가 Keycloak을 대신 호출</td></tr>
 <tr><td>3</td><td>order-service가 주문을 <code>PENDING</code>으로 저장 → user-service <code>/internal/points/use</code>(포인트를 쓸 때만) → product-service <code>/internal/stock/reservations</code>(재고 예약) → payment-service <code>/internal/payments</code>(결제 준비 · <code>READY</code>) → 브라우저가 포트원 결제창으로 결제 (Saga)</td></tr>
 <tr><td>4</td><td>브라우저 → order <code>POST /api/orders/{orderNo}/payment/confirm</code> → payment-service <code>/internal/payments/verify</code>가 포트원 API로 금액 · 상태 검증 → order <code>PAID</code> 확정. 실패하면 역순 보상(포트원 취소 → 재고 해제 → 포인트 환원 → <code>FAILED</code>). 모든 동기 호출은 Resilience4j 타임아웃 · 서킷 브레이커 적용</td></tr>
-<tr><td>5</td><td>커밋 뒤 <code>OrderPaid</code> 이벤트를 SNS(<code>sesac-team1-order-events</code>)에 발행 → 구독자별 SQS → user-service가 실결제금액의 5% 포인트 적립, 알림 Lambda가 SES로 주문 확인 메일 발송(DynamoDB로 멱등 처리)</td></tr>
+<tr><td>5</td><td>커밋 뒤 <code>OrderPaid</code> 이벤트를 SNS(<code>sesac-gojigi-order-events</code>)에 발행 → 구독자별 SQS → user-service가 실결제금액의 5% 포인트 적립, 알림 Lambda가 SES로 주문 확인 메일 발송(DynamoDB로 멱등 처리)</td></tr>
 <tr><td>6</td><td>모든 단계가 같은 traceId로 Loki(로그) · Zipkin(트레이스)에 남고, Prometheus가 지표를 수집해 Grafana "System Status"에 서비스별 상태가 초록/빨강으로 보임</td></tr>
 </table></div>
 </section>
@@ -591,7 +591,7 @@ DB를 공유하거나, 서로의 API를 촘촘히 호출해야 해서 "배포는
   source  = "terraform-aws-modules/eks/aws"
   version = "~&gt; 20.0"
 
-  cluster_name    = "sesac-team1-eks-cluster"
+  cluster_name    = "sesac-gojigi-eks-cluster"
   cluster_version = "1.35"
   cluster_endpoint_public_access = true
 
@@ -599,7 +599,7 @@ DB를 공유하거나, 서로의 API를 촘촘히 호출해야 해서 "배포는
   subnet_ids = data.terraform_remote_state.vpc.outputs.private_subnets
 
   eks_managed_node_groups = {
-    sesac-team1-nodes = {
+    sesac-gojigi-nodes = {
       ami_type       = "AL2023_x86_64_STANDARD"
       instance_types = ["t3.large"]     # 2 vCPU / 8GiB, 파드 35개
       capacity_type  = "ON_DEMAND"      # 비용을 더 줄이려면 SPOT (아래 참고)
@@ -652,9 +652,9 @@ DB를 공유하거나, 서로의 API를 촘촘히 호출해야 해서 "배포는
 <tr><td><b><code>app/</code></b></td><td>
 <ul>
 <li><b>NLB용 EIP 2개</b> (05장 DuckDNS)</li>
-<li>S3 4개: <code>sesac-team1-images-{계정4}</code>(<code>products/</code> · <code>reviews/</code>), <code>seller-docs</code>, <code>reports</code>, <code>log-archive</code>(90일 후 Glacier)</li>
-<li>SNS 토픽 3개: <code>sesac-team1-store-events</code> · <code>order-events</code> · <code>settlement-events</code> + 구독자별 SQS 큐 · DLQ(3회)</li>
-<li>DynamoDB 2개: <code>sesac-team1-notifications</code> · <code>sesac-team1-settlement-reports</code></li>
+<li>S3 4개: <code>sesac-gojigi-images-{계정4}</code>(<code>products/</code> · <code>reviews/</code>), <code>seller-docs</code>, <code>reports</code>, <code>log-archive</code>(90일 후 Glacier)</li>
+<li>SNS 토픽 3개: <code>sesac-gojigi-store-events</code> · <code>order-events</code> · <code>settlement-events</code> + 구독자별 SQS 큐 · DLQ(3회)</li>
+<li>DynamoDB 2개: <code>sesac-gojigi-notifications</code> · <code>sesac-gojigi-settlement-reports</code></li>
 <li>SES 이메일 자격 증명</li>
 <li>Secrets Manager 시크릿 + <b>KMS 고객 관리 키</b>(시크릿 암호화)</li>
 <li><b>서비스별 IRSA 역할</b>, SSM 파라미터(서버리스가 읽을 ARN)</li>
@@ -678,15 +678,15 @@ DB를 공유하거나, 서로의 API를 촘촘히 호출해야 해서 "배포는
 <li>user-service: SQS 수신(store-events · order-events 구독 큐)</li>
 <li>settlement-service: SQS 수신(order-events · store-events 구독 큐), <code>sns:Publish</code>(settlement-events)</li>
 <li>admin-service · gateway-service: AWS 권한 없음</li>
-<li>external-secrets: <code>secretsmanager:GetSecretValue</code>(<code>sesac-team1/*</code>) + KMS 복호화</li>
+<li>external-secrets: <code>secretsmanager:GetSecretValue</code>(<code>sesac-gojigi/*</code>) + KMS 복호화</li>
 <li>grafana: CloudWatch 읽기 (Lambda 로그)</li>
 </ul></div>
 <div class="card"><h4>Secrets Manager → 파드</h4>
 <p>External Secrets Operator(ESO)를 Helm으로 설치하고, 서비스마다 <code>ExternalSecret</code>을 두면 Secrets Manager의 값이 쿠버네티스 Secret으로 동기화됩니다. 앱은 환경 변수로 읽으므로 코드가 바뀌지 않습니다. 시크릿은 KMS 고객 관리 키로 암호화합니다.</p>
 <ul>
-<li><b>서비스당 JSON 하나</b>(<code>sesac-team1/order-service</code> = DB 계정·비밀번호). 시크릿은 개당 월 $0.40이라 묶어 둡니다</li>
-<li><code>sesac-team1/keycloak</code>: Keycloak 관리자 계정 · <code>gotgan-backend</code> 클라이언트 시크릿 (Keycloak · user-service)</li>
-<li><code>sesac-team1/portone</code>: 포트원 V2 API 시크릿 · 웹훅 시크릿 (<b>payment-service만</b>)</li>
+<li><b>서비스당 JSON 하나</b>(<code>sesac-gojigi/order-service</code> = DB 계정·비밀번호). 시크릿은 개당 월 $0.40이라 묶어 둡니다</li>
+<li><code>sesac-gojigi/keycloak</code>: Keycloak 관리자 계정 · <code>gotgan-backend</code> 클라이언트 시크릿 (Keycloak · user-service)</li>
+<li><code>sesac-gojigi/portone</code>: 포트원 V2 API 시크릿 · 웹훅 시크릿 (<b>payment-service만</b>)</li>
 <li>JWT 서명 키는 없습니다. Keycloak이 RS256으로 서명하고, 게이트웨이는 JWKS 공개키로 검증합니다(08장)</li>
 </ul></div>
 </div>
@@ -695,7 +695,7 @@ DB를 공유하거나, 서로의 API를 촘촘히 호출해야 해서 "배포는
 kind: ExternalSecret
 metadata:
   name: order-service-secret
-  namespace: sesac-team1
+  namespace: sesac-gojigi
 spec:
   refreshInterval: 1h
   secretStoreRef:
@@ -705,7 +705,7 @@ spec:
     name: order-service-secret       # 이 이름의 K8s Secret이 만들어짐
   dataFrom:
     - extract:
-        key: sesac-team1/order-service   # {"DB_USERNAME":"order","DB_PASSWORD":"..."}</code></pre>
+        key: sesac-gojigi/order-service   # {"DB_USERNAME":"order","DB_PASSWORD":"..."}</code></pre>
 <p>ESO의 API 버전(<code>v1</code> / <code>v1beta1</code>)은 설치하는 차트 버전에 따라 다르니 설치 후 <code>kubectl api-resources | grep external</code>로 확인합니다.</p>
 
 <h3>비용 감각 (서울 리전 · 대략치)</h3>
@@ -721,7 +721,7 @@ spec:
 <tr><td><b>합계</b></td><td></td><td><b>약 $400 (상시) / 약 $250 (야간 노드 0)</b></td><td></td></tr>
 </table></div>
 <div class="box warn"><b class="t">첫날 할 일: AWS Budgets 알람</b>
-월 예산(예: $150)의 50% · 80% · 100%에서 팀 전원에게 메일이 가도록 Budgets를 만듭니다. 단가는 바뀌므로 <b>AWS Pricing Calculator로 직접 확인</b>하고, 모든 자원에 <code>Project=sesac-team1</code> 태그를 붙여 Cost Explorer에서 걸러 볼 수 있게 합니다. 노드를 야간에 0으로 내리는 명령은 <code>aws eks update-nodegroup-config --scaling-config minSize=0,maxSize=3,desiredSize=0 ...</code>입니다(GitHub Actions 예약 실행으로 자동화 가능). 발표(11-20) 후에는 destroy 합니다.</div>
+월 예산(예: $150)의 50% · 80% · 100%에서 팀 전원에게 메일이 가도록 Budgets를 만듭니다. 단가는 바뀌므로 <b>AWS Pricing Calculator로 직접 확인</b>하고, 모든 자원에 <code>Project=sesac-gojigi</code> 태그를 붙여 Cost Explorer에서 걸러 볼 수 있게 합니다. 노드를 야간에 0으로 내리는 명령은 <code>aws eks update-nodegroup-config --scaling-config minSize=0,maxSize=3,desiredSize=0 ...</code>입니다(GitHub Actions 예약 실행으로 자동화 가능). 발표(11-20) 후에는 destroy 합니다.</div>
 <div class="box prod"><b class="t">더 줄이고 싶다면 (선택)</b>
 <b>Spot 인스턴스</b>(<code>capacity_type = "SPOT"</code>, <code>instance_types = ["t3.large","t3a.large","m5.large"]</code>)는 60~70% 저렴하지만 2분 예고 후 회수될 수 있습니다. MySQL(EBS는 한 AZ에 묶임)이 다른 AZ로 옮겨 가면 뜨지 못하므로 On-Demand를 씁니다. VPC CNI의 <b>prefix delegation</b>을 켜면 노드당 파드 수 제한도 크게 늘어납니다.</div>
 
@@ -764,12 +764,12 @@ spec:
 resource "aws_eip" "nlb" {
   count  = 2
   domain = "vpc"
-  tags   = { Name = "sesac-team1-nlb-eip-${count.index}" }
+  tags   = { Name = "sesac-gojigi-nlb-eip-${count.index}" }
 }
 
 output "nlb_eip_allocation_ids" { value = aws_eip.nlb[*].id }          # Helm values에 넣을 값
 output "nlb_eip_public_ips"     { value = aws_eip.nlb[*].public_ip }   # DuckDNS에 넣을 값</code></pre>
-<p class="cap">deploy/helm/sesac-team1-app/values.yaml — gateway Service 어노테이션에 추가</p>
+<p class="cap">deploy/helm/sesac-gojigi-app/values.yaml — gateway Service 어노테이션에 추가</p>
 <pre><code>    service.beta.kubernetes.io/aws-load-balancer-subnets: subnet-aaaa,subnet-cccc          # 퍼블릭 서브넷 2개
     service.beta.kubernetes.io/aws-load-balancer-eip-allocations: eipalloc-1111,eipalloc-2222  # 서브넷 수와 개수가 같아야 함</code></pre>
 <p>NLB(LoadBalancer 타입 Service)는 <b>gateway에만</b> 붙입니다. Keycloak · 업무 서비스는 ClusterIP라 외부에서 닿지 않습니다.</p>
@@ -1296,7 +1296,7 @@ class SagaRecoveryScheduler {
           - org.springframework.web.client.ResourceAccessException
           - org.springframework.web.client.HttpServerErrorException
         ignore-exceptions:                       # 상대의 비즈니스 오류(4xx를 변환한 것)는 세지 않음
-          - com.sesac.team1.order.common.exception.BusinessException
+          - com.sesac.gojigi.order.common.exception.BusinessException
     instances:
       user:    { base-config: default }
       product: { base-config: default }
@@ -1400,14 +1400,14 @@ Resilience4j의 Spring Boot 스타터는 Boot 버전별 아티팩트(<code>resil
 <li>결제 연동 → 채널 관리 → <b>테스트 채널 추가</b>(콘솔에서 고를 수 있는 테스트 PG 중 하나, 예: 카드 결제 테스트) → 채널 키 발급</li>
 <li><b>V2 API Secret</b> 발급 → 서버 전용 비밀 값</li>
 <li><b>웹훅</b> 주소 등록: <code>https://gotgan.vercel.app/api/payments/webhook</code>(05장 rewrite 경유 → 게이트웨이 → payment-service) → 웹훅 시크릿 발급</li>
-<li>구지훈이 API Secret · 웹훅 시크릿을 Secrets Manager <code>sesac-team1/portone</code>에 등록(Terraform은 빈 시크릿만 만들고 값은 콘솔 · CLI로) → ESO가 payment-service 파드 환경 변수로 주입</li>
+<li>구지훈이 API Secret · 웹훅 시크릿을 Secrets Manager <code>sesac-gojigi/portone</code>에 등록(Terraform은 빈 시크릿만 만들고 값은 콘솔 · CLI로) → ESO가 payment-service 파드 환경 변수로 주입</li>
 <li>로컬 개발 중 웹훅을 받아 보려면 ngrok으로 임시 주소를 만들어 테스트 웹훅에 등록</li>
 </ol>
 <div class="tbl"><table>
 <tr><th>값</th><th>공개 여부</th><th>보관 위치</th><th>쓰는 곳</th></tr>
 <tr><td>상점 ID (<code>storeId</code>)</td><td>공개 가능</td><td>Vercel 환경 변수 <code>VITE_PORTONE_STORE_ID</code></td><td>브라우저 결제창</td></tr>
 <tr><td>채널 키 (<code>channelKey</code>)</td><td>공개 가능</td><td>Vercel 환경 변수 <code>VITE_PORTONE_CHANNEL_KEY</code></td><td>브라우저 결제창</td></tr>
-<tr><td><b>V2 API Secret</b></td><td><b>비밀</b></td><td>Secrets Manager <code>sesac-team1/portone</code> → ESO → 환경 변수</td><td>payment-service 결제 조회 · 취소</td></tr>
+<tr><td><b>V2 API Secret</b></td><td><b>비밀</b></td><td>Secrets Manager <code>sesac-gojigi/portone</code> → ESO → 환경 변수</td><td>payment-service 결제 조회 · 취소</td></tr>
 <tr><td><b>웹훅 시크릿</b></td><td><b>비밀</b></td><td>위와 같음</td><td>payment-service 웹훅 서명 검증</td></tr>
 </table></div>
 
@@ -1788,14 +1788,14 @@ public class UserHeaderFilter implements GlobalFilter, Ordered {
 <h3>Keycloak 배포 (이경석)</h3>
 <div class="tbl"><table>
 <tr><th>항목</th><th>설정</th></tr>
-<tr><td>형태</td><td>EKS <code>sesac-team1</code> 네임스페이스 Deployment 1개 + Service <code>keycloak</code>(ClusterIP, 8080). Ingress · LoadBalancer 없음</td></tr>
+<tr><td>형태</td><td>EKS <code>sesac-gojigi</code> 네임스페이스 Deployment 1개 + Service <code>keycloak</code>(ClusterIP, 8080). Ingress · LoadBalancer 없음</td></tr>
 <tr><td>이미지 · 실행</td><td><code>quay.io/keycloak/keycloak</code>(26.x, 작성 시점 최신 패치 확인) · <code>start --import-realm</code>. 기동을 줄이려면 <code>kc.sh build</code>로 미리 빌드한 이미지 + <code>start --optimized</code></td></tr>
 <tr><td>DB</td><td><code>KC_DB=mysql</code> · <code>KC_DB_URL=jdbc:mysql://mysql:3306/keycloakdb</code> · 전용 계정(<code>KC_DB_USERNAME</code> · <code>KC_DB_PASSWORD</code>는 ESO Secret)</td></tr>
 <tr><td>주소 · HTTP</td><td><code>KC_HOSTNAME=http://keycloak:8080</code>(issuer 고정) · <code>KC_HTTP_ENABLED=true</code>(클러스터 내부 HTTP)</td></tr>
 <tr><td>헬스</td><td><code>KC_HEALTH_ENABLED=true</code> → 관리 포트 9000의 <code>/health/started</code> · <code>/health/ready</code> · <code>/health/live</code>를 startup · readiness · liveness probe로</td></tr>
 <tr><td>자원</td><td>메모리 requests · limits <b>1Gi</b> (04장 파드 예산 포함). JVM 기동이 30~60초라 startupProbe 여유 있게</td></tr>
 <tr><td>Realm import</td><td><code>deploy/keycloak/realm-gotgan.json</code> → ConfigMap → <code>/opt/keycloak/data/import</code> 마운트. 이미 realm이 있으면 import를 건너뜀 → 설정을 바꾸면 콘솔에서 고친 뒤 <b>다시 export해 Git에 커밋</b></td></tr>
-<tr><td>관리 콘솔</td><td><code>kubectl -n sesac-team1 port-forward svc/keycloak 8081:8080</code> → <code>http://localhost:8081</code>. 초기 관리자는 <code>KC_BOOTSTRAP_ADMIN_USERNAME</code> · <code>KC_BOOTSTRAP_ADMIN_PASSWORD</code>(ESO Secret)</td></tr>
+<tr><td>관리 콘솔</td><td><code>kubectl -n sesac-gojigi port-forward svc/keycloak 8081:8080</code> → <code>http://localhost:8081</code>. 초기 관리자는 <code>KC_BOOTSTRAP_ADMIN_USERNAME</code> · <code>KC_BOOTSTRAP_ADMIN_PASSWORD</code>(ESO Secret)</td></tr>
 <tr><td>로컬 개발</td><td>docker-compose에 같은 이미지 + 같은 realm JSON. 로컬에서도 서비스 이름 <code>keycloak</code>으로 접근해 issuer를 맞춤</td></tr>
 </table></div>
 <p class="cap">deploy/keycloak/deployment.yaml (핵심만)</p>
@@ -1864,13 +1864,13 @@ public class UserHeaderFilter implements GlobalFilter, Ordered {
 <h4>이 프로젝트의 활용처 (2개)</h4>
 <div class="tbl"><table>
 <tr><th>테이블</th><th>PK / SK</th><th>쓰는 곳</th><th>용도</th><th>우선순위</th></tr>
-<tr><td><code>sesac-team1-notifications</code></td><td>PK <code>USER#{userId}</code> / SK <code>{occurredAt}#{eventId}</code>, TTL 90일</td><td><code>order-notification</code> Lambda</td><td>메일 발송 이력 + <b>같은 이벤트 중복 발송 방지(멱등)</b></td><td><span class="tag should">Should</span></td></tr>
-<tr><td><code>sesac-team1-settlement-reports</code></td><td>PK <code>STORE#{storeId}</code> / SK <code>WEEK#{2026-W42}</code></td><td><code>settlement-report</code> Lambda</td><td>명세서 S3 경로 · 발송 시각 · 발송 결과 → 같은 주차 명세서 중복 발송 방지, 재발송 여부 판단</td><td><span class="tag should">Should</span></td></tr>
+<tr><td><code>sesac-gojigi-notifications</code></td><td>PK <code>USER#{userId}</code> / SK <code>{occurredAt}#{eventId}</code>, TTL 90일</td><td><code>order-notification</code> Lambda</td><td>메일 발송 이력 + <b>같은 이벤트 중복 발송 방지(멱등)</b></td><td><span class="tag should">Should</span></td></tr>
+<tr><td><code>sesac-gojigi-settlement-reports</code></td><td>PK <code>STORE#{storeId}</code> / SK <code>WEEK#{2026-W42}</code></td><td><code>settlement-report</code> Lambda</td><td>명세서 S3 경로 · 발송 시각 · 발송 결과 → 같은 주차 명세서 중복 발송 방지, 재발송 여부 판단</td><td><span class="tag should">Should</span></td></tr>
 </table></div>
 <p>그 외 테이블은 만들지 않습니다. 두 테이블 모두 서버리스 함수(11장)의 멱등 · 이력용이며, Spring 서비스는 DynamoDB에 접근하지 않습니다.</p>
 <p class="cap">infra/terraform/app/dynamodb.tf — 사용량 기반 과금 + TTL</p>
 <pre><code>resource "aws_dynamodb_table" "notifications" {
-  name         = "sesac-team1-notifications"
+  name         = "sesac-gojigi-notifications"
   billing_mode = "PAY_PER_REQUEST"      # 요청한 만큼만 과금. 이 규모면 거의 무료
   hash_key     = "pk"
   range_key    = "sk"
@@ -1938,18 +1938,18 @@ DynamoDB는 "접근 패턴을 먼저 정하고 키를 설계"합니다(Single Ta
 <tr><td>판단</td><td><b>채택</b></td><td>20장 "실무에서는"</td></tr>
 </table></div>
 <h4>토픽 · 큐 구성</h4>
-<p>도메인마다 SNS 토픽 1개 → 구독자마다 SQS 큐 1개(필터 정책으로 필요한 eventType만, <b>Raw message delivery 켬</b>) → 큐마다 DLQ(최대 수신 3회). 이름은 컨벤션 5-1(<code>sesac-team1-{소비자}-{도메인}-events</code>, DLQ는 <code>-dlq</code>).</p>
+<p>도메인마다 SNS 토픽 1개 → 구독자마다 SQS 큐 1개(필터 정책으로 필요한 eventType만, <b>Raw message delivery 켬</b>) → 큐마다 DLQ(최대 수신 3회). 이름은 컨벤션 5-1(<code>sesac-gojigi-{소비자}-{도메인}-events</code>, DLQ는 <code>-dlq</code>).</p>
 <div class="tbl"><table>
 <tr><th>토픽</th><th>구독 큐</th><th>필터 (eventType)</th></tr>
-<tr><td rowspan="4"><code>sesac-team1-store-events</code></td><td><code>sesac-team1-user-store-events</code></td><td>StoreApproved</td></tr>
-<tr><td><code>sesac-team1-product-store-events</code></td><td>StoreStatusChanged</td></tr>
-<tr><td><code>sesac-team1-settlement-store-events</code></td><td>StoreStatusChanged</td></tr>
-<tr><td><code>sesac-team1-notification-store-events</code></td><td>StoreApproved</td></tr>
-<tr><td rowspan="4"><code>sesac-team1-order-events</code></td><td><code>sesac-team1-user-order-events</code></td><td>OrderPaid · OrderItemConfirmed</td></tr>
-<tr><td><code>sesac-team1-settlement-order-events</code></td><td>OrderItemConfirmed</td></tr>
-<tr><td><code>sesac-team1-review-order-events</code></td><td>OrderItemConfirmed</td></tr>
-<tr><td><code>sesac-team1-notification-order-events</code></td><td>OrderPaid · OrderItemShipped · OrderItemCancelled · OrderItemReturned</td></tr>
-<tr><td><code>sesac-team1-settlement-events</code></td><td><code>sesac-team1-report-settlement-events</code></td><td>SettlementPaid</td></tr>
+<tr><td rowspan="4"><code>sesac-gojigi-store-events</code></td><td><code>sesac-gojigi-user-store-events</code></td><td>StoreApproved</td></tr>
+<tr><td><code>sesac-gojigi-product-store-events</code></td><td>StoreStatusChanged</td></tr>
+<tr><td><code>sesac-gojigi-settlement-store-events</code></td><td>StoreStatusChanged</td></tr>
+<tr><td><code>sesac-gojigi-notification-store-events</code></td><td>StoreApproved</td></tr>
+<tr><td rowspan="4"><code>sesac-gojigi-order-events</code></td><td><code>sesac-gojigi-user-order-events</code></td><td>OrderPaid · OrderItemConfirmed</td></tr>
+<tr><td><code>sesac-gojigi-settlement-order-events</code></td><td>OrderItemConfirmed</td></tr>
+<tr><td><code>sesac-gojigi-review-order-events</code></td><td>OrderItemConfirmed</td></tr>
+<tr><td><code>sesac-gojigi-notification-order-events</code></td><td>OrderPaid · OrderItemShipped · OrderItemCancelled · OrderItemReturned</td></tr>
+<tr><td><code>sesac-gojigi-settlement-events</code></td><td><code>sesac-gojigi-report-settlement-events</code></td><td>SettlementPaid</td></tr>
 </table></div>
 <p class="cap">이벤트 봉투(envelope) — 전 팀이 같은 형식 (컨벤션 2-7)</p>
 <pre><code>{
@@ -1998,20 +1998,20 @@ DynamoDB는 "접근 패턴을 먼저 정하고 키를 설계"합니다(Single Ta
 <div class="tbl"><table>
 <tr><th>함수</th><th>트리거</th><th>하는 일</th><th>담당</th><th>우선순위</th></tr>
 <tr><td><code>order-notification</code></td><td>SQS (<code>notification-order-events</code> · <code>notification-store-events</code>)</td><td>SES 메일(주문 확인 · 배송 시작 · 취소/반품 완료 · 입점 승인) + DynamoDB <code>notifications</code>로 멱등 · 이력</td><td>구지훈</td><td><span class="tag should">Should</span></td></tr>
-<tr><td><code>settlement-report</code></td><td>SQS (<code>report-settlement-events</code>, SettlementPaid)</td><td>정산 명세서 CSV → S3 <code>sesac-team1-reports-{계정4}</code> → SES로 다운로드 링크(presigned 7일) + DynamoDB <code>settlement-reports</code></td><td>구지훈</td><td><span class="tag should">Should</span></td></tr>
-<tr><td><code>log-archive</code></td><td>EventBridge 매일 03:00 (KST)</td><td>CloudWatch Logs(Lambda 로그) → S3 <code>sesac-team1-log-archive-{계정4}</code> 내보내기, 수명주기 90일 후 Glacier</td><td>박지연</td><td><span class="tag could">Could</span></td></tr>
+<tr><td><code>settlement-report</code></td><td>SQS (<code>report-settlement-events</code>, SettlementPaid)</td><td>정산 명세서 CSV → S3 <code>sesac-gojigi-reports-{계정4}</code> → SES로 다운로드 링크(presigned 7일) + DynamoDB <code>settlement-reports</code></td><td>구지훈</td><td><span class="tag should">Should</span></td></tr>
+<tr><td><code>log-archive</code></td><td>EventBridge 매일 03:00 (KST)</td><td>CloudWatch Logs(Lambda 로그) → S3 <code>sesac-gojigi-log-archive-{계정4}</code> 내보내기, 수명주기 90일 후 Glacier</td><td>박지연</td><td><span class="tag could">Could</span></td></tr>
 </table></div>
 <p>상품 이미지 썸네일 Lambda는 만들지 않습니다. 이미지는 원본만 S3에 올리고, "원본 / 리사이즈 분리" 구조는 아키텍처 문서에만 그립니다(02장 · 20장). 고객센터(FAQ · 상품문의)도 서버리스가 아니라 프론트 정적 데이터와 review-service에 둡니다(03장).</p>
 
 <h3>구축 방법</h3>
 <div class="tbl"><table>
 <tr><th>누가 · 무엇으로</th><th>관리 대상</th></tr>
-<tr><td>구지훈 · Terraform (<code>infra/terraform/app</code>)</td><td>공유 자원: S3 버킷(reports · log-archive, 수명주기 · 버킷 정책), SNS 토픽, SQS 큐 · DLQ, DynamoDB, SES 자격 증명. 만든 ARN · 이름을 <b>SSM Parameter Store</b>에 기록 (<code>/sesac-team1/dev/sqs/notification-order-queue-arn</code> 등)</td></tr>
+<tr><td>구지훈 · Terraform (<code>infra/terraform/app</code>)</td><td>공유 자원: S3 버킷(reports · log-archive, 수명주기 · 버킷 정책), SNS 토픽, SQS 큐 · DLQ, DynamoDB, SES 자격 증명. 만든 ARN · 이름을 <b>SSM Parameter Store</b>에 기록 (<code>/sesac-gojigi/dev/sqs/notification-order-queue-arn</code> 등)</td></tr>
 <tr><td>함수 담당 · Serverless Framework (<code>serverless/{함수}/serverless.yml</code>)</td><td>Lambda 코드, 함수별 IAM 권한, 트리거 연결. SSM에서 ARN을 읽어 씀. <code>order-notification</code> · <code>settlement-report</code> = 구지훈, <code>log-archive</code> = 박지연</td></tr>
 <tr><td>이경석 · GitHub Actions</td><td><code>serverless/**</code> 변경 시 바뀐 함수만 <code>serverless deploy --stage dev</code> (OIDC 역할)</td></tr>
 </table></div>
 <p class="cap">serverless/order-notification/serverless.yml</p>
-<pre><code>service: sesac-team1-order-notification
+<pre><code>service: sesac-gojigi-order-notification
 frameworkVersion: "4"
 
 provider:
@@ -2023,8 +2023,8 @@ provider:
   timeout: 10
   logRetentionInDays: 14
   environment:
-    TABLE: ${ssm:/sesac-team1/dev/dynamodb/notifications-table}
-    FROM_EMAIL: ${ssm:/sesac-team1/dev/ses/from-email}
+    TABLE: ${ssm:/sesac-gojigi/dev/dynamodb/notifications-table}
+    FROM_EMAIL: ${ssm:/sesac-gojigi/dev/ses/from-email}
   iam:
     role:
       statements:
@@ -2033,18 +2033,18 @@ provider:
           Resource: "*"
         - Effect: Allow
           Action: [dynamodb:GetItem, dynamodb:PutItem]
-          Resource: ${ssm:/sesac-team1/dev/dynamodb/notifications-arn}
+          Resource: ${ssm:/sesac-gojigi/dev/dynamodb/notifications-arn}
 
 functions:
   notify:
     handler: src/notify.handler
     events:
       - sqs:
-          arn: ${ssm:/sesac-team1/dev/sqs/notification-order-queue-arn}
+          arn: ${ssm:/sesac-gojigi/dev/sqs/notification-order-queue-arn}
           batchSize: 10
           functionResponseType: ReportBatchItemFailures   # 실패한 메시지만 재시도
       - sqs:
-          arn: ${ssm:/sesac-team1/dev/sqs/notification-store-queue-arn}
+          arn: ${ssm:/sesac-gojigi/dev/sqs/notification-store-queue-arn}
           batchSize: 10
           functionResponseType: ReportBatchItemFailures</code></pre>
 <p class="cap">serverless/order-notification/src/notify.js</p>
@@ -2090,7 +2090,7 @@ export const handler = async (event) =&gt; {
   return { batchItemFailures: failures };
 };</code></pre>
 <p class="cap">serverless/log-archive/serverless.yml — 매일 03:00(KST) CloudWatch Logs → S3</p>
-<pre><code>service: sesac-team1-log-archive
+<pre><code>service: sesac-gojigi-log-archive
 frameworkVersion: "4"
 
 provider:
@@ -2099,8 +2099,8 @@ provider:
   region: ap-northeast-2
   timeout: 300                 # 내보내기 작업은 계정당 동시에 1개 → 순서대로 기다림
   environment:
-    BUCKET: ${ssm:/sesac-team1/dev/s3/log-archive-bucket}
-    LOG_GROUP_PREFIX: /aws/lambda/sesac-team1-
+    BUCKET: ${ssm:/sesac-gojigi/dev/s3/log-archive-bucket}
+    LOG_GROUP_PREFIX: /aws/lambda/sesac-gojigi-
   iam:
     role:
       statements:
@@ -2190,7 +2190,7 @@ MSA를 쿠버네티스에 올린 조직은 업무 API를 Lambda로 섞지 않는
 <tr><td><code>security.yml</code></td><td>PR</td><td>gitleaks로 시크릿 유출 검사</td></tr>
 <tr><td><code>nightly-scale.yml</code> (선택)</td><td>schedule (평일 22시 / 9시)</td><td>노드 그룹 desired 0 ↔ 2 (비용 절감)</td></tr>
 </table></div>
-<p>ECR 저장소는 9개입니다: <code>sesac-team1-{gateway · user · store · product · order · payment · review · settlement · admin}-service</code>. Keycloak은 공식 이미지를 그대로 씁니다.</p>
+<p>ECR 저장소는 9개입니다: <code>sesac-gojigi-{gateway · user · store · product · order · payment · review · settlement · admin}-service</code>. Keycloak은 공식 이미지를 그대로 씁니다.</p>
 <p class="cap">.github/workflows/backend.yml (핵심만)</p>
 <pre><code>name: backend
 on:
@@ -2261,7 +2261,7 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
       - if: github.event_name == 'push'
         run: |
-          IMAGE=${{ steps.ecr.outputs.registry }}/sesac-team1-${{ matrix.service }}:${GITHUB_SHA::7}
+          IMAGE=${{ steps.ecr.outputs.registry }}/sesac-gojigi-${{ matrix.service }}:${GITHUB_SHA::7}
           docker build -t "$IMAGE" .
           docker push "$IMAGE"
 
@@ -2274,7 +2274,7 @@ jobs:
       - uses: actions/checkout@v4
       - run: |
           for svc in $(echo '${{ needs.changes.outputs.services }}' | jq -r '.[]'); do
-            yq -i ".services.\"$svc\".tag = \"${GITHUB_SHA::7}\"" deploy/helm/sesac-team1-app/values.yaml
+            yq -i ".services.\"$svc\".tag = \"${GITHUB_SHA::7}\"" deploy/helm/sesac-gojigi-app/values.yaml
           done
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -2398,12 +2398,12 @@ class SagaMetrics {
 <p>관리자 화면에 별도 "시스템 상태" 페이지는 만들지 않고 Grafana 대시보드 하나로 보여줍니다. 시연 때는 kiosk 모드(<code>?kiosk</code>)로 전체 화면에 띄웁니다. 수집에 <b>kube-state-metrics</b>(필수)와 <b>blackbox exporter</b>(외부 체크)가 필요합니다(04장 파드 예산 포함).</p>
 <div class="tbl"><table>
 <tr><th>패널</th><th>형태</th><th>쿼리 (예)</th><th>보이는 것</th></tr>
-<tr><td>서비스별 가용 상태 (9개 + Keycloak · MySQL · Redis)</td><td>Stat (서비스마다 타일 1개)</td><td><code>kube_deployment_status_replicas_available{namespace="sesac-team1"} / kube_deployment_spec_replicas{namespace="sesac-team1"}</code></td><td>1 = 초록, 0~1 = 노랑(일부만 살아 있음 · 롤링 중), 0 = 빨강</td></tr>
-<tr><td>수집 대상 생존</td><td><b>State timeline</b> (최근 30분)</td><td><code>up{namespace="sesac-team1"}</code></td><td>죽었다 살아나는 구간이 시간축 위에 빨강 → 초록 띠로 보임</td></tr>
-<tr><td>파드 Ready</td><td>State timeline</td><td><code>kube_pod_status_ready{namespace="sesac-team1", condition="true"}</code></td><td>롤링 배포 때 새 파드가 Ready가 된 뒤 옛 파드가 빠지는 순서</td></tr>
-<tr><td>파드 재시작 수</td><td>Stat</td><td><code>increase(kube_pod_container_status_restarts_total{namespace="sesac-team1"}[10m])</code></td><td>0 = 초록, 1 이상 = 노랑, 3 이상 = 빨강</td></tr>
+<tr><td>서비스별 가용 상태 (9개 + Keycloak · MySQL · Redis)</td><td>Stat (서비스마다 타일 1개)</td><td><code>kube_deployment_status_replicas_available{namespace="sesac-gojigi"} / kube_deployment_spec_replicas{namespace="sesac-gojigi"}</code></td><td>1 = 초록, 0~1 = 노랑(일부만 살아 있음 · 롤링 중), 0 = 빨강</td></tr>
+<tr><td>수집 대상 생존</td><td><b>State timeline</b> (최근 30분)</td><td><code>up{namespace="sesac-gojigi"}</code></td><td>죽었다 살아나는 구간이 시간축 위에 빨강 → 초록 띠로 보임</td></tr>
+<tr><td>파드 Ready</td><td>State timeline</td><td><code>kube_pod_status_ready{namespace="sesac-gojigi", condition="true"}</code></td><td>롤링 배포 때 새 파드가 Ready가 된 뒤 옛 파드가 빠지는 순서</td></tr>
+<tr><td>파드 재시작 수</td><td>Stat</td><td><code>increase(kube_pod_container_status_restarts_total{namespace="sesac-gojigi"}[10m])</code></td><td>0 = 초록, 1 이상 = 노랑, 3 이상 = 빨강</td></tr>
 <tr><td>서비스별 5xx 비율</td><td>Time series</td><td><code>sum by (app)(rate(http_server_requests_seconds_count{status=~"5.."}[1m]))</code></td><td>배포 · 장애 중 오류가 0으로 유지되는지</td></tr>
-<tr><td>롤링 배포</td><td>Time series</td><td><code>kube_replicaset_status_ready_replicas{namespace="sesac-team1"}</code></td><td>옛 ReplicaSet ↓ · 새 ReplicaSet ↑ 교차</td></tr>
+<tr><td>롤링 배포</td><td>Time series</td><td><code>kube_replicaset_status_ready_replicas{namespace="sesac-gojigi"}</code></td><td>옛 ReplicaSet ↓ · 새 ReplicaSet ↑ 교차</td></tr>
 <tr><td>외부 체크 (사용자 입장)</td><td>Stat + State timeline</td><td><code>probe_success{job="blackbox-gateway"}</code> (게이트웨이 <code>/actuator/health</code>)</td><td>1 = 초록, 0 = 빨강 — 입구가 살아 있는지</td></tr>
 </table></div>
 <p><b>값 매핑(Value mappings) · 임곗값</b>: Stat 패널은 Thresholds를 <code>0 → red</code>, <code>0.01 → yellow</code>, <code>1 → green</code>으로 두고, 값 매핑으로 <code>1 → "UP"</code>, <code>0 → "DOWN"</code> 텍스트를 표시합니다. State timeline도 같은 매핑을 써서 색이 패널마다 같게 보이게 합니다. 새로 고침 간격은 5초, Prometheus 수집 간격은 시연 기간에 10~15초로 둡니다.</p>
@@ -2552,7 +2552,7 @@ nginx 컨테이너를 EKS에 올리는 방법도 있지만, 정적 파일은 Ver
 <p class="lead">14장이 프론트였다면, 이 장은 그 밖의 전부입니다. Spring Boot 서비스 9개와 Keycloak, <code>build.gradle</code>, Dockerfile, 쿠버네티스(EKS) YAML · Helm · ArgoCD, Terraform, Serverless를 한 저장소에 어떻게 두고 누가 언제 실행하는지 정리합니다. 패키지 구조 · 이름 규칙은 코드 컨벤션 2장 · 5장과 같으며, 이 장은 그것을 실제 폴더 · 파일에 펼친 것입니다.</p>
 
 <h3>1. 모노레포 전체 구조</h3>
-<pre><code>sesac-team1-gotgan/                          GitHub 모노레포 하나
+<pre><code>sesac-gojigi-gotgan/                          GitHub 모노레포 하나
 ├── services/                               Spring Boot 서비스 9개 (폴더 1개 = 이미지 1개 = Deployment 1개)
 │   ├── gateway-service/                    :8080 Spring Cloud Gateway · JWT 검증(Keycloak JWKS) · 사용자 헤더 주입 · CORS
 │   ├── user-service/                       :8081 회원 · 가입/로그인(Keycloak 대리 호출) · 배송지 · 포인트 · 등급
@@ -2570,7 +2570,7 @@ nginx 컨테이너를 EKS에 올리는 방법도 있지만, 정적 파일은 Ver
 │   │   ├── external-secrets/               ClusterSecretStore + 서비스별 ExternalSecret (keycloak 포함)
 │   │   ├── db/                             storageclass · mysql(StatefulSet) · init-schemas.sh(스키마 8개 · 계정) · redis
 │   │   └── keycloak/                       realm-gotgan.json(ConfigMap) · keycloak.yaml(Deployment + ClusterIP Service)
-│   ├── helm/sesac-team1-app/               앱 계층 (ArgoCD가 Git을 보고 동기화)
+│   ├── helm/sesac-gojigi-app/               앱 계층 (ArgoCD가 Git을 보고 동기화)
 │   │   ├── Chart.yaml
 │   │   ├── values.yaml                     서비스 9개의 이미지 태그 · 레플리카 · 자원 · IRSA 역할
 │   │   └── templates/                      deployment.yaml(프로브 · 롤링 · preStop) · service.yaml · serviceaccount.yaml
@@ -2626,7 +2626,7 @@ nginx 컨테이너를 EKS에 올리는 방법도 있지만, 정적 파일은 Ver
 ├── Dockerfile · .dockerignore              멀티 스테이지 빌드 (build/, .gradle/ 제외)
 └── src/
     ├── main/
-    │   ├── java/com/sesac/team1/order/
+    │   ├── java/com/sesac/gojigi/order/
     │   │   ├── OrderApplication.java
     │   │   ├── common/                         도메인에 속하지 않는 공통 모듈 (서비스 템플릿에서 복사)
     │   │   │   ├── config/                     RestClientConfig(연결 2s · 읽기 3s) · Resilience4jConfig · RedisConfig
@@ -2671,7 +2671,7 @@ nginx 컨테이너를 EKS에 올리는 방법도 있지만, 정적 파일은 Ver
     │       └── db/
     │           ├── migration/V1__init.sql ...  Flyway (06장)
     │           └── seed/R__demo_seed.sql       local · dev 프로필에서만
-    └── test/java/com/sesac/team1/order/
+    └── test/java/com/sesac/gojigi/order/
         ├── order/entity/OrderItemStatusTest.java       상태 전이 단위 테스트 (DB 없이 빠르게)
         ├── saga/service/PlaceOrderSagaTest.java        보상 시나리오 (클라이언트는 가짜 객체)
         └── support/IntegrationTestSupport.java         Testcontainers MySQL · Redis</code></pre>
@@ -2710,7 +2710,7 @@ nginx 컨테이너를 EKS에 올리는 방법도 있지만, 정적 파일은 Ver
     id 'org.sonarqube' version '6.2.0.5505'                    // 12장 — 최신 버전 확인 후 전 서비스 통일
 }
 
-group = 'com.sesac.team1'
+group = 'com.sesac.gojigi'
 version = '0.0.1'
 
 java {
@@ -2771,8 +2771,8 @@ dependencies {
 
 sonar {
     properties {
-        property 'sonar.organization', 'sesac-team1'
-        property 'sonar.projectKey', 'sesac-team1_gotgan_order-service'   // 서비스마다 하나
+        property 'sonar.organization', 'sesac-gojigi'
+        property 'sonar.projectKey', 'sesac-gojigi_gotgan_order-service'   // 서비스마다 하나
     }
 }
 
@@ -2960,11 +2960,11 @@ liveness가 DB · Redis · 다른 서비스 상태를 보면, MySQL이 잠깐 �
 kind: ConfigMap
 metadata:
   name: app-config
-  namespace: sesac-team1
+  namespace: sesac-gojigi
 data:
   SPRING_PROFILES_ACTIVE: k8s
-  DB_HOST: mysql.sesac-team1.svc.cluster.local
-  REDIS_HOST: redis.sesac-team1.svc.cluster.local
+  DB_HOST: mysql.sesac-gojigi.svc.cluster.local
+  REDIS_HOST: redis.sesac-gojigi.svc.cluster.local
   USER_SERVICE_URI: http://user-service:8081            # CoreDNS 이름 (게이트웨이 라우트 · 서비스 간 호출)
   STORE_SERVICE_URI: http://store-service:8082
   PRODUCT_SERVICE_URI: http://product-service:8083
@@ -2978,7 +2978,7 @@ data:
   ZIPKIN_ENDPOINT: http://zipkin.monitoring.svc.cluster.local:9411/api/v2/spans
   AUTO_CONFIRM_AFTER: 2m                                 # 데모용 단축 (10장)
   TZ: Asia/Seoul                                         # JVM 시간대 — DB · JDBC와 함께 세 곳 모두 Asia/Seoul</code></pre>
-<p class="cap">deploy/helm/sesac-team1-app/values.yaml — 서비스별 항목 (CI는 tag 줄만 바꿈)</p>
+<p class="cap">deploy/helm/sesac-gojigi-app/values.yaml — 서비스별 항목 (CI는 tag 줄만 바꿈)</p>
 <pre><code>image:
   registry: &lt;ACCOUNT_ID&gt;.dkr.ecr.ap-northeast-2.amazonaws.com
 
@@ -2989,7 +2989,7 @@ defaults:
 
 services:
   gateway-service:
-    repository: sesac-team1-gateway
+    repository: sesac-gojigi-gateway
     tag: "a1b2c3d"
     port: 8080
     replicas: 2                             # 입구는 2개 — 하나가 죽어도 접속 유지
@@ -2997,18 +2997,18 @@ services:
       type: LoadBalancer
       annotations: {}                       # NLB 어노테이션 + 05장 EIP · 서브넷
   order-service:
-    repository: sesac-team1-order
+    repository: sesac-gojigi-order
     tag: "a1b2c3d"                          # ← GitHub Actions가 커밋하는 줄
     port: 8084
     serviceAccount:
-      roleArn: arn:aws:iam::&lt;ACCOUNT_ID&gt;:role/sesac-team1-order-irsa   # SNS 발행 권한 (04장)
+      roleArn: arn:aws:iam::&lt;ACCOUNT_ID&gt;:role/sesac-gojigi-order-irsa   # SNS 발행 권한 (04장)
     secretName: order-service-secret        # ESO가 만든 Secret → envFrom
   admin-service:
-    repository: sesac-team1-admin
+    repository: sesac-gojigi-admin
     tag: "a1b2c3d"
     port: 8088                              # DB · AWS 권한 없음 → serviceAccount · DB 시크릿 없음
   # user · store · product · payment · review · settlement-service 도 같은 모양</code></pre>
-<p class="cap">deploy/helm/sesac-team1-app/templates/deployment.yaml — 무중단 배포 · 자동 복구에 관련된 부분</p>
+<p class="cap">deploy/helm/sesac-gojigi-app/templates/deployment.yaml — 무중단 배포 · 자동 복구에 관련된 부분</p>
 <pre><code>spec:
   replicas: {{ $svc.replicas | default $.Values.defaults.replicas }}
   strategy:
@@ -3062,7 +3062,7 @@ services:
 kind: Deployment
 metadata:
   name: keycloak
-  namespace: sesac-team1
+  namespace: sesac-gojigi
   labels: { app: keycloak }
 spec:
   replicas: 1
@@ -3104,24 +3104,24 @@ apiVersion: v1
 kind: Service
 metadata:
   name: keycloak
-  namespace: sesac-team1
+  namespace: sesac-gojigi
 spec:
   type: ClusterIP                                        # 외부 노출 없음. 관리 콘솔은 kubectl port-forward svc/keycloak 8180:8080
   selector: { app: keycloak }
   ports: [{ port: 8080, targetPort: 8080 }]</code></pre>
 <div class="tbl"><table>
 <tr><th>파일</th><th>역할</th><th>적용</th></tr>
-<tr><td><code>k8s/00-namespace.yaml</code></td><td>sesac-team1 네임스페이스</td><td>kubectl 1회</td></tr>
+<tr><td><code>k8s/00-namespace.yaml</code></td><td>sesac-gojigi 네임스페이스</td><td>kubectl 1회</td></tr>
 <tr><td><code>k8s/01-configmap.yaml</code></td><td>서비스 주소 8개 · <code>KEYCLOAK_URI</code> · 공통 설정</td><td>kubectl, 바꾼 뒤 <code>rollout restart</code></td></tr>
 <tr><td><code>k8s/external-secrets/</code></td><td><code>ClusterSecretStore</code>(Secrets Manager 연결) + 서비스별 · keycloak <code>ExternalSecret</code></td><td>kubectl 1회 → ESO가 1시간마다 동기화</td></tr>
 <tr><td><code>k8s/db/</code></td><td>StorageClass(gp3) · MySQL StatefulSet + <code>init-schemas.sh</code>(스키마 8개 · 서비스별 계정) · Redis</td><td>kubectl 1회</td></tr>
 <tr><td><code>k8s/keycloak/</code></td><td><code>realm-gotgan.json</code>(역할 3종 · <code>gotgan-backend</code> 클라이언트 · 매퍼 · 토큰 수명) · Deployment · ClusterIP Service</td><td>kubectl 1회 (이경석)</td></tr>
 <tr><td><code>observability/</code></td><td>Prometheus · Loki · Zipkin · Grafana · kube-state-metrics · blackbox exporter + <code>dashboards/system-status.json</code></td><td>kubectl / Helm (박지연)</td></tr>
-<tr><td><code>helm/sesac-team1-app/</code></td><td>서비스 9개의 Deployment · Service · ServiceAccount</td><td><b>ArgoCD</b></td></tr>
+<tr><td><code>helm/sesac-gojigi-app/</code></td><td>서비스 9개의 Deployment · Service · ServiceAccount</td><td><b>ArgoCD</b></td></tr>
 <tr><td><code>argocd/application.yaml</code></td><td>감시할 저장소 · 경로 · 자동 동기화 정책</td><td>kubectl 1회</td></tr>
 </table></div>
 <div class="box warn"><b class="t">realm JSON에 시크릿을 커밋하지 않기</b>
-<code>realm-gotgan.json</code>은 콘솔에서 내보낸(export) 파일을 커밋하되, <code>gotgan-backend</code>의 client secret은 넣지 않습니다. 가져온 뒤 콘솔에서 secret을 재발급해 Secrets Manager(<code>sesac-team1/user-service</code>의 <code>KEYCLOAK_CLIENT_SECRET</code>)에 넣습니다.</div>
+<code>realm-gotgan.json</code>은 콘솔에서 내보낸(export) 파일을 커밋하되, <code>gotgan-backend</code>의 client secret은 넣지 않습니다. 가져온 뒤 콘솔에서 secret을 재발급해 Secrets Manager(<code>sesac-gojigi/user-service</code>의 <code>KEYCLOAK_CLIENT_SECRET</code>)에 넣습니다.</div>
 
 <h3>8. Terraform 폴더별 파일</h3>
 <div class="tbl"><table>
@@ -3137,13 +3137,13 @@ spec:
 <div class="tbl"><table>
 <tr><th>파일</th><th>자원</th></tr>
 <tr><td><code>kms.tf</code></td><td>KMS 키 1개 (Secrets Manager 암호화)</td></tr>
-<tr><td><code>s3.tf</code></td><td>버킷 4개: <code>sesac-team1-images-{계정4}</code>(prefix <code>products/</code> · <code>reviews/</code>, presigned 업로드) · <code>sesac-team1-seller-docs-{계정4}</code> · <code>sesac-team1-reports-{계정4}</code> · <code>sesac-team1-log-archive-{계정4}</code>(90일 후 Glacier 수명주기)</td></tr>
-<tr><td><code>sns_sqs.tf</code></td><td>토픽 3개: <code>sesac-team1-store-events</code> · <code>sesac-team1-order-events</code> · <code>sesac-team1-settlement-events</code><br>구독자별 큐 + DLQ(3회, <code>-dlq</code>), SNS 필터 정책으로 필요한 이벤트만:<br>store-events → <code>sesac-team1-user-store-events</code> · <code>-product-store-events</code> · <code>-settlement-store-events</code> · <code>-notification-store-events</code><br>order-events → <code>sesac-team1-user-order-events</code> · <code>-review-order-events</code> · <code>-settlement-order-events</code> · <code>-notification-order-events</code><br>settlement-events → <code>sesac-team1-report-settlement-events</code></td></tr>
-<tr><td><code>dynamodb.tf</code></td><td>테이블 2개: <code>sesac-team1-notifications</code>(알림 멱등 · 이력) · <code>sesac-team1-settlement-reports</code>(명세서 발송 이력)</td></tr>
+<tr><td><code>s3.tf</code></td><td>버킷 4개: <code>sesac-gojigi-images-{계정4}</code>(prefix <code>products/</code> · <code>reviews/</code>, presigned 업로드) · <code>sesac-gojigi-seller-docs-{계정4}</code> · <code>sesac-gojigi-reports-{계정4}</code> · <code>sesac-gojigi-log-archive-{계정4}</code>(90일 후 Glacier 수명주기)</td></tr>
+<tr><td><code>sns_sqs.tf</code></td><td>토픽 3개: <code>sesac-gojigi-store-events</code> · <code>sesac-gojigi-order-events</code> · <code>sesac-gojigi-settlement-events</code><br>구독자별 큐 + DLQ(3회, <code>-dlq</code>), SNS 필터 정책으로 필요한 이벤트만:<br>store-events → <code>sesac-gojigi-user-store-events</code> · <code>-product-store-events</code> · <code>-settlement-store-events</code> · <code>-notification-store-events</code><br>order-events → <code>sesac-gojigi-user-order-events</code> · <code>-review-order-events</code> · <code>-settlement-order-events</code> · <code>-notification-order-events</code><br>settlement-events → <code>sesac-gojigi-report-settlement-events</code></td></tr>
+<tr><td><code>dynamodb.tf</code></td><td>테이블 2개: <code>sesac-gojigi-notifications</code>(알림 멱등 · 이력) · <code>sesac-gojigi-settlement-reports</code>(명세서 발송 이력)</td></tr>
 <tr><td><code>ses.tf</code></td><td>발신 도메인/주소 인증 (샌드박스, 수신자도 인증)</td></tr>
-<tr><td><code>secrets.tf</code></td><td>Secrets Manager "그릇"만: <code>sesac-team1/{service}</code>(DB가 있는 7개 서비스 · payment는 포트원 키 포함) · <code>sesac-team1/keycloak</code></td></tr>
-<tr><td><code>irsa.tf</code></td><td><code>sesac-team1-{service}-irsa</code>: user(sqs) · store(sns · s3 seller-docs) · product(sqs · s3 images) · order(sns) · review(sqs · s3 images) · settlement(sqs · sns). gateway · payment · admin은 없음</td></tr>
-<tr><td><code>ssm.tf</code> · <code>eip.tf</code></td><td>Lambda가 읽을 ARN(<code>/sesac-team1/dev/...</code>) · 게이트웨이 NLB용 EIP</td></tr>
+<tr><td><code>secrets.tf</code></td><td>Secrets Manager "그릇"만: <code>sesac-gojigi/{service}</code>(DB가 있는 7개 서비스 · payment는 포트원 키 포함) · <code>sesac-gojigi/keycloak</code></td></tr>
+<tr><td><code>irsa.tf</code></td><td><code>sesac-gojigi-{service}-irsa</code>: user(sqs) · store(sns · s3 seller-docs) · product(sqs · s3 images) · order(sns) · review(sqs · s3 images) · settlement(sqs · sns). gateway · payment · admin은 없음</td></tr>
+<tr><td><code>ssm.tf</code> · <code>eip.tf</code></td><td>Lambda가 읽을 ARN(<code>/sesac-gojigi/dev/...</code>) · 게이트웨이 NLB용 EIP</td></tr>
 </table></div>
 <div class="box warn"><b class="t">Secrets Manager 값은 Terraform에 쓰지 않기</b>
 Terraform으로 <code>aws_secretsmanager_secret_version</code>에 비밀번호를 넣으면 그 값이 <b>상태 파일(tfstate)에 평문으로</b> 남습니다. Terraform은 시크릿 "그릇"(<code>aws_secretsmanager_secret</code>)과 KMS 키만 만들고, 값은 구지훈이 CLI(<code>aws secretsmanager put-secret-value</code>)나 콘솔로 넣습니다.</div>
@@ -3168,8 +3168,8 @@ Terraform으로 <code>aws_secretsmanager_secret_version</code>에 비밀번호�
 <tr><td><code>log-archive</code></td><td>EventBridge 스케줄</td><td>CloudWatch Logs · S3 log-archive</td><td><span class="tag could">Could</span></td></tr>
 </table></div>
 <ul>
-<li>함수 폴더 하나가 Serverless 서비스(= CloudFormation 스택) 하나. 이름은 <code>sesac-team1-{폴더명}</code>, stage는 <code>dev</code>, 핸들러 export 이름은 <code>handler</code>.</li>
-<li>공유 자원 ARN은 하드코딩하지 않고 <code>${ssm:/sesac-team1/dev/...}</code>로 읽음(Terraform <code>app/ssm.tf</code>가 기록).</li>
+<li>함수 폴더 하나가 Serverless 서비스(= CloudFormation 스택) 하나. 이름은 <code>sesac-gojigi-{폴더명}</code>, stage는 <code>dev</code>, 핸들러 export 이름은 <code>handler</code>.</li>
+<li>공유 자원 ARN은 하드코딩하지 않고 <code>${ssm:/sesac-gojigi/dev/...}</code>로 읽음(Terraform <code>app/ssm.tf</code>가 기록).</li>
 <li>EventBridge cron은 UTC 기준이므로 03:00 KST = <code>cron(0 18 * * ? *)</code>.</li>
 <li>로컬 확인: <code>npx serverless invoke local -f notify -p events/order-paid.json</code></li>
 <li><code>node_modules/</code>, <code>.serverless/</code>는 <code>.gitignore</code>.</li>
@@ -3228,11 +3228,11 @@ volumes:
 <li>로컬에서는 Keycloak 호스트 이름을 고정하지 않으므로 issuer가 <code>http://localhost:8180/realms/gotgan</code>입니다. gateway · user-service의 <code>KEYCLOAK_URI</code> 기본값이 이 주소인 이유입니다.</li>
 </ul>
 <div class="box warn"><b class="t">노트북 메모리: 자기 서비스 + Keycloak만</b>
-Spring 서비스 하나가 약 0.5 ~ 1GB, Keycloak이 약 0.7GB, MySQL이 약 0.5GB를 씁니다. 9개를 전부 띄우면 노트북이 버티지 못합니다. <code>docker compose up -d</code>로 MySQL · Redis · Keycloak만 올리고, <b>자기 서비스(+ 필요하면 gateway)만</b> IDE에서 <code>local</code> 프로필로 띄웁니다. 다른 서비스가 필요하면 dev 클러스터에 <code>kubectl port-forward svc/product-service 8083:8083 -n sesac-team1</code>로 연결하거나, 클라이언트 호출이 실패해도 폴백으로 동작하는지 확인하는 기회로 씁니다.</div>
+Spring 서비스 하나가 약 0.5 ~ 1GB, Keycloak이 약 0.7GB, MySQL이 약 0.5GB를 씁니다. 9개를 전부 띄우면 노트북이 버티지 못합니다. <code>docker compose up -d</code>로 MySQL · Redis · Keycloak만 올리고, <b>자기 서비스(+ 필요하면 gateway)만</b> IDE에서 <code>local</code> 프로필로 띄웁니다. 다른 서비스가 필요하면 dev 클러스터에 <code>kubectl port-forward svc/product-service 8083:8083 -n sesac-gojigi</code>로 연결하거나, 클라이언트 호출이 실패해도 폴백으로 동작하는지 확인하는 기회로 씁니다.</div>
 
 <h3>11. 새 서비스 추가 · 이름 변경 체크리스트</h3>
 <ol>
-<li><code>services/{이름}/</code> — 서비스 템플릿 복사, 패키지(<code>com.sesac.team1.{service}</code>) · <code>spring.application.name</code> · 포트 · <code>EXPOSE</code> 변경</li>
+<li><code>services/{이름}/</code> — 서비스 템플릿 복사, 패키지(<code>com.sesac.gojigi.{service}</code>) · <code>spring.application.name</code> · 포트 · <code>EXPOSE</code> 변경</li>
 <li>gateway <code>application.yml</code> 라우트 + <code>SecurityConfig</code> 권한(08장 · 8-3 경로 표), 관리자 기능이면 <code>/api/admin/**</code>은 admin-service로 두고 이 서비스엔 <code>/internal/**</code>만</li>
 <li>Terraform <code>ecr/</code> 저장소 목록, 필요하면 <code>app/irsa.tf</code> 역할 · <code>app/secrets.tf</code> 그릇</li>
 <li>DB가 있으면: <code>init-schemas.sh</code>의 스키마 · 계정 + docker-compose 환경 변수 + Secrets Manager 값 + <code>ExternalSecret</code></li>
@@ -3345,7 +3345,7 @@ Windows에서 커밋한 <code>gradlew</code>나 <code>.sh</code> 파일이 CRLF 
 <tr><td>IAM · <b>IRSA</b></td><td>역할 · 신뢰 정책, ServiceAccount ↔ IAM 역할, 최소 권한</td><td>서비스별 S3 · SNS · SQS 권한, Lambda 실행 역할</td></tr>
 <tr><td><b>SNS · SQS</b></td><td>팬아웃, 필터 정책, raw delivery, 가시성 타임아웃, DLQ(3회), 롱폴링</td><td>토픽 3개 · 구독자별 큐 (10장)</td></tr>
 <tr><td><b>KMS</b> · Secrets Manager · ESO</td><td>KMS 키로 시크릿 암호화, ESO가 쿠버네티스 Secret으로 동기화</td><td>DB 계정 · Keycloak 클라이언트 시크릿 · 포트원 키</td></tr>
-<tr><td><b>SES</b> · DynamoDB</td><td>샌드박스 · 이메일 검증 / PK · SK · TTL, 조건부 쓰기(멱등)</td><td><code>sesac-team1-notifications</code> · <code>sesac-team1-settlement-reports</code></td></tr>
+<tr><td><b>SES</b> · DynamoDB</td><td>샌드박스 · 이메일 검증 / PK · SK · TTL, 조건부 쓰기(멱등)</td><td><code>sesac-gojigi-notifications</code> · <code>sesac-gojigi-settlement-reports</code></td></tr>
 <tr><td><b>Lambda · Serverless Framework</b></td><td>SQS 트리거 · 배치 크기 · 부분 실패 응답, <code>serverless.yml</code>, 로그 · 재시도</td><td><code>order-notification</code> · <code>settlement-report</code> (11장)</td></tr>
 <tr><td>정산 배치 · <b>ShedLock</b></td><td><code>@Scheduled</code> + ShedLock, 배치 멱등(UNIQUE 키), <code>long</code>(원) · <code>BigDecimal</code>(비율) · 반올림, ISO 주차 · Asia/Seoul</td><td>주간 집계 · 지급 · 보류, 카테고리 수수료(적용 시작일)</td></tr>
 <tr><td>admin 조합 · <b>Resilience4j</b></td><td><code>CompletableFuture</code> 병렬 호출, 서비스별 타임아웃 · 서킷 브레이커 · 폴백, 부분 응답(<code>unavailable</code>)</td><td>관리자 API 진입점 · 관리자 대시보드 (03 · 13장)</td></tr>
