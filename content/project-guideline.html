@@ -676,7 +676,7 @@ DB를 공유하거나, 서로의 API를 촘촘히 호출해야 해서 "배포는
 <li>order-service: <code>sns:Publish</code>(order-events)</li>
 <li>payment-service: AWS 권한 없음 (포트원 키는 ESO가 Secret으로 넣어 줌)</li>
 <li>user-service: SQS 수신(store-events · order-events 구독 큐)</li>
-<li>settlement-service: SQS 수신(order-events · store-events 구독 큐), <code>sns:Publish</code>(settlement-events)</li>
+<li>settlement-service: SQS 수신(order-events · store-events 구독 큐), <code>sns:Publish</code>(settlement-events), <code>s3:GetObject</code>(reports — 명세서 presigned 링크)</li>
 <li>admin-service · gateway-service: AWS 권한 없음</li>
 <li>external-secrets: <code>secretsmanager:GetSecretValue</code>(<code>sesac-gojigi/*</code>) + KMS 복호화</li>
 <li>grafana: CloudWatch 읽기 (Lambda 로그)</li>
@@ -854,7 +854,7 @@ done</code></pre>
 <tr><td>order</td><td>orderdb: <b>아래 예시</b> — orders, order_item, order_store_shipment, order_item_history, order_claim, saga_instance, outbox_event, shedlock</td><td>Redis: 장바구니 <code>cart:{userId}</code></td></tr>
 <tr><td>payment</td><td>paymentdb: payment, payment_cancel (07장)</td><td>—</td></tr>
 <tr><td>review</td><td>reviewdb: review, review_image, review_eligibility, product_inquiry, processed_event</td><td>S3: 리뷰 사진</td></tr>
-<tr><td>settlement</td><td>settlementdb: category_commission, settlement_item, settlement, payout, processed_event, shedlock</td><td>—</td></tr>
+<tr><td>settlement</td><td>settlementdb: category_commission, settlement_store(StoreApproved 스냅샷), settlement_item, settlement, payout, processed_event, shedlock</td><td>—</td></tr>
 <tr><td>keycloak</td><td>keycloakdb: Keycloak이 관리 (계정 · 역할 · 세션)</td><td>—</td></tr>
 <tr><td>gateway · admin</td><td>없음</td><td>gateway: Redis <code>blacklist:{jti}</code>(Could)</td></tr>
 </table></div>
@@ -1907,7 +1907,7 @@ DynamoDB는 "접근 패턴을 먼저 정하고 키를 설계"합니다(Single Ta
 <h3>이벤트로 처리할 곳</h3>
 <div class="tbl"><table>
 <tr><th>이벤트</th><th>발행</th><th>구독</th><th>구독자가 하는 일</th></tr>
-<tr><td><code>StoreApproved</code></td><td>store</td><td>user · 알림 Lambda</td><td>Keycloak에 SELLER 역할 · <code>store_id</code> 부여(08장) / 입점 승인 메일</td></tr>
+<tr><td><code>StoreApproved</code></td><td>store</td><td>user · settlement · 알림 Lambda</td><td>Keycloak에 SELLER 역할 · <code>store_id</code> 부여(08장) / settlement: 스토어명 · 정산 계좌 스냅샷(지급 시 store 동기 호출 없음) / 입점 승인 메일. payload: storeId · userId · storeName · sellerEmail · settlementAccount</td></tr>
 <tr><td><code>StoreStatusChanged</code> (휴면 · 정지)</td><td>store</td><td>product · settlement</td><td>스토어 상품 노출 숨김 / 지급 보류</td></tr>
 <tr><td><code>OrderPaid</code></td><td>order</td><td>user · 알림 Lambda</td><td>실결제금액의 <b>5% 포인트 적립</b> / 주문 확인 메일</td></tr>
 <tr><td><code>OrderItemShipped</code></td><td>order</td><td>알림 Lambda</td><td>배송 시작 메일(택배사 · 송장번호)</td></tr>
@@ -3154,7 +3154,7 @@ spec:
 <tr><td><code>dynamodb.tf</code></td><td>테이블 2개: <code>sesac-gojigi-notifications</code>(알림 멱등 · 이력) · <code>sesac-gojigi-settlement-reports</code>(명세서 발송 이력)</td></tr>
 <tr><td><code>ses.tf</code></td><td>발신 도메인/주소 인증 (샌드박스, 수신자도 인증)</td></tr>
 <tr><td><code>secrets.tf</code></td><td>Secrets Manager "그릇"만: <code>sesac-gojigi/{service}</code>(DB가 있는 7개 서비스 · payment는 포트원 키 포함) · <code>sesac-gojigi/keycloak</code></td></tr>
-<tr><td><code>irsa.tf</code></td><td><code>sesac-gojigi-{service}-irsa</code>: user(sqs) · store(sns · s3 seller-docs) · product(sqs · s3 images) · order(sns) · review(sqs · s3 images) · settlement(sqs · sns). gateway · payment · admin은 없음</td></tr>
+<tr><td><code>irsa.tf</code></td><td><code>sesac-gojigi-{service}-irsa</code>: user(sqs) · store(sns · s3 seller-docs) · product(sqs · s3 images) · order(sns) · review(sqs · s3 images) · settlement(sqs · sns · s3 reports). gateway · payment · admin은 없음</td></tr>
 <tr><td><code>ssm.tf</code> · <code>eip.tf</code></td><td>Lambda가 읽을 ARN(<code>/sesac-gojigi/dev/...</code>) · 게이트웨이 NLB용 EIP</td></tr>
 </table></div>
 <div class="box warn"><b class="t">Secrets Manager 값은 Terraform에 쓰지 않기</b>
@@ -3269,7 +3269,7 @@ Windows에서 커밋한 <code>gradlew</code>나 <code>.sh</code> 파일이 CRLF 
 <tr><th>등급</th><th>기능</th></tr>
 <tr><td><span class="tag must">Must</span></td><td>자체 로그인 · 가입(Keycloak, 역할 3종) · 입점 신청(서류) · 승인 · 반려 · 판매자 전환 · 카테고리(product) · 수수료(settlement) · 상품 CRUD(옵션 · 재고) · 목록 · 상세 · QueryDSL 검색 · 장바구니 · 주문 · 포트원 테스트 결제 Saga(검증 · 자동 취소 · 결제 대기 만료) · 발주확인 · 송장 수기 · 배송완료(status) · 구매확정(스케줄러) · <b>취소 · 반품 · 교환(status)</b> · <b>리뷰(사진 · 별점)</b> · 정산 집계 · 지급 · 판매자 · 관리자 대시보드(조합) · 헬스 체크 대시보드 · 장애 격리 · 무중단 배포 시연</td></tr>
 <tr><td><span class="tag should">Should</span></td><td>포인트 적립 · 사용(5%) · 회원등급 · 상품문의 · 답변 · 보완요청 · 자동 반려 · 스토어 휴면/정지 → 상품 숨김 · 지급 보류 · 알림 메일 Lambda · 정산 명세서 Lambda · SonarQube Cloud · 배송지 관리</td></tr>
-<tr><td><span class="tag could">Could</span></td><td>FAQ 관리자 편집 · 로그 아카이브 Lambda · <code>blacklist</code> 즉시 로그아웃 · Outbox · 속도 제한 · ArgoCD 롤백 시연 · API HTTPS(cert-manager)</td></tr>
+<tr><td><span class="tag could">Could</span></td><td>FAQ 관리자 편집 · 관리자 리뷰 블라인드(목업 리뷰 관리) · 로그 아카이브 Lambda · <code>blacklist</code> 즉시 로그아웃 · Outbox · 속도 제한 · ArgoCD 롤백 시연 · API HTTPS(cert-manager)</td></tr>
 <tr><td><span class="tag wont">Won't</span></td><td>찜 · 쿠폰 · 비회원 구매(TODO) · 회원 신고 · 오토스케일링 · 파티셔닝 · CQRS/캐시 · Elasticsearch · NL2SQL · 썸네일 Lambda · 택배사 연동 · 실결제 · 소셜 로그인 · Cognito · 모바일 앱</td></tr>
 </table></div>
 

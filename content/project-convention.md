@@ -564,7 +564,7 @@ throw new OrderException(OrderErrorCode.ORDER_NOT_FOUND);
 | orderdb | `orders` · `order_item` · `order_store_shipment` · `order_item_history` · `order_claim` · `saga_instance` · `outbox_event` · `shedlock` |
 | paymentdb | `payment` · `payment_cancel` |
 | reviewdb | `review` · `review_image` · `review_eligibility` · `product_inquiry` · `processed_event` |
-| settlementdb | `category_commission` · `settlement_item` · `settlement` · `payout` · `processed_event` · `shedlock` |
+| settlementdb | `category_commission` · `settlement_store`(StoreApproved 스냅샷: 스토어명 · 정산 계좌) · `settlement_item` · `settlement` · `payout` · `processed_event` · `shedlock` |
 | keycloakdb | Keycloak 관리 (계정 · 역할 · 세션) |
 
 ### 3-3. 컬럼

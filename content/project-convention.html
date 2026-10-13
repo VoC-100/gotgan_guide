@@ -508,7 +508,7 @@ throw new OrderException(OrderErrorCode.ORDER_NOT_FOUND);</code></pre>
 <tr><td>orderdb</td><td><code>orders</code> · <code>order_item</code> · <code>order_store_shipment</code> · <code>order_item_history</code> · <code>order_claim</code> · <code>saga_instance</code> · <code>outbox_event</code> · <code>shedlock</code></td></tr>
 <tr><td>paymentdb</td><td><code>payment</code> · <code>payment_cancel</code></td></tr>
 <tr><td>reviewdb</td><td><code>review</code> · <code>review_image</code> · <code>review_eligibility</code> · <code>product_inquiry</code> · <code>processed_event</code></td></tr>
-<tr><td>settlementdb</td><td><code>category_commission</code> · <code>settlement_item</code> · <code>settlement</code> · <code>payout</code> · <code>processed_event</code> · <code>shedlock</code></td></tr>
+<tr><td>settlementdb</td><td><code>category_commission</code> · <code>settlement_store</code>(StoreApproved 스냅샷: 스토어명 · 정산 계좌) · <code>settlement_item</code> · <code>settlement</code> · <code>payout</code> · <code>processed_event</code> · <code>shedlock</code></td></tr>
 <tr><td>keycloakdb</td><td>Keycloak 관리 (계정 · 역할 · 세션)</td></tr>
 </table></div>
 <h3 id="c3-3"><span class="n">3-3</span>컬럼</h3>
