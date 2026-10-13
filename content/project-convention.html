@@ -226,7 +226,7 @@ main h3 + .tbl, main h4 + .tbl{margin-top:6px}
 <tr><td>5</td><td>에러 코드 형식</td><td>의미형 <code>{도메인}_{상황}</code> — <code>ORDER_OUT_OF_STOCK</code></td><td>2-5</td></tr>
 <tr><td>6</td><td>프론트 언어</td><td>JavaScript (<code>.js</code> / <code>.jsx</code>) — 목업 그대로</td><td>4-1</td></tr>
 <tr><td>7</td><td>프론트 페이지 위치</td><td><code>pages/{shop · mypage · seller · admin}/</code> — 로직은 <code>features/</code></td><td>4-2</td></tr>
-<tr><td>8</td><td>Redis 키 이름</td><td><code>{용도}:{식별자}</code> — <code>cart:{userId}</code> · <code>blacklist:{jti}</code>(Could). 리프레시 토큰 키는 폐지(Keycloak이 관리)</td><td>2-2</td></tr>
+<tr><td>8</td><td>Redis 키 이름</td><td><code>{용도}:{식별자}</code> — <code>cart:{userId}</code>(캐시, 원본은 <code>orderdb.cart_item</code>) · <code>blacklist:{jti}</code>(Could). 리프레시 토큰 키는 폐지(Keycloak이 관리)</td><td>2-2</td></tr>
 </table></div>
 <h3 id="c0-4"><span class="n">0-4</span>10/12 추가 확정</h3>
 <div class="tbl"><table>
@@ -239,6 +239,10 @@ main h3 + .tbl, main h4 + .tbl{margin-top:6px}
 <tr><td>동적 검색</td><td>QueryDSL</td><td>2-6</td></tr>
 <tr><td>XSS</td><td>사용자 입력 HTML은 OWASP Java HTML Sanitizer로 저장 전 정화</td><td>2-6</td></tr>
 <tr><td>코드 품질</td><td>SonarQube Cloud — main 대상 PR에 품질 게이트</td><td>1-3</td></tr>
+<tr><td>(10/13) 저장소 3개</td><td><code>gotgan-backend</code>(services · serverless · docker-compose · docs/api) · <code>gotgan-frontend</code>(React 루트) · <code>gotgan-config</code>(deploy · infra/terraform · scripts · docs). 모노레포 폐지. 각 저장소 <code>docs/CONVENTION.md</code>는 이 문서의 발췌본(자동 생성) — 이 문서만 고친다</td><td>1-4 · 5-5</td></tr>
+<tr><td>(10/13) 시크릿</td><td><b>GitHub Secrets 단일 소스</b>(클러스터 · CI) · Vercel 환경 변수(프론트). Secrets Manager · KMS · ESO 없음. <code>secrets-sync</code> 워크플로가 K8s Secret 생성</td><td>1-5 · 5-3</td></tr>
+<tr><td>(10/13) 인프라 일일 스케줄</td><td><code>infra/terraform/cluster/</code>는 <code>infra-schedule</code> 워크플로가 매일 KST 08:00 apply(→ <code>bootstrap</code>) · 22:00 destroy. 나머지 폴더는 상시. apply/destroy는 워크플로 또는 구지훈</td><td>5-2</td></tr>
+<tr><td>(10/13) Redis 폴백</td><td>장바구니 원본은 MySQL <code>orderdb.cart_item</code>, Redis <code>cart:{userId}</code>는 캐시. Redis 호출은 서킷 인스턴스 <code>redisCart</code> + 폴백(MySQL)</td><td>2-2 · 2-7 · 3-2</td></tr>
 </table></div>
 </section>
 <section id="c1">
@@ -250,9 +254,9 @@ main h3 + .tbl, main h4 + .tbl{margin-top:6px}
 <h3 id="c1-3"><span class="n">1-3</span>이슈 · PR</h3>
 <ul class="b"><li>이슈 제목: <code>[요구사항 ID] 작업</code> — 예: <code>[ORD-06] 결제 검증</code></li><li>PR 제목: 커밋 메시지 형식과 동일</li><li>PR 본문 템플릿:<ul class="b"><li>개요 — 관련 요구사항 ID · 이슈 링크</li><li>작업 내용 — 변경 사항 개조식</li><li>테스트 — 확인 방법 (curl · 화면 · 테스트 코드)</li><li>팀원 확인 사항 — 다른 팀원이 알아야 할 것</li></ul></li><li><b>프론트 · 다른 서비스에 영향 있는 변경(응답 형식 · 에러 코드 · 이벤트 payload · API 경로)은 PR 제목에 <code>[영향]</code> 표시</b>, 영향받는 담당자 리뷰 필수</li><li>PR 하나에 기능 하나, 변경 300줄 이하 권장</li><li>main 대상 PR은 CI에서 <b>SonarQube Cloud 품질 게이트</b>를 통과해야 머지 (이슈는 PR 코멘트로 확인)</li></ul>
 <h3 id="c1-4"><span class="n">1-4</span>폴더 소유권</h3>
-<ul class="b"><li><b>다른 사람이 맡은 서비스 · <code>features/</code> 폴더는 PR 없이 수정 금지.</b> 연동이 필요하면 이슈로 요청</li><li>공유 파일(<code>shared/api/queryKeys.js</code> · <code>app/router.jsx</code> · <code>01-configmap.yaml</code> · <code>values.yaml</code>)은 <b>도메인별 주석 구획 안에서만</b> 수정</li><li>CODEOWNERS로 리뷰어 자동 지정</li></ul>
+<ul class="b"><li><b>다른 사람이 맡은 서비스 · <code>features/</code> 폴더는 PR 없이 수정 금지.</b> 연동이 필요하면 이슈로 요청</li><li>공유 파일(frontend <code>shared/api/queryKeys.js</code> · <code>app/router.jsx</code>, gotgan-config <code>deploy/k8s/01-configmap.yaml</code> · <code>deploy/helm/sesac-gojigi-app/values.yaml</code>)은 <b>도메인별 주석 구획 안에서만</b> 수정. <code>values.yaml</code>의 <code>tag</code> 줄은 backend CI만 커밋</li><li>CODEOWNERS로 리뷰어 자동 지정</li></ul>
 <h3 id="c1-5"><span class="n">1-5</span>시크릿</h3>
-<ul class="b"><li><code>application.yml</code> · <code>.env</code> · YAML에 실제 비밀 값 커밋 금지 — <code>${환경변수}</code> 자리표시자만</li><li>비밀 값 위치: Secrets Manager(서버) · GitHub Secrets(CI) · Vercel 환경 변수(프론트)</li><li>실수로 커밋했다면 즉시 팀 공유 → 키 폐기 · 재발급 (히스토리 삭제만으로는 부족)</li></ul>
+<ul class="b"><li><code>application.yml</code> · <code>.env</code> · YAML에 실제 비밀 값 커밋 금지 — <code>${환경변수}</code> 자리표시자만</li><li>비밀 값 위치: <b>GitHub Secrets</b>(클러스터 · CI — gotgan-config · gotgan-backend) · Vercel 환경 변수(프론트). Secrets Manager · KMS · ESO는 쓰지 않음</li><li>클러스터 시크릿은 gotgan-config의 <code>secrets-sync</code> 워크플로가 GitHub Secrets → K8s Secret으로 생성. Secret YAML 파일을 만들지 않음. 이름 · 용도는 <code>gotgan-config/docs/secrets.md</code>(값 없음), 값은 노션(팀 비공개)</li><li>비밀 아닌 값은 GitHub Variables(<code>AWS_ACCOUNT_ID</code> · <code>AWS_REGION</code> · <code>EKS_CLUSTER_NAME</code> · <code>DUCKDNS_DOMAIN</code>)</li><li>로컬은 <code>.env.local</code>(커밋 금지) 또는 docker-compose 기본값(<code>local-pass</code>). realm JSON · YAML에는 <code>${변수}</code> 자리표시자만</li><li>실수로 커밋했다면 즉시 팀 공유 → 키 폐기 · 재발급 (히스토리 삭제만으로는 부족)</li></ul>
 </section>
 <section id="c2">
 <h2><span class="n">02</span>백엔드</h2>
@@ -335,8 +339,8 @@ main h3 + .tbl, main h4 + .tbl{margin-top:6px}
 <ul class="b"><li>매직 넘버 · 문자열은 <code>private static final</code> 상수 + 이유 주석<ul class="b"><li><code>PAYMENT_TIMEOUT = Duration.ofMinutes(15); // 결제창 이탈 시 재고를 묶어두는 최대 시간</code></li></ul></li><li>운영 · 데모에서 바뀌는 값(자동 구매확정 기간 등)은 상수가 아니라 <code>application.yml</code> 설정값</li><li>Redis 키: <code>{용도}:{식별자}</code> · 키 생성은 private 메서드로 모음</li></ul>
 <div class="tbl"><table>
 <tr><th>키</th><th>서비스</th><th>용도</th></tr>
-<tr><td><code>cart:{userId}</code></td><td>order</td><td>장바구니 Hash (Must)</td></tr>
-<tr><td><code>blacklist:{jti}</code></td><td>gateway</td><td>로그아웃한 Access Token 즉시 무효화 (Could)</td></tr>
+<tr><td><code>cart:{userId}</code></td><td>order</td><td>장바구니 Hash — <b>캐시</b>, 원본은 MySQL <code>orderdb.cart_item</code>. 쓰기는 MySQL 먼저 → Redis 갱신(실패 무시 · WARN), 읽기는 Redis → 미스 · 장애 시 MySQL. 서킷 인스턴스 <code>redisCart</code> (Must)</td></tr>
+<tr><td><code>blacklist:{jti}</code></td><td>gateway</td><td>로그아웃한 Access Token 즉시 무효화 — Redis 전용, 원본 없음 (Could)</td></tr>
 </table></div>
 <ul class="b"><li>한 Redis를 여러 서비스가 공유하므로 <b>다른 서비스의 키 접두어 사용 금지</b></li><li>리프레시 토큰은 Keycloak이 관리 — Redis에 <code>refresh:</code> 키를 만들지 않음. 상품 캐시 키도 없음</li><li>새 키가 필요하면 이 표에 먼저 추가 (PR <code>[영향]</code>)</li></ul>
 <h3 id="c2-3"><span class="n">2-3</span>문법 스타일</h3>
@@ -473,7 +477,7 @@ throw new OrderException(OrderErrorCode.ORDER_NOT_FOUND);</code></pre>
 <tr><td>폴백</td><td>도메인 예외 <code>EXTERNAL_API_ERROR</code>(502/504), 대시보드는 부분 응답</td></tr>
 <tr><td>설정 위치</td><td><code>application.yml</code>의 <code>resilience4j.*</code> (별도 Config 클래스 없음, 서킷 브레이커 인스턴스 이름 <code>{대상}Client</code>) — 값 임의 변경 금지</td></tr>
 </table></div>
-<ul class="b"><li>목표: <b>서비스 하나가 죽어도 호출한 쪽은 에러 메시지로 1차 처리</b>하고 나머지 화면 · 기능은 정상</li></ul>
+<ul class="b"><li>목표: <b>서비스 하나가 죽어도 호출한 쪽은 에러 메시지로 1차 처리</b>하고 나머지 화면 · 기능은 정상</li><li>Redis 호출(장바구니 캐시)도 같은 표준: 서킷 인스턴스 <code>redisCart</code> + 폴백 → MySQL <code>cart_item</code> 원본 조회. 쓰기는 MySQL 먼저, Redis 갱신 실패는 WARN 로그만 — Redis가 죽어도 장바구니는 정상(지연만)</li></ul>
 <h4>대시보드 조합</h4>
 <ul class="b"><li>판매자 대시보드 <code>GET /api/seller/dashboard</code> = store-service <code>dashboard</code> 패키지 / 관리자 대시보드 <code>GET /api/admin/dashboard</code> = admin-service <code>dashboard</code> 패키지</li><li>각 서비스의 <code>/internal/stats/**</code>를 <b>병렬 호출</b>(서비스별 타임아웃), 결과를 한 응답으로 조합</li><li><b>집계 계산은 데이터 주인 서비스가</b> — 조합하는 쪽은 받은 값을 합치기만 (매출 합계는 order, 정산 금액은 settlement)</li><li><b>부분 응답</b>: 실패한 영역만 <code>null</code> + <code>unavailable</code> 목록, 응답은 200 <code>SUCCESS</code></li></ul>
 <pre><code>{ "code": "SUCCESS", "message": "대시보드를 조회했습니다.",
@@ -505,7 +509,7 @@ throw new OrderException(OrderErrorCode.ORDER_NOT_FOUND);</code></pre>
 <tr><td>userdb</td><td><code>users</code>(<code>point_balance</code> · <code>grade</code> 포함) · <code>address</code> · <code>point_history</code></td></tr>
 <tr><td>storedb</td><td><code>store_application</code> · <code>application_document</code> · <code>store</code> · <code>processed_event</code> · <code>shedlock</code></td></tr>
 <tr><td>productdb</td><td><code>category</code> · <code>product</code> · <code>product_option</code> · <code>product_image</code> · <code>stock_reservation</code> · <code>processed_event</code></td></tr>
-<tr><td>orderdb</td><td><code>orders</code> · <code>order_item</code> · <code>order_store_shipment</code> · <code>order_item_history</code> · <code>order_claim</code> · <code>saga_instance</code> · <code>outbox_event</code> · <code>shedlock</code></td></tr>
+<tr><td>orderdb</td><td><code>cart_item</code>(장바구니 원본 — Redis <code>cart:{userId}</code>는 캐시) · <code>orders</code> · <code>order_item</code> · <code>order_store_shipment</code> · <code>order_item_history</code> · <code>order_claim</code> · <code>saga_instance</code> · <code>outbox_event</code> · <code>shedlock</code></td></tr>
 <tr><td>paymentdb</td><td><code>payment</code> · <code>payment_cancel</code></td></tr>
 <tr><td>reviewdb</td><td><code>review</code> · <code>review_image</code> · <code>review_eligibility</code> · <code>product_inquiry</code> · <code>processed_event</code></td></tr>
 <tr><td>settlementdb</td><td><code>category_commission</code> · <code>settlement_store</code>(StoreApproved 스냅샷: 스토어명 · 정산 계좌) · <code>settlement_item</code> · <code>settlement</code> · <code>payout</code> · <code>processed_event</code> · <code>shedlock</code></td></tr>
@@ -764,19 +768,18 @@ function AdminStoreListPage() {
 <tr><td>SQS 큐</td><td><code>sesac-gojigi-{소비자}-{도메인}-events</code></td><td><code>sesac-gojigi-settlement-order-events</code></td></tr>
 <tr><td>DLQ</td><td>큐 이름 + <code>-dlq</code></td><td><code>sesac-gojigi-settlement-order-events-dlq</code></td></tr>
 <tr><td>IAM 역할 (IRSA)</td><td><code>sesac-gojigi-{service}-irsa</code></td><td><code>sesac-gojigi-order-irsa</code></td></tr>
-<tr><td>Secrets Manager</td><td><code>sesac-gojigi/{service}</code></td><td><code>sesac-gojigi/order-service</code></td></tr>
 <tr><td>SSM 파라미터</td><td><code>/sesac-gojigi/dev/{종류}/{이름}</code></td><td><code>/sesac-gojigi/dev/sqs/notification-queue-arn</code></td></tr>
 <tr><td>S3 버킷</td><td><code>sesac-gojigi-{용도}-{계정ID 끝 4자리}</code> (전역 유일)</td><td><code>sesac-gojigi-images-1234</code>(prefix <code>products/</code> · <code>reviews/</code>) · <code>sesac-gojigi-seller-docs-1234</code> · <code>sesac-gojigi-reports-1234</code> · <code>sesac-gojigi-log-archive-1234</code></td></tr>
 <tr><td>DynamoDB</td><td><code>sesac-gojigi-{용도}</code></td><td><code>sesac-gojigi-notifications</code> · <code>sesac-gojigi-settlement-reports</code> (그 외 테이블 없음)</td></tr>
 </table></div>
 <h3 id="c5-2"><span class="n">5-2</span>Terraform</h3>
-<ul class="b"><li>파일: 자원 종류별 snake_case (<code>sns_sqs.tf</code> · <code>irsa.tf</code>), 폴더마다 <code>provider.tf</code> · <code>variables.tf</code> · <code>outputs.tf</code></li><li>자원 로컬 이름: snake_case, 타입 반복 금지 (<code>aws_s3_bucket.product_images</code> ○ / <code>aws_s3_bucket.product_images_bucket</code> ✗)</li><li>변수 · output: snake_case + <code>description</code> 필수</li><li>커밋 전 <code>terraform fmt -recursive</code> · <code>terraform validate</code></li><li>apply는 AWS 담당만, 다른 사람은 plan까지</li><li><code>.terraform.lock.hcl</code> 커밋, <code>*.tfstate</code> · <code>.terraform/</code> 커밋 금지</li></ul>
+<ul class="b"><li>파일: 자원 종류별 snake_case (<code>sns_sqs.tf</code> · <code>irsa.tf</code>), 폴더마다 <code>provider.tf</code> · <code>variables.tf</code> · <code>outputs.tf</code></li><li>자원 로컬 이름: snake_case, 타입 반복 금지 (<code>aws_s3_bucket.product_images</code> ○ / <code>aws_s3_bucket.product_images_bucket</code> ✗)</li><li>변수 · output: snake_case + <code>description</code> 필수</li><li>커밋 전 <code>terraform fmt -recursive</code> · <code>terraform validate</code></li><li>apply/destroy는 스케줄 워크플로(<code>infra-schedule</code>, OIDC 역할 — <code>cluster/</code> 매일 08:00 · 22:00) 또는 구지훈. 다른 사람은 plan까지(<code>infra.yml</code>이 PR에 plan 코멘트)</li><li>Terraform에 비밀 값 금지 — 시크릿은 GitHub Secrets → <code>secrets-sync</code>(1-5). <code>kms.tf</code> · <code>secrets.tf</code> · <code>eso.tf</code> 없음</li><li><code>.terraform.lock.hcl</code> 커밋, <code>*.tfstate</code> · <code>.terraform/</code> 커밋 금지</li></ul>
 <h3 id="c5-3"><span class="n">5-3</span>Kubernetes · Helm</h3>
-<ul class="b"><li>리소스 이름: 서비스 이름 그대로 kebab-case (<code>order-service</code>)</li><li>라벨: <code>app: {service}</code> 필수 (Service selector · Prometheus · 로그 라벨 기준)</li><li>파일 이름: 적용 순서가 있으면 <code>{nn}-{종류}.yaml</code> (<code>00-namespace.yaml</code>), 그 외 <code>{대상}.yaml</code></li><li>YAML 들여쓰기 2칸, 탭 금지</li><li>네임스페이스: 앱 <code>sesac-gojigi</code> · 모니터링 <code>monitoring</code> · <code>argocd</code></li><li>Helm <code>values.yaml</code> 키는 camelCase, 서비스 키는 서비스 이름 (<code>services.order-service.tag</code>)</li><li>이미지 태그: 커밋 SHA 7자리. <code>latest</code> 금지</li><li>모든 컨테이너에 <code>resources.requests</code> 필수, 메모리 <code>limits</code> 필수</li></ul>
+<ul class="b"><li>리소스 이름: 서비스 이름 그대로 kebab-case (<code>order-service</code>)</li><li>라벨: <code>app: {service}</code> 필수 (Service selector · Prometheus · 로그 라벨 기준)</li><li>파일 이름: 적용 순서가 있으면 <code>{nn}-{종류}.yaml</code> (<code>00-namespace.yaml</code>), 그 외 <code>{대상}.yaml</code></li><li>YAML 들여쓰기 2칸, 탭 금지</li><li>네임스페이스: 앱 <code>sesac-gojigi</code> · 모니터링 <code>monitoring</code> · <code>argocd</code></li><li>Helm <code>values.yaml</code> 키는 camelCase, 서비스 키는 서비스 이름 (<code>services.order-service.tag</code>)</li><li>Secret 이름: <code>mysql-secret</code> · <code>{service}-secret</code> · <code>keycloak-secret</code> · <code>grafana-secret</code> · <code>alert-webhook-secret</code> — 파일로 커밋하지 않고 <code>secrets-sync</code> 워크플로가 생성. 서비스는 <code>envFrom.secretRef</code>로만 읽음</li><li>Redis는 AOF(<code>appendonly yes</code>) + PVC(<code>ebs-sc</code> 1Gi)</li><li>이미지 태그: 커밋 SHA 7자리. <code>latest</code> 금지</li><li>모든 컨테이너에 <code>resources.requests</code> 필수, 메모리 <code>limits</code> 필수</li></ul>
 <h3 id="c5-4"><span class="n">5-4</span>환경 변수 · 설정</h3>
 <ul class="b"><li>환경 변수: UPPER_SNAKE (<code>DB_HOST</code> · <code>PRODUCT_SERVICE_URI</code> · <code>PORTONE_API_SECRET</code>)</li><li>다른 서비스 주소: <code>{대상}_SERVICE_URI</code></li><li><code>application.yml</code> 커스텀 키: <code>app.{영역}.{이름}</code> kebab-case (<code>app.order.auto-confirm-after</code>)</li><li>프론트: <code>VITE_{이름}</code> (<code>VITE_PORTONE_STORE_ID</code>)</li></ul>
 <h3 id="c5-5"><span class="n">5-5</span>Serverless · CI</h3>
-<ul class="b"><li>함수 폴더: kebab-case — <code>order-notification</code> · <code>settlement-report</code> · <code>log-archive</code> (3개, 사용자 API 없음), 서비스 이름 <code>sesac-gojigi-{폴더명}</code></li><li>핸들러 파일 camelCase (<code>notify.js</code>), export 이름 <code>handler</code></li><li>워크플로 파일: 영역 이름 kebab-case (<code>backend.yml</code>), job 이름 kebab-case (<code>bump-tag</code>)</li><li>GitHub Secrets: UPPER_SNAKE (<code>AWS_ROLE_ARN</code> · <code>SERVERLESS_ACCESS_KEY</code>)</li></ul>
+<ul class="b"><li>함수 폴더: kebab-case — <code>order-notification</code> · <code>settlement-report</code> · <code>log-archive</code> (3개, 사용자 API 없음), 서비스 이름 <code>sesac-gojigi-{폴더명}</code></li><li>핸들러 파일 camelCase (<code>notify.js</code>), export 이름 <code>handler</code></li><li>워크플로 파일: 영역 이름 kebab-case, job 이름 kebab-case (<code>bump-tag</code>). 저장소별 — gotgan-backend <code>backend.yml</code> · <code>serverless.yml</code> · <code>security.yml</code> / gotgan-frontend <code>frontend.yml</code> · <code>security.yml</code> / gotgan-config <code>infra.yml</code> · <code>infra-schedule.yml</code> · <code>bootstrap.yml</code> · <code>secrets-sync.yml</code> · <code>security.yml</code></li><li>GitHub Secrets: UPPER_SNAKE (<code>AWS_ROLE_ARN</code> · <code>SERVERLESS_ACCESS_KEY</code> · <code>CONFIG_REPO_TOKEN</code> · <code>{SERVICE}_DB_PASSWORD</code>), Variables도 UPPER_SNAKE (<code>AWS_REGION</code>)</li><li>저장소 간 토큰 <code>CONFIG_REPO_TOKEN</code>: fine-grained PAT, gotgan-config만 · Contents write만, 만료일은 발표(11/20) 이후</li></ul>
 </section>
 <section id="c6">
 <h2><span class="n">06</span>리뷰 체크리스트</h2>

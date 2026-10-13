@@ -257,7 +257,7 @@ svg .ah2{fill:var(--point)}
 <rect class="hl" x="444" y="412" width="190" height="56"/><text x="539" y="435" text-anchor="middle" class="b">Lambda ×3</text><text x="539" y="452" text-anchor="middle" class="s">알림 · 명세서 · 로그 아카이브</text>
 <rect class="bx" x="646" y="412" width="90" height="56"/><text x="691" y="444" text-anchor="middle" class="b">SES</text>
 <rect class="bx" x="748" y="412" width="120" height="56"/><text x="808" y="435" text-anchor="middle" class="b">DynamoDB</text><text x="808" y="452" text-anchor="middle" class="s">알림·명세서 이력</text>
-<rect class="bx" x="880" y="412" width="146" height="56"/><text x="953" y="435" text-anchor="middle" class="b">Secrets Manager</text><text x="953" y="452" text-anchor="middle" class="s">KMS → ESO → Secret</text>
+<rect class="bx" x="880" y="412" width="146" height="56"/><text x="953" y="435" text-anchor="middle" class="b">GitHub Secrets</text><text x="953" y="452" text-anchor="middle" class="s">secrets-sync → K8s Secret</text>
 <path class="dl" d="M790,226 V398 H347 V408" marker-end="url(#a2)"/><text x="470" y="395" class="s">이벤트 발행</text>
 <path class="ln" d="M432,440 H440" marker-end="url(#a1)"/>
 <path class="ln" d="M634,440 H642" marker-end="url(#a1)"/>
@@ -267,7 +267,7 @@ svg .ah2{fill:var(--point)}
 <!-- lane 4 -->
 <rect class="lane" x="0" y="500" width="1036" height="110"/>
 <text x="10" y="520" class="lbl">배포 · 운영</text>
-<rect class="bx" x="110" y="522" width="130" height="44"/><text x="175" y="541" text-anchor="middle" class="b">GitHub</text><text x="175" y="557" text-anchor="middle" class="s">모노레포 · PR</text>
+<rect class="bx" x="110" y="522" width="130" height="44"/><text x="175" y="541" text-anchor="middle" class="b">GitHub</text><text x="175" y="557" text-anchor="middle" class="s">저장소 3개 · PR</text>
 <rect class="bx" x="262" y="522" width="150" height="44"/><text x="337" y="541" text-anchor="middle" class="b">GitHub Actions</text><text x="337" y="557" text-anchor="middle" class="s">테스트·Sonar·빌드·OIDC</text>
 <rect class="bx" x="434" y="522" width="110" height="44"/><text x="489" y="541" text-anchor="middle" class="b">ECR</text><text x="489" y="557" text-anchor="middle" class="s">이미지 9개</text>
 <rect class="bx" x="566" y="522" width="130" height="44"/><text x="631" y="541" text-anchor="middle" class="b">ArgoCD</text><text x="631" y="557" text-anchor="middle" class="s">GitOps · 롤링</text>
@@ -386,7 +386,7 @@ svg .ah2{fill:var(--point)}
 <tr><td><b>user-service</b></td><td>8081</td><td>회원 프로필 · 배송지 · 포인트(적립 · 사용) · 회원등급 · 가입/로그인/refresh/로그아웃 API(Keycloak 대리 호출)</td><td>userdb</td><td>—</td><td>StoreApproved · OrderPaid · OrderItemConfirmed</td><td>이경석</td></tr>
 <tr><td><b>store-service</b></td><td>8082</td><td>입점 신청 · 심사 · 서류 · 스토어(상태 · 배송정책) · 판매자 대시보드(조합)</td><td>storedb · S3 seller-docs</td><td>StoreApproved · StoreStatusChanged</td><td>—</td><td>박지연</td></tr>
 <tr><td><b>product-service</b></td><td>8083</td><td>상품 · 옵션 · 재고 · 이미지 메타 · 카테고리(상위/하위) · QueryDSL 검색</td><td>productdb · S3 images(<code>products/</code>)</td><td>—</td><td>StoreStatusChanged</td><td>박지연</td></tr>
-<tr><td><b>order-service</b></td><td>8084</td><td>장바구니 · 주문 · 상품주문 · 배송(status) · 취소/반품/교환(status) · 구매확정 · Saga 오케스트레이터</td><td>orderdb · Redis(<code>cart:</code>)</td><td>OrderPaid · OrderItemShipped · OrderItemConfirmed · OrderItemCancelled · OrderItemReturned</td><td>—</td><td>이종빈</td></tr>
+<tr><td><b>order-service</b></td><td>8084</td><td>장바구니 · 주문 · 상품주문 · 배송(status) · 취소/반품/교환(status) · 구매확정 · Saga 오케스트레이터</td><td>orderdb(<code>cart_item</code> 포함) · Redis(<code>cart:</code> 캐시)</td><td>OrderPaid · OrderItemShipped · OrderItemConfirmed · OrderItemCancelled · OrderItemReturned</td><td>—</td><td>이종빈</td></tr>
 <tr><td><b>payment-service</b></td><td>8086</td><td>결제 준비 · 포트원 V2 검증/취소 · 웹훅</td><td>paymentdb</td><td>—</td><td>—</td><td>이종빈</td></tr>
 <tr><td><b>review-service</b></td><td>8087</td><td>리뷰(사진 · 별점) · 판매자 답글 · 상품문의 · 답변 · 리뷰 작성 자격</td><td>reviewdb · S3 images(<code>reviews/</code>)</td><td>—</td><td>OrderItemConfirmed</td><td>이종빈</td></tr>
 <tr><td><b>settlement-service</b></td><td>8085</td><td>카테고리별 수수료 · 정산 적재 · 주간 집계 · 지급 · 보류</td><td>settlementdb</td><td>SettlementPaid</td><td>OrderItemConfirmed · StoreStatusChanged</td><td>구지훈</td></tr>
@@ -429,7 +429,7 @@ svg .ah2{fill:var(--point)}
   <li><code>application.yml</code>: <code>${환경변수:로컬기본값}</code>만, 비밀 값 금지</li>
   <li><code>local</code>: IDE 실행 · 시드 데이터 · 로컬 docker-compose(MySQL · Redis · Keycloak)</li>
   <li><code>k8s</code>: ConfigMap이 활성화 · Loki 전송</li>
-  <li>비밀 값: Secrets Manager(KMS) → ESO → 환경 변수</li>
+  <li>비밀 값: GitHub Secrets → <code>secrets-sync</code> 워크플로 → K8s Secret → 환경 변수 (로컬은 <code>.env.local</code> · compose 기본값)</li>
   <li>데모용 주기 단축은 환경 변수로 (<code>AUTO_CONFIRM_AFTER=2m</code>)</li>
 </ul></div>
 <div class="box"><h4>장애 격리 (Resilience4j)</h4>
@@ -464,7 +464,7 @@ svg .ah2{fill:var(--point)}
 <h4>Redis 키 · 검색</h4>
 <div class="tbl"><table>
 <tr><th>키 · 기능</th><th>소유</th><th>내용</th><th>우선</th></tr>
-<tr><td><code>cart:{userId}</code></td><td>order</td><td>Hash(옵션 ID → 수량) · 30일 TTL, 담을 때마다 연장</td><td><span class="p p0">P0</span></td></tr>
+<tr><td><code>cart:{userId}</code></td><td>order</td><td>Hash(옵션 ID → 수량) · 30일 TTL, 담을 때마다 연장 — <b>캐시</b>. 원본은 MySQL <code>orderdb.cart_item</code>: 쓰기는 MySQL 먼저 → Redis 갱신(실패 무시), 읽기는 Redis → 미스 · 장애 시 MySQL. Resilience4j 서킷 <code>redisCart</code> + 폴백, Redis AOF + PVC</td><td><span class="p p0">P0</span></td></tr>
 <tr><td><code>blacklist:{jti}</code></td><td>gateway</td><td>로그아웃 즉시 무효화 · TTL = 토큰 남은 수명</td><td><span class="p p2">P2</span></td></tr>
 <tr><td>QueryDSL 검색</td><td>product</td><td><code>ProductQueryRepository</code> — 카테고리 · 가격대 · 키워드 LIKE · 정렬 · 페이징을 <code>BooleanExpression</code> 조합으로, 조건 없으면 null 반환해 생략</td><td><span class="p p0">P0</span></td></tr>
 </table></div>
@@ -562,19 +562,29 @@ svg .ah2{fill:var(--point)}
 </table></div>
 <p class="lead">각 도메인 패키지 안은 위와 같이 controller · service · dto · repository · entity · exception (+ 필요 시 client · util). 해당 도메인에 없는 패키지는 만들지 않음 (예: cart는 entity 없음, admin은 repository 없음).</p>
 
-<h4>모노레포 구조</h4>
-<pre><code>gotgan/
+<h4>저장소 3개</h4>
+<pre><code>gotgan-backend/          sesac-final-1/gotgan-backend — 이미지를 만드는 쪽
 ├── services/            gateway · user · store · product · order · payment · review · settlement · admin  (2-1)
-├── frontend/            React · Vercel                                          (2-2)
-├── infra/terraform/     AWS 자원                                                (2-3)
 ├── serverless/          Lambda 3개 (알림 · 명세서 · 로그 아카이브)               (2-3)
+├── docs/                api/(OpenAPI · error-codes) · CONVENTION.md(발췌본)
+├── .github/             workflows(backend · serverless · security) · CODEOWNERS · 템플릿   (2-4)
+├── docker-compose.yml   로컬 MySQL(스키마 8) + Redis + Keycloak — ../gotgan-config 의 init-schemas.sh · realm JSON 마운트
+└── .gitignore · .gitattributes · README.md
+
+gotgan-frontend/         sesac-final-1/gotgan-frontend — React 앱이 루트 · Vercel Git 연동   (2-2)
+├── src/ · public/ · index.html · vite.config.js · vercel.json · package.json
+├── docs/CONVENTION.md   프론트 컨벤션 발췌본
+└── .github/             workflows(frontend · security)
+
+gotgan-config/           sesac-final-1/gotgan-config — ArgoCD가 감시하는 쪽 (배포 · 인프라)
 ├── deploy/              k8s 기본 계층(keycloak 포함) · helm 앱 계층 · argocd        (2-4)
 │   └── observability/   Prometheus · Loki · Zipkin · Grafana · System Status     (2-5)
-├── .github/             workflows · CODEOWNERS · 템플릿                          (2-4)
-├── docs/                adr/ · api/(OpenAPI) · events.md
-├── scripts/             build-and-push.sh · scale-nodes.sh · duckdns-update.sh
-├── docker-compose.yml   로컬 MySQL(스키마 8) + Redis + Keycloak(realm import)
-└── .gitignore · .gitattributes · README.md</code></pre>
+├── infra/terraform/     AWS 자원 (cluster/ 는 매일 08:00 apply · 22:00 destroy)    (2-3)
+├── scripts/             scale-nodes.sh(수동 보조) · duckdns-update.sh
+├── docs/                adr/ · events.md · secrets.md · README.md · CONVENTION.md(발췌본)
+├── .github/             workflows(infra · infra-schedule · bootstrap · secrets-sync · security)   (2-4)
+└── .gitignore · README.md</code></pre>
+<p class="lead">컨벤션 정본은 문서 사이트(project-convention)이고 각 저장소의 <code>docs/CONVENTION.md</code>는 발췌본(자동 생성)입니다. 백엔드 CI는 fine-grained PAT <code>CONFIG_REPO_TOKEN</code>으로 gotgan-config의 <code>values.yaml</code>에 태그를 커밋합니다.</p>
 
 <!-- ---------------- 2-2 프론트엔드 ---------------- -->
 <h3 id="p-fe"><span class="n">2-2</span>프론트엔드</h3>
@@ -662,12 +672,14 @@ svg .ah2{fill:var(--point)}
 <tr><td>네트워크</td><td>VPC 10.0.0.0/16 · 퍼블릭 /24 ×2 · 프라이빗 /24 ×2 · NAT 1개 · EKS 서브넷 태그</td></tr>
 <tr><td>EKS</td><td>1.35 · 퍼블릭 엔드포인트 · access entries(팀원 4명 관리자)</td></tr>
 <tr><td>노드 그룹</td><td><b>t3.large ×2</b> (2 vCPU · 8GiB · 파드 35개/노드) · AL2023 · gp3 40GiB 암호화 · min 0 / max 3 · On-Demand · 장애 · 자동 복구 시연 때만 3대 (오토스케일링 · HPA 없음)</td></tr>
-<tr><td>파드 예산</td><td>약 42개 · 메모리 requests 약 11.3Gi — 업무 8 × 512Mi · gateway ×2 · Keycloak 1Gi · MySQL · Redis · 관측성 · ArgoCD · ESO · 시스템. t3.large ×2(할당 약 14Gi)에 롤링 배포 여유 포함, t3.medium ×3은 메모리 부족</td></tr>
-<tr><td>애드온</td><td>VPC CNI · CoreDNS · kube-proxy · EBS CSI(IRSA) · metrics-server · LBC(IRSA) · External Secrets(IRSA)</td></tr>
+<tr><td>파드 예산</td><td>약 42개 · 메모리 requests 약 11.3Gi — 업무 8 × 512Mi · gateway ×2 · Keycloak 1Gi · MySQL · Redis · 관측성 · ArgoCD · 시스템. t3.large ×2(할당 약 14Gi)에 롤링 배포 여유 포함, t3.medium ×3은 메모리 부족</td></tr>
+<tr><td>애드온</td><td>VPC CNI · CoreDNS · kube-proxy · EBS CSI(IRSA) · metrics-server · LBC(IRSA) — External Secrets 없음(시크릿은 GitHub Secrets)</td></tr>
 <tr><td>로드 밸런서</td><td>gateway Service → LBC → NLB(internet-facing · ip 타깃 · 교차 영역) + <b>EIP 2개 고정</b></td></tr>
 <tr><td>도메인</td><td>API: DuckDNS → EIP · 프론트: Vercel 기본 도메인</td></tr>
 <tr><td>이름 규칙</td><td><code>sesac-gojigi-*</code> · 태그 <code>Project=sesac-gojigi</code> 모든 자원</td></tr>
-<tr><td>비용 가드</td><td>AWS Budgets 50 · 80 · 100% 알림 · 야간·주말 노드 0 · 발표 후 전체 destroy</td></tr>
+<tr><td>일일 스케줄</td><td><code>infra-schedule</code> 워크플로(gotgan-config): KST 08:00 <code>cluster/</code> apply → <code>bootstrap</code>(k8s 기본 계층 · secrets-sync · 관측성 · ArgoCD), KST 22:00 ArgoCD 앱 · LB Service · PVC 삭제 → <code>cluster/</code> destroy. vpc · ecr · cicd · app은 상시. 매일 아침 빈 DB → Flyway 시드로 복원</td></tr>
+<tr><td>시크릿</td><td><b>GitHub Secrets 단일 소스</b> → <code>secrets-sync</code> 워크플로가 K8s Secret 생성. Secrets Manager · KMS · ESO 없음. 비밀 아닌 값은 GitHub Variables(<code>AWS_ACCOUNT_ID</code> · <code>AWS_REGION</code> · <code>EKS_CLUSTER_NAME</code> · <code>DUCKDNS_DOMAIN</code>), 목록은 <code>docs/secrets.md</code></td></tr>
+<tr><td>비용 가드</td><td>AWS Budgets 50 · 80 · 100% 알림 · 클러스터 매일 08:00 생성 · 22:00 삭제 · 발표 후 전체 destroy</td></tr>
 </table></div>
 <h4>자원 목록</h4>
 <div class="tbl"><table>
@@ -678,9 +690,8 @@ svg .ah2{fill:var(--point)}
 <tr><td>SQS</td><td>구독자별 큐 (user · product · settlement · review · 알림 Lambda · 명세서 Lambda) + DLQ(최대 수신 3) · 필터 정책 · raw delivery</td><td>이벤트 소비</td></tr>
 <tr><td>DynamoDB</td><td><code>sesac-gojigi-notifications</code>(PK USER# · SK 시각#eventId · TTL 90일 — 알림 멱등 · 이력) · <code>sesac-gojigi-settlement-reports</code>(명세서 발송 이력) · On-Demand · 그 외 테이블 없음</td><td>Lambda 데이터 · 멱등</td></tr>
 <tr><td>SES</td><td>발신 이메일 자격 증명 · 샌드박스(검증된 주소로만 발송)</td><td>알림 · 명세서 메일</td></tr>
-<tr><td>KMS</td><td>고객 관리형 키 1개 (<code>alias/sesac-gojigi</code>)</td><td>Secrets Manager 암호화 · ESO · 서비스 역할에 <code>kms:Decrypt</code></td></tr>
-<tr><td>Secrets Manager</td><td>서비스별 1개(<code>sesac-gojigi/{service}</code>) · <code>sesac-gojigi/keycloak</code>(관리자 · DB 비밀번호 · <code>gotgan-backend</code> 클라이언트 시크릿) — 값은 CLI로 입력(tfstate 노출 방지)</td><td>ESO → K8s Secret</td></tr>
-<tr><td>IAM</td><td>서비스별 IRSA 역할 · GitHub Actions OIDC 역할 · Lambda 함수별 역할</td><td>최소 권한</td></tr>
+<tr><td>(AWS 밖) GitHub Secrets · Variables</td><td>gotgan-config: 클러스터 시크릿 전부 + <code>AWS_ROLE_ARN</code> · <code>DUCKDNS_TOKEN</code> / gotgan-backend: <code>AWS_ROLE_ARN</code> · <code>SONAR_TOKEN</code> · <code>SERVERLESS_ACCESS_KEY</code> · <code>CONFIG_REPO_TOKEN</code> / Variables: 계정 ID · 리전 · 클러스터 이름 · DuckDNS 도메인</td><td><code>secrets-sync</code> → K8s Secret(<code>mysql-secret</code> · <code>{service}-secret</code> · <code>keycloak-secret</code> · <code>grafana-secret</code> · <code>alert-webhook-secret</code>)</td></tr>
+<tr><td>IAM</td><td>서비스별 IRSA 역할 · GitHub Actions OIDC 역할(infra-schedule · bootstrap · backend CI) · Lambda 함수별 역할 — <code>kms:Decrypt</code> 없음</td><td>최소 권한</td></tr>
 <tr><td>SSM Parameter Store</td><td><code>/sesac-gojigi/dev/...</code> — 큐 · 테이블 · 버킷 ARN</td><td>serverless.yml이 읽음</td></tr>
 <tr><td>EIP</td><td>2개 (퍼블릭 서브넷별)</td><td>NLB 고정 IP · DuckDNS</td></tr>
 </table></div>
@@ -694,7 +705,7 @@ svg .ah2{fill:var(--point)}
 <tr><td>review-service</td><td>S3 images <code>reviews/*</code> Put(presign) · SQS 수신(order-events 큐)</td></tr>
 <tr><td>settlement-service</td><td>SQS 수신(order · store 이벤트 큐) · SNS settlement-events Publish · S3 reports GetObject(명세서 presign)</td></tr>
 <tr><td>payment · admin · gateway</td><td>AWS 권한 없음 (포트원 · 내부 호출만)</td></tr>
-<tr><td>external-secrets · grafana</td><td>Secrets Manager <code>sesac-gojigi/*</code> 읽기 + <code>kms:Decrypt</code> · CloudWatch 읽기</td></tr>
+<tr><td>grafana</td><td>CloudWatch 읽기 (Lambda 로그 대시보드)</td></tr>
 </table></div>
 <h4>서버리스 — 배치 · 로깅만, 사용자 API 없음</h4>
 <div class="tbl"><table>
@@ -713,40 +724,48 @@ svg .ah2{fill:var(--point)}
 ├── global/s3/main.tf            상태 버킷 · 잠금
 ├── vpc/                         provider.tf · main.tf · outputs.tf
 ├── ecr/                         provider.tf · main.tf · outputs.tf   저장소 9개
-├── cluster/                     provider.tf · data.tf · variables.tf(team_member_arns) · main.tf
-│                                ebs-csi-driver.tf · lbc.tf · iam_policy.json · eso.tf · metrics-server.tf · outputs.tf
-├── cicd/                        provider.tf · variables.tf · main.tf · outputs.tf   GitHub OIDC 역할
-└── app/                         provider.tf · data.tf · eip.tf · s3.tf · sns_sqs.tf · dynamodb.tf
-                                 ses.tf · kms.tf · secrets.tf · irsa.tf · ssm.tf · outputs.tf
+├── cluster/                     provider.tf · data.tf · variables.tf(team_member_arns) · main.tf        ─ 매일 08:00 apply · 22:00 destroy
+│                                ebs-csi-driver.tf · lbc.tf · iam_policy.json · metrics-server.tf · outputs.tf
+├── cicd/                        provider.tf · variables.tf · main.tf · outputs.tf   GitHub OIDC 역할   ─ 상시
+└── app/                         provider.tf · data.tf · eip.tf · s3.tf · sns_sqs.tf · dynamodb.tf     ─ 상시
+                                 ses.tf · irsa.tf · ssm.tf · outputs.tf   (kms.tf · secrets.tf 없음)
 
 serverless/
 ├── order-notification/          serverless.yml · package.json · src/notify.js · events/*.json · test/
 ├── settlement-report/           serverless.yml · package.json · src/report.js · events/ · test/
 └── log-archive/                 serverless.yml(schedule 이벤트) · package.json · src/archive.js · events/</code></pre>
-<div class="note"><b>삭제 순서</b>ArgoCD 앱 · gateway Service(NLB) · PVC 먼저 → <code>app/</code> → <code>cluster/</code> → <code>ecr/</code> · <code>vpc/</code>. NLB가 EIP를 잡고 있으면 <code>app/</code> destroy 실패. KMS 키는 삭제 대기(7일) 후 제거.</div>
+<div class="note"><b>삭제 순서</b>매일 22:00 <code>infra-schedule</code> down: ArgoCD 앱 · gateway Service(NLB) · PVC 먼저 → <code>cluster/</code> destroy. 발표 후 전체 삭제: down 실행 후 <code>app/</code> → <code>cicd/</code> → <code>ecr/</code> · <code>vpc/</code>. NLB가 EIP를 잡고 있으면 <code>app/</code> destroy 실패.</div>
 
 <!-- ---------------- 2-4 CI/CD ---------------- -->
 <h3 id="p-cicd"><span class="n">2-4</span>CI/CD · 코드 품질</h3>
 <h4>기술 스택</h4>
 <div class="tbl"><table>
 <tr><th>구분</th><th>사용</th></tr>
-<tr><td>CI</td><td>GitHub Actions (호스티드 러너 · 경로 필터 · OIDC로 AWS 인증, 장기 키 없음) — 담당 이경석</td></tr>
+<tr><td>CI</td><td>GitHub Actions (호스티드 러너 · 경로 필터 · OIDC로 AWS 인증, 장기 키 없음) — 저장소 3개(gotgan-backend · gotgan-frontend · gotgan-config)에 각각, 담당 이경석</td></tr>
+<tr><td>저장소 간 연결</td><td>backend CI가 fine-grained PAT <code>CONFIG_REPO_TOKEN</code>(gotgan-config Contents: write만)으로 gotgan-config <code>values.yaml</code>에 이미지 태그 커밋</td></tr>
 <tr><td>정적 분석</td><td><b>SonarQube Cloud 무료 플랜</b> — Actions에서 Gradle <code>sonar</code>, main 대상 PR에 품질 게이트 · 이슈 코멘트. 비공개 저장소 5만 줄 한도 → 넘으면 중단. 클러스터 · EC2 자원 없음</td></tr>
-<tr><td>CD</td><td>ArgoCD (Pull 방식 GitOps · auto-sync · prune · selfHeal)</td></tr>
+<tr><td>CD</td><td>ArgoCD (Pull 방식 GitOps · auto-sync · prune · selfHeal) — <b>gotgan-config</b>의 <code>deploy/helm/sesac-gojigi-app</code> 감시. ArgoCD 자체는 매일 아침 bootstrap이 설치</td></tr>
+<tr><td>시크릿</td><td>GitHub Secrets 단일 소스 → <code>secrets-sync</code> 워크플로가 <code>kubectl create secret generic</code>(mysql · {service} · keycloak · grafana · alert-webhook). realm JSON은 <code>${GOTGAN_BACKEND_CLIENT_SECRET}</code> 자리표시자</td></tr>
+<tr><td>인프라 스케줄</td><td><code>infra-schedule</code>(cron <code>0 23 * * *</code> UTC = KST 08:00 up · <code>0 13 * * *</code> = KST 22:00 down) + <code>bootstrap</code>(kubeconfig → k8s 기본 계층 → secrets-sync → 관측성 → ArgoCD). 노드 0 스케일(nightly-scale) 폐기</td></tr>
 <tr><td>패키징</td><td>Docker 멀티 스테이지 · Helm 차트 1개(서비스 9개를 values로)</td></tr>
 <tr><td>무중단 배포</td><td>Deployment 롤링 업데이트 <code>maxUnavailable: 0</code> · <code>maxSurge: 1</code> · readiness probe 통과 후 트래픽 · <code>server.shutdown=graceful</code> + preStop 대기</td></tr>
 <tr><td>레지스트리</td><td>ECR · 태그 = 커밋 SHA 7자리</td></tr>
 <tr><td>프론트</td><td>Vercel Git 연동</td></tr>
 <tr><td>서버리스</td><td>Actions에서 <code>serverless deploy --stage dev</code></td></tr>
 </table></div>
-<h4>워크플로</h4>
+<h4>워크플로 (저장소별)</h4>
 <div class="tbl"><table>
-<tr><th>파일</th><th>트리거</th><th>단계</th></tr>
-<tr><td><code>backend.yml</code></td><td>PR · main push · <code>services/**</code></td><td>paths-filter로 바뀐 서비스 감지 → 매트릭스 <code>./gradlew test</code> → <code>./gradlew sonar</code>(SonarQube Cloud, PR 코멘트) → (main) 이미지 빌드 · ECR push → values.yaml 서비스별 태그 커밋(<code>concurrency</code> 직렬화)</td></tr>
-<tr><td><code>frontend.yml</code></td><td>PR · <code>frontend/**</code></td><td>lint · build 검사 (배포는 Vercel)</td></tr>
+<tr><th>저장소</th><th>파일</th><th>트리거</th><th>단계</th></tr>
+<tr><td rowspan="3">gotgan-backend</td><td><code>backend.yml</code></td><td>PR · main push · <code>services/**</code></td><td>paths-filter로 바뀐 서비스 감지 → 매트릭스 <code>./gradlew test</code> → <code>./gradlew sonar</code>(SonarQube Cloud, PR 코멘트) → (main) 이미지 빌드 · ECR push → gotgan-config 체크아웃(<code>CONFIG_REPO_TOKEN</code>) → values.yaml 서비스별 태그 커밋(<code>concurrency</code> 직렬화)</td></tr>
 <tr><td><code>serverless.yml</code></td><td>main push · <code>serverless/**</code></td><td>바뀐 함수만 deploy</td></tr>
-<tr><td><code>infra.yml</code></td><td>PR · <code>infra/terraform/**</code></td><td><code>fmt -check</code> · <code>validate</code> · <code>plan</code> 코멘트 (apply 없음)</td></tr>
-<tr><td><code>nightly-scale.yml</code></td><td>schedule</td><td>평일 22시 노드 0 · 9시 노드 2 (선택)</td></tr>
+<tr><td><code>security.yml</code></td><td>PR</td><td>gitleaks (세 저장소 공통)</td></tr>
+<tr><td rowspan="2">gotgan-frontend</td><td><code>frontend.yml</code></td><td>PR</td><td>lint · build 검사 (배포는 Vercel)</td></tr>
+<tr><td><code>security.yml</code></td><td>PR</td><td>gitleaks</td></tr>
+<tr><td rowspan="5">gotgan-config</td><td><code>infra.yml</code></td><td>PR · <code>infra/terraform/**</code></td><td><code>fmt -check</code> · <code>validate</code> · <code>plan</code> 코멘트 (apply 없음)</td></tr>
+<tr><td><code>infra-schedule.yml</code></td><td>schedule 08:00 · 22:00 KST · <code>workflow_dispatch</code>(up/down)</td><td>up: <code>terraform apply cluster/</code> → bootstrap 호출 / down: ArgoCD 앱 · LB Service · PVC 삭제 → <code>terraform destroy cluster/</code></td></tr>
+<tr><td><code>bootstrap.yml</code></td><td><code>workflow_call</code> · <code>workflow_dispatch</code></td><td>kubeconfig → <code>deploy/k8s/</code>(namespace · configmap · db · keycloak) → secrets-sync → <code>deploy/observability/</code> → ArgoCD 설치 + Application → 서비스 9개 배포</td></tr>
+<tr><td><code>secrets-sync.yml</code></td><td><code>workflow_call</code> · <code>workflow_dispatch</code></td><td>GitHub Secrets → <code>kubectl create secret generic ... --dry-run=client -o yaml | kubectl apply</code>(멱등)</td></tr>
+<tr><td><code>security.yml</code></td><td>PR</td><td>gitleaks</td></tr>
 </table></div>
 <h4>협업 규칙</h4>
 <ul class="b">
@@ -755,22 +774,25 @@ serverless/
   <li>커밋: Conventional Commits — <code>feat(order): 구매확정 API</code></li>
   <li>이슈 제목에 요구사항 ID — <code>[ORD-06] 결제 확인</code> · 칸반 GitHub Projects · 마일스톤 = 주차 · 1~3일 스프린트</li>
   <li>PR 하나에 기능 하나 · 300줄 이하 권장 · CODEOWNERS로 리뷰어 자동 지정</li>
-  <li>비밀 유출 방지: <code>.gitignore</code>(tfstate · *.pem · .env · secret.yaml) + gitleaks</li>
+  <li>비밀 유출 방지: <code>.gitignore</code>(tfstate · *.pem · .env · .env.local) + gitleaks. Secret YAML 파일은 저장소에 없음(secrets-sync가 생성)</li>
   <li>줄바꿈: <code>.gitattributes</code>에 <code>*.sh</code> · <code>gradlew</code> LF 고정</li>
 </ul>
 <h4>폴더 구조</h4>
-<pre><code>.github/
-├── workflows/                   backend.yml · frontend.yml · serverless.yml · infra.yml · nightly-scale.yml
+<pre><code>gotgan-backend/.github/
+├── workflows/                   backend.yml · serverless.yml · security.yml
 ├── CODEOWNERS
 ├── pull_request_template.md
 └── ISSUE_TEMPLATE/              feature.md · bug.md
 
-deploy/
-├── k8s/                         기본 계층 — 사람이 kubectl로 1회
+gotgan-frontend/.github/workflows/   frontend.yml · security.yml
+
+gotgan-config/.github/workflows/     infra.yml · infra-schedule.yml · bootstrap.yml · secrets-sync.yml · security.yml
+
+gotgan-config/deploy/
+├── k8s/                         기본 계층 — bootstrap 워크플로가 매일 아침 kubectl apply (Secret YAML 없음: secrets-sync가 생성)
 │   ├── 00-namespace.yaml
 │   ├── 01-configmap.yaml        서비스 주소 · DB/Redis/Keycloak 주소 · Loki/Zipkin 주소 · 데모 주기
-│   ├── external-secrets/        cluster-secret-store.yaml · {service}.yaml · keycloak.yaml
-│   └── db/                      storageclass.yaml · mysql.yaml · init-schemas.sh · redis.yaml
+│   └── db/                      storageclass.yaml · mysql.yaml · init-schemas.sh · redis.yaml(AOF + PVC)
 ├── keycloak/                    기본 계층 — keycloak.yaml(Deployment · ClusterIP) · realm-gotgan.json(realm import)
 ├── helm/sesac-gojigi-app/        앱 계층 — ArgoCD가 관리
 │   ├── Chart.yaml
@@ -779,7 +801,7 @@ deploy/
 └── argocd/application.yaml      감시 저장소 · 경로 · 동기화 정책</code></pre>
 <div class="tbl"><table>
 <tr><th>계층</th><th>관리 주체</th><th>내용</th></tr>
-<tr><td>기본 계층</td><td>사람 (kubectl)</td><td>네임스페이스 · ConfigMap · ExternalSecret · MySQL · Redis · Keycloak · 관측성</td></tr>
+<tr><td>기본 계층</td><td><code>bootstrap</code> 워크플로 (kubectl · 매일 아침) — 변경 시 같은 명령을 수동으로</td><td>네임스페이스 · ConfigMap · Secret(secrets-sync) · MySQL · Redis(AOF + PVC) · Keycloak · 관측성 · ArgoCD</td></tr>
 <tr><td>앱 계층</td><td>ArgoCD</td><td>서비스 9개(gateway + 업무 8) Deployment · Service · ServiceAccount (태그만 계속 바뀜)</td></tr>
 </table></div>
 
@@ -867,33 +889,42 @@ services/{service}/src/main/resources/
 <!-- ============================================================ 03 파일 맵 -->
 <section id="s-files">
 <h2><span class="n">03</span>프로젝트 전체 구조 · 파일 역할</h2>
-<p class="lead">저장소 하나(모노레포)에 들어가는 모든 폴더와 파일이 무슨 일을 하는지, 언제 누가 쓰는지 정리합니다. 02장이 파트별 "무엇으로", 이 장은 "어디에 무엇이".</p>
+<p class="lead">저장소 3개(<code>gotgan-backend</code> · <code>gotgan-frontend</code> · <code>gotgan-config</code>)에 들어가는 모든 폴더와 파일이 무슨 일을 하는지, 언제 누가 쓰는지 정리합니다. 02장이 파트별 "무엇으로", 이 장은 "어디에 무엇이". 로컬에서는 세 저장소를 한 상위 폴더 아래 나란히 둡니다.</p>
 
 <h3>한눈에 보기</h3>
-<pre><code>gotgan/
-├── README.md · .gitignore · .gitattributes · docker-compose.yml
-├── docs/                     adr/ · api/ · events.md
-├── scripts/                  build-and-push.sh · scale-nodes.sh · duckdns-update.sh
+<pre><code>gotgan-backend/               이미지를 만드는 쪽
+├── README.md · .gitignore · .gitattributes · docker-compose.yml(../gotgan-config 파일 마운트)
+├── docs/                     api/ · CONVENTION.md(발췌본)
 ├── services/                 Spring Boot 9개 ─ gateway · user · store · product · order · payment · review · settlement · admin
 │   └── {service}/            build.gradle · Dockerfile · src/main/java · src/main/resources · src/test
-├── frontend/                 React · Vite · Vercel
-├── infra/terraform/          global/s3 · vpc · ecr · cluster · cicd · app
+├── serverless/               order-notification · settlement-report · log-archive
+└── .github/                  workflows(backend · serverless · security) · CODEOWNERS · 템플릿
+
+gotgan-frontend/              React · Vite · Vercel (앱이 저장소 루트)
+├── src/ · public/ · index.html · vite.config.js · vercel.json · package.json · .env.example
+├── docs/CONVENTION.md
+└── .github/workflows/        frontend.yml · security.yml
+
+gotgan-config/                ArgoCD가 감시하는 쪽 · 인프라 자동화
+├── README.md · .gitignore
+├── docs/                     adr/ · events.md · secrets.md · README.md(인수인계) · CONVENTION.md(발췌본)
+├── scripts/                  scale-nodes.sh(수동 보조) · duckdns-update.sh
+├── infra/terraform/          global/s3 · vpc · ecr · cluster(매일 재생성) · cicd · app
 ├── deploy/
-│   ├── k8s/                  namespace · configmap · external-secrets · db · keycloak(keycloak.yaml · realm-gotgan.json)
+│   ├── k8s/                  namespace · configmap · db · keycloak(keycloak.yaml · realm-gotgan.json)  ※ Secret YAML 없음
 │   ├── observability/        prometheus · kube-state-metrics · blackbox · loki · zipkin · grafana · dashboards · alerting
 │   ├── helm/sesac-gojigi-app/ Chart.yaml · values.yaml · templates/
 │   └── argocd/               application.yaml
-├── serverless/               order-notification · settlement-report · log-archive
-└── .github/                  workflows/ · CODEOWNERS · 템플릿</code></pre>
+└── .github/workflows/        infra.yml · infra-schedule.yml · bootstrap.yml · secrets-sync.yml · security.yml</code></pre>
 <div class="tbl"><table>
-<tr><th>최상위 폴더</th><th>결과물</th><th>실행 주체</th><th>스펙</th></tr>
-<tr><td><code>services/</code></td><td>컨테이너 이미지 9개</td><td>GitHub Actions → ECR</td><td>2-1</td></tr>
-<tr><td><code>frontend/</code></td><td>정적 웹사이트</td><td>Vercel</td><td>2-2</td></tr>
-<tr><td><code>infra/terraform/</code></td><td>AWS 자원</td><td>AWS 담당 (terraform apply)</td><td>2-3</td></tr>
-<tr><td><code>serverless/</code></td><td>Lambda 3개</td><td>GitHub Actions (serverless deploy)</td><td>2-3</td></tr>
-<tr><td><code>deploy/k8s/</code>(keycloak 포함) · <code>observability/</code></td><td>클러스터 기본 계층 · Keycloak · 모니터링</td><td>사람 (kubectl, 1회)</td><td>2-4 · 2-5</td></tr>
-<tr><td><code>deploy/helm/</code> · <code>argocd/</code></td><td>앱 Deployment · Service</td><td>ArgoCD</td><td>2-4</td></tr>
-<tr><td><code>.github/</code></td><td>CI 파이프라인 · 협업 규칙</td><td>GitHub</td><td>2-4</td></tr>
+<tr><th>저장소 · 폴더</th><th>결과물</th><th>실행 주체</th><th>스펙</th></tr>
+<tr><td>backend <code>services/</code></td><td>컨테이너 이미지 9개</td><td>GitHub Actions → ECR → gotgan-config 태그 커밋</td><td>2-1</td></tr>
+<tr><td>frontend (루트)</td><td>정적 웹사이트</td><td>Vercel</td><td>2-2</td></tr>
+<tr><td>config <code>infra/terraform/</code></td><td>AWS 자원</td><td><code>cluster/</code>는 infra-schedule 워크플로(매일 08:00 · 22:00), 나머지는 구지훈 (terraform apply)</td><td>2-3</td></tr>
+<tr><td>backend <code>serverless/</code></td><td>Lambda 3개</td><td>GitHub Actions (serverless deploy)</td><td>2-3</td></tr>
+<tr><td>config <code>deploy/k8s/</code>(keycloak 포함) · <code>observability/</code> · K8s Secret</td><td>클러스터 기본 계층 · 시크릿 · Keycloak · 모니터링</td><td>bootstrap · secrets-sync 워크플로 (kubectl, 매일 아침)</td><td>2-4 · 2-5</td></tr>
+<tr><td>config <code>deploy/helm/</code> · <code>argocd/</code></td><td>앱 Deployment · Service</td><td>ArgoCD</td><td>2-4</td></tr>
+<tr><td>각 저장소 <code>.github/</code></td><td>CI 파이프라인 · 협업 규칙</td><td>GitHub</td><td>2-4</td></tr>
 </table></div>
 
 <!-- 루트 -->
@@ -903,13 +934,15 @@ services/{service}/src/main/resources/
 <tr><td><code>README.md</code></td><td>프로젝트 소개 · 로컬 실행 방법 · 폴더 안내 · 문서 링크</td><td>전원, 수시</td></tr>
 <tr><td><code>.gitignore</code></td><td>커밋 제외 목록 (03-7)</td><td>1주차 1회</td></tr>
 <tr><td><code>.gitattributes</code></td><td><code>*.sh</code> · <code>gradlew</code> 줄바꿈 LF 고정 (Windows CRLF로 인한 실행 실패 방지)</td><td>1주차 1회</td></tr>
-<tr><td><code>docker-compose.yml</code></td><td>로컬용 MySQL(스키마 8개 · <code>init-schemas.sh</code> 재사용) + Redis + Keycloak(<code>realm-gotgan.json</code> import) — MSA를 로컬에서 먼저 검증</td><td>각자 개발 시 <code>docker compose up -d</code></td></tr>
-<tr><td><code>docs/adr/0001-*.md</code></td><td>결정 기록 — 무엇을 · 왜 · 대안</td><td>회의 후</td></tr>
-<tr><td><code>docs/api/{service}.yaml</code></td><td>서비스별 OpenAPI 명세 (프론트 · 백엔드 계약)</td><td>API 변경 PR에 함께</td></tr>
-<tr><td><code>docs/events.md</code></td><td>이벤트 목록 · 봉투 형식 · payload 필드</td><td>이벤트 추가 시</td></tr>
-<tr><td><code>scripts/build-and-push.sh</code></td><td>CI 없이 수동 이미지 빌드 · ECR push (초기 · 비상용)</td><td>필요 시</td></tr>
-<tr><td><code>scripts/scale-nodes.sh</code></td><td>노드 그룹 desired 0 ↔ 2 (비용 절감)</td><td>야간 · 주말</td></tr>
-<tr><td><code>scripts/duckdns-update.sh</code></td><td>DuckDNS 도메인 IP 갱신 (토큰은 환경 변수)</td><td>EIP 변경 시</td></tr>
+<tr><td>backend <code>docker-compose.yml</code></td><td>로컬용 MySQL(스키마 8개 · <code>../gotgan-config/deploy/k8s/db/init-schemas.sh</code> 마운트) + Redis + Keycloak(<code>../gotgan-config/deploy/k8s/keycloak/realm-gotgan.json</code> import, <code>GOTGAN_BACKEND_CLIENT_SECRET</code> 로컬 값으로 치환) — MSA를 로컬에서 먼저 검증. 세 저장소가 같은 상위 폴더에 있어야 함</td><td>각자 개발 시 <code>docker compose up -d</code></td></tr>
+<tr><td>각 저장소 <code>docs/CONVENTION.md</code></td><td>컨벤션 발췌본(backend: 백엔드 · DB · 로깅 / frontend: 프론트 / config: 인프라 네이밍 · 로그 · 관측성) — 정본은 문서 사이트, 자동 생성이라 직접 수정 금지</td><td>컨벤션 개정 시 재생성</td></tr>
+<tr><td>config <code>docs/adr/0001-*.md</code></td><td>결정 기록 — 무엇을 · 왜 · 대안</td><td>회의 후</td></tr>
+<tr><td>backend <code>docs/api/{service}.yaml</code></td><td>서비스별 OpenAPI 명세 (프론트 · 백엔드 계약) · <code>error-codes.md</code></td><td>API 변경 PR에 함께</td></tr>
+<tr><td>config <code>docs/events.md</code></td><td>이벤트 목록 · 봉투 형식 · payload 필드</td><td>이벤트 추가 시</td></tr>
+<tr><td>config <code>docs/secrets.md</code></td><td>GitHub Secrets · Variables 이름 · 용도 · 어느 저장소 · 만드는 방법 (값 없음, 값은 노션)</td><td>시크릿 추가 시</td></tr>
+<tr><td>config <code>docs/README.md</code></td><td>인프라 산출물 · 접근 방법 · 주소 (인수인계 문서)</td><td>2주차 인수인계</td></tr>
+<tr><td>config <code>scripts/scale-nodes.sh</code></td><td>노드 그룹 desired 조절 — 수동 보조 도구 (시연 때 3대). 야간 비용 절감은 infra-schedule이 담당</td><td>시연 전</td></tr>
+<tr><td>config <code>scripts/duckdns-update.sh</code></td><td>DuckDNS 도메인 IP 갱신 (토큰은 환경 변수)</td><td>EIP 변경 시 (EIP는 상시 자원이라 평소엔 불필요)</td></tr>
 </table></div>
 
 <!-- services -->
@@ -960,7 +993,7 @@ services/{service}/src/main/resources/
 <div class="note"><b>admin-service도 다름</b>도메인 패키지에 controller · service · dto · client만 — entity · repository · Flyway · DB 계정 없음. 데이터는 각 서비스 <code>/internal/**</code> 호출로만 다룸.</div>
 
 <!-- frontend -->
-<h3 id="f-fe"><span class="n">03-3</span>frontend/</h3>
+<h3 id="f-fe"><span class="n">03-3</span>gotgan-frontend/ (저장소 루트)</h3>
 <div class="tbl"><table>
 <tr><th>경로</th><th>역할</th></tr>
 <tr><td><code>package.json</code> · <code>package-lock.json</code></td><td>의존성 · 스크립트(<code>dev</code> · <code>build</code> · <code>lint</code>) · 버전 잠금 (lock 파일도 커밋)</td></tr>
@@ -990,7 +1023,7 @@ services/{service}/src/main/resources/
 </table></div>
 
 <!-- terraform -->
-<h3 id="f-tf"><span class="n">03-4</span>infra/terraform/</h3>
+<h3 id="f-tf"><span class="n">03-4</span>gotgan-config/infra/terraform/</h3>
 <h4>모든 폴더에 공통으로 있는 파일</h4>
 <div class="tbl"><table>
 <tr><th>파일</th><th>역할</th></tr>
@@ -1007,37 +1040,34 @@ services/{service}/src/main/resources/
 <tr><td><code>global/s3/main.tf</code></td><td>상태 파일 버킷(버전 관리 · 삭제 방지) + 잠금 테이블. 이 폴더만 상태가 로컬</td><td>1 (팀에서 1번)</td></tr>
 <tr><td><code>vpc/main.tf</code></td><td>VPC 모듈: 서브넷 4 · IGW · NAT · 라우트 · EKS 서브넷 태그</td><td>2</td></tr>
 <tr><td><code>ecr/main.tf</code></td><td>저장소 9개(gateway · user · store · product · order · payment · review · settlement · admin) · 수명주기(최근 10개)</td><td>3</td></tr>
-<tr><td><code>cluster/main.tf</code></td><td>EKS 모듈: 제어 평면 · 노드 그룹(t3.large) · access entries · OIDC 공급자</td><td>4</td></tr>
+<tr><td><code>cluster/main.tf</code></td><td>EKS 모듈: 제어 평면 · 노드 그룹(t3.large) · access entries · OIDC 공급자 — <b>cluster/ 전체가 매일 08:00 apply · 22:00 destroy</b>(infra-schedule)</td><td>4</td></tr>
 <tr><td><code>cluster/ebs-csi-driver.tf</code></td><td>EBS CSI 애드온 + IRSA 역할 (MySQL · Prometheus 볼륨)</td><td>4</td></tr>
 <tr><td><code>cluster/lbc.tf</code> · <code>iam_policy.json</code></td><td>Load Balancer Controller Helm 설치 + IRSA · 공식 권한 정책 파일</td><td>4</td></tr>
-<tr><td><code>cluster/eso.tf</code></td><td>External Secrets Operator Helm 설치 + IRSA(Secrets Manager 읽기)</td><td>4</td></tr>
 <tr><td><code>cluster/metrics-server.tf</code></td><td>metrics-server (kubectl top · 자원 확인)</td><td>4</td></tr>
 <tr><td><code>cicd/main.tf</code></td><td>GitHub OIDC 공급자 · Actions 역할(ECR push · serverless 배포)</td><td>5</td></tr>
 <tr><td><code>app/eip.tf</code></td><td>NLB용 EIP 2개 (DuckDNS가 가리킬 고정 IP)</td><td>6</td></tr>
 <tr><td><code>app/s3.tf</code></td><td>images · seller-docs · reports · log-archive 버킷 · CORS(presigned PUT) · 수명주기(log-archive 90일 → Glacier)</td><td>6</td></tr>
 <tr><td><code>app/sns_sqs.tf</code></td><td>SNS 토픽 3 · 구독자별 SQS 큐 · DLQ · 구독 필터 정책</td><td>6</td></tr>
 <tr><td><code>app/dynamodb.tf</code></td><td>notifications · settlement-reports 테이블 (On-Demand · TTL)</td><td>6</td></tr>
-<tr><td><code>app/kms.tf</code></td><td>고객 관리형 키 1개 — Secrets Manager 암호화 · ESO · IRSA 역할에 Decrypt 허용</td><td>6</td></tr>
 <tr><td><code>app/ses.tf</code></td><td>발신 · 수신 이메일 자격 증명 (샌드박스 검증)</td><td>6</td></tr>
-<tr><td><code>app/secrets.tf</code></td><td>Secrets Manager "그릇"만 생성 — 값은 CLI로 입력(tfstate 노출 방지)</td><td>6</td></tr>
-<tr><td><code>app/irsa.tf</code></td><td>서비스별 IAM 역할 + 정책 (ServiceAccount와 연결)</td><td>6</td></tr>
+<tr><td><code>cluster/irsa.tf</code></td><td>서비스별 IAM 역할 + 정책 (ServiceAccount와 연결) — 신뢰 정책이 그날의 OIDC 공급자를 가리키므로 클러스터와 함께 매일 재생성, 이름 고정 → ARN 불변</td><td>4</td></tr>
 <tr><td><code>app/ssm.tf</code></td><td>큐 · 테이블 · 버킷 ARN을 SSM 파라미터로 기록 (serverless.yml이 읽음)</td><td>6</td></tr>
 </table></div>
 
 <!-- deploy -->
-<h3 id="f-deploy"><span class="n">03-5</span>deploy/</h3>
+<h3 id="f-deploy"><span class="n">03-5</span>gotgan-config/deploy/</h3>
+<p class="lead">"적용" 열의 kubectl은 매일 아침 <code>bootstrap</code> 워크플로가 실행합니다. 파일을 바꿨을 때는 같은 명령을 수동으로 적용하거나 다음 날 아침을 기다립니다. Secret은 파일이 없고 <code>secrets-sync</code> 워크플로가 GitHub Secrets로 만듭니다.</p>
 <div class="tbl"><table>
 <tr><th>경로</th><th>역할</th><th>적용</th></tr>
 <tr><td><code>k8s/00-namespace.yaml</code></td><td><code>sesac-gojigi</code> 네임스페이스</td><td>kubectl 1회</td></tr>
 <tr><td><code>k8s/01-configmap.yaml</code></td><td><code>app-config</code>: 프로필 · DB/Redis 호스트 · 서비스 주소(CoreDNS) · Keycloak issuer · Loki/Zipkin 주소 · 데모 주기 값</td><td>kubectl · 변경 후 <code>rollout restart</code></td></tr>
-<tr><td><code>k8s/external-secrets/cluster-secret-store.yaml</code></td><td>ESO가 Secrets Manager에 접속하는 방법(리전 · IRSA)</td><td>kubectl 1회</td></tr>
-<tr><td><code>k8s/external-secrets/{service}.yaml</code></td><td>ExternalSecret — Secrets Manager 키 → K8s Secret(<code>{service}-secret</code>)</td><td>kubectl · 1시간마다 동기화</td></tr>
+<tr><td>(파일 없음) Secret <code>mysql-secret</code> · <code>{service}-secret</code> · <code>keycloak-secret</code> · <code>grafana-secret</code> · <code>alert-webhook-secret</code></td><td>GitHub Secrets → <code>secrets-sync</code> 워크플로가 <code>kubectl create secret generic ... --dry-run=client -o yaml | kubectl apply</code>로 생성</td><td>bootstrap이 호출 · 값 변경 시 수동 실행 + <code>rollout restart</code></td></tr>
 <tr><td><code>k8s/db/storageclass.yaml</code></td><td><code>ebs-sc</code>: gp3 · 암호화 · WaitForFirstConsumer</td><td>kubectl 1회</td></tr>
 <tr><td><code>k8s/db/mysql.yaml</code></td><td>Headless Service + StatefulSet(1) + PVC 템플릿 + 초기화 스크립트 마운트</td><td>kubectl 1회</td></tr>
 <tr><td><code>k8s/db/init-schemas.sh</code></td><td>최초 기동 시 스키마 8개(서비스 7 + keycloakdb) · 계정 8개 · 권한 생성 (docker-compose도 재사용)</td><td>ConfigMap으로 마운트</td></tr>
-<tr><td><code>k8s/db/redis.yaml</code></td><td>Redis Service + Deployment(1)</td><td>kubectl 1회</td></tr>
+<tr><td><code>k8s/db/redis.yaml</code></td><td>Redis Service + Deployment(1) · <b>AOF(<code>appendonly yes</code>) + PVC(<code>ebs-sc</code> 1Gi)</b> — 파드 재시작에도 장바구니 캐시 유지</td><td>kubectl 1회</td></tr>
 <tr><td><code>k8s/keycloak/keycloak.yaml</code></td><td>Keycloak Deployment(1) + ClusterIP Service · keycloakdb 연결 · <code>KC_HOSTNAME=http://keycloak:8080</code> · 외부 미노출</td><td>kubectl 1회</td></tr>
-<tr><td><code>k8s/keycloak/realm-gotgan.json</code></td><td>realm import — 역할 3종 · 클라이언트 <code>gotgan-backend</code> · 프로토콜 매퍼 · ADMIN 시드 계정 (비밀 값은 Secret에서 주입)</td><td>기동 시 import</td></tr>
+<tr><td><code>k8s/keycloak/realm-gotgan.json</code></td><td>realm import — 역할 3종 · 클라이언트 <code>gotgan-backend</code>(secret은 <code>${GOTGAN_BACKEND_CLIENT_SECRET}</code> 자리표시자 → <code>keycloak-secret</code>으로 치환) · 프로토콜 매퍼 · ADMIN 시드 계정</td><td>기동 시 import (매일 아침)</td></tr>
 <tr><td><code>observability/00-namespace.yaml</code></td><td><code>monitoring</code> 네임스페이스</td><td>kubectl 1회</td></tr>
 <tr><td><code>observability/prometheus.yaml</code></td><td>수집 설정(파드 어노테이션 발견 · 15초) · RBAC · Deployment · PVC</td><td>kubectl</td></tr>
 <tr><td><code>observability/kube-state-metrics.yaml</code> · <code>blackbox-exporter.yaml</code></td><td>레플리카 · 파드 Ready 지표 / 게이트웨이 health 외부 체크 (System Status 데이터)</td><td>kubectl</td></tr>
@@ -1051,11 +1081,11 @@ services/{service}/src/main/resources/
 <tr><td><code>helm/…/templates/deployment.yaml</code></td><td>서비스마다 Deployment — 롤링 전략(maxUnavailable 0 · maxSurge 1) · 이미지 · envFrom(ConfigMap · Secret) · startup/readiness/liveness probe · preStop · Downward API · 노드 분산</td><td>ArgoCD</td></tr>
 <tr><td><code>helm/…/templates/service.yaml</code></td><td>서비스마다 Service — 기본 ClusterIP, gateway만 LoadBalancer(NLB)</td><td>ArgoCD</td></tr>
 <tr><td><code>helm/…/templates/serviceaccount.yaml</code></td><td>IRSA 역할이 있는 서비스의 ServiceAccount</td><td>ArgoCD</td></tr>
-<tr><td><code>argocd/application.yaml</code></td><td>감시할 저장소 · 경로(<code>deploy/helm/…</code>) · 대상 네임스페이스 · 자동 동기화</td><td>kubectl 1회</td></tr>
+<tr><td><code>argocd/application.yaml</code></td><td>감시할 저장소(<code>gotgan-config</code>) · 경로(<code>deploy/helm/sesac-gojigi-app</code>) · 대상 네임스페이스 · 자동 동기화</td><td>bootstrap(ArgoCD 설치 직후)</td></tr>
 </table></div>
 
 <!-- serverless / github -->
-<h3 id="f-sls"><span class="n">03-6</span>serverless/ · .github/</h3>
+<h3 id="f-sls"><span class="n">03-6</span>serverless/ · .github/ (저장소별 워크플로)</h3>
 <div class="tbl"><table>
 <tr><th>경로</th><th>역할</th></tr>
 <tr><td><code>serverless/{fn}/serverless.yml</code></td><td>함수 정의 — 런타임 · 메모리 · 환경 변수(SSM 참조) · IAM 권한 · 트리거(SQS · EventBridge schedule)</td></tr>
@@ -1063,12 +1093,15 @@ services/{service}/src/main/resources/
 <tr><td><code>serverless/{fn}/src/*.js</code></td><td>핸들러 — <code>notify.js</code>(알림 메일) · <code>report.js</code>(정산 명세서) · <code>archive.js</code>(로그 아카이브)</td></tr>
 <tr><td><code>serverless/{fn}/events/*.json</code></td><td>샘플 이벤트 — <code>serverless invoke local -p</code>로 로컬 실행</td></tr>
 <tr><td><code>serverless/{fn}/test/</code></td><td>핸들러 단위 테스트</td></tr>
-<tr><td><code>.github/workflows/backend.yml</code></td><td>바뀐 서비스 감지 → 테스트 → SonarQube Cloud 분석(PR 품질 게이트 · 코멘트) → 이미지 빌드 · ECR push → values.yaml 태그 커밋</td></tr>
-<tr><td><code>.github/workflows/frontend.yml</code></td><td>PR lint · build 검사</td></tr>
-<tr><td><code>.github/workflows/serverless.yml</code></td><td>바뀐 함수 <code>serverless deploy</code></td></tr>
-<tr><td><code>.github/workflows/infra.yml</code></td><td>Terraform fmt · validate · plan (apply 없음)</td></tr>
-<tr><td><code>.github/workflows/nightly-scale.yml</code></td><td>정해진 시각 노드 수 조절</td></tr>
-<tr><td><code>.github/CODEOWNERS</code></td><td>폴더별 자동 리뷰어</td></tr>
+<tr><td>backend <code>.github/workflows/backend.yml</code></td><td>바뀐 서비스 감지 → 테스트 → SonarQube Cloud 분석(PR 품질 게이트 · 코멘트) → 이미지 빌드 · ECR push → gotgan-config <code>values.yaml</code> 태그 커밋(<code>CONFIG_REPO_TOKEN</code>)</td></tr>
+<tr><td>backend <code>.github/workflows/serverless.yml</code></td><td>바뀐 함수 <code>serverless deploy</code></td></tr>
+<tr><td>frontend <code>.github/workflows/frontend.yml</code></td><td>PR lint · build 검사</td></tr>
+<tr><td>config <code>.github/workflows/infra.yml</code></td><td>Terraform fmt · validate · plan (apply 없음)</td></tr>
+<tr><td>config <code>.github/workflows/infra-schedule.yml</code></td><td>KST 08:00 <code>cluster/</code> apply → bootstrap 호출 / KST 22:00 ArgoCD 앱 · LB Service · PVC 삭제 → <code>cluster/</code> destroy. <code>workflow_dispatch</code>(up/down)</td></tr>
+<tr><td>config <code>.github/workflows/bootstrap.yml</code></td><td>kubeconfig → <code>deploy/k8s/</code> → secrets-sync → <code>deploy/observability/</code> → ArgoCD 설치 + Application</td></tr>
+<tr><td>config <code>.github/workflows/secrets-sync.yml</code></td><td>GitHub Secrets → K8s Secret 생성 · 갱신(멱등)</td></tr>
+<tr><td>세 저장소 <code>.github/workflows/security.yml</code></td><td>gitleaks</td></tr>
+<tr><td>각 저장소 <code>.github/CODEOWNERS</code></td><td>폴더별 자동 리뷰어</td></tr>
 <tr><td><code>.github/pull_request_template.md</code></td><td>PR 본문 양식 — 요구사항 ID · 변경 내용 · 테스트 방법 · 스크린샷</td></tr>
 <tr><td><code>.github/ISSUE_TEMPLATE/</code></td><td>기능 · 버그 이슈 양식</td></tr>
 </table></div>
@@ -1079,8 +1112,8 @@ services/{service}/src/main/resources/
 <tr><th>파일 · 폴더</th><th>이유</th><th>대신 어디에</th></tr>
 <tr><td><code>*.tfstate</code> · <code>.terraform/</code></td><td>자원 정보 · 비밀 값 포함, 용량 큼</td><td>S3 상태 버킷 · <code>terraform init</code></td></tr>
 <tr><td><code>*.tfvars</code> (비밀 포함 시)</td><td>계정 정보</td><td>로컬 · CLI 인자</td></tr>
-<tr><td><code>02-secret.yaml</code> · 실제 값 Secret</td><td>base64일 뿐 암호화 아님</td><td>Secrets Manager → ESO</td></tr>
-<tr><td><code>.env</code> · <code>.env.local</code></td><td>키 · 토큰</td><td>Vercel 환경 변수 · <code>.env.example</code>은 커밋</td></tr>
+<tr><td>실제 값이 든 Secret YAML</td><td>base64일 뿐 암호화 아님</td><td>GitHub Secrets → <code>secrets-sync</code> 워크플로가 클러스터에 직접 생성 (파일 자체를 만들지 않음)</td></tr>
+<tr><td><code>.env</code> · <code>.env.local</code></td><td>키 · 토큰</td><td>Vercel 환경 변수 · GitHub Secrets · <code>.env.example</code>은 커밋</td></tr>
 <tr><td><code>*.pem</code> · 액세스 키</td><td>계정 탈취 위험</td><td>개인 보관 · OIDC로 대체</td></tr>
 <tr><td><code>build/</code> · <code>.gradle/</code> · <code>node_modules/</code> · <code>dist/</code> · <code>.serverless/</code></td><td>빌드 산출물</td><td>CI에서 매번 생성</td></tr>
 <tr><td><code>.idea/</code> · <code>.vscode/</code>(개인 설정)</td><td>개인 환경</td><td>—</td></tr>
@@ -1213,12 +1246,12 @@ services/{service}/src/main/resources/
 <h3 id="d-ord"><span class="n">ORD</span>장바구니 · 주문</h3>
 <div class="dom-head">
   <div>서비스</div><div>order-service (Saga 오케스트레이터 → user · product · payment 내부 호출)</div>
-  <div>저장소</div><div>orderdb(orders · order_item · order_store_shipment · order_item_history · saga_instance · outbox_event · shedlock) · Redis(<code>cart:{userId}</code>)</div>
+  <div>저장소</div><div>orderdb(cart_item · orders · order_item · order_store_shipment · order_item_history · saga_instance · outbox_event · shedlock) · Redis(<code>cart:{userId}</code> — cart_item의 캐시)</div>
   <div>화면</div><div>/cart · /checkout · /order/complete · /mypage/orders · /mypage/orders/:id</div>
 </div>
 <div class="tbl req"><table>
 <tr><th>ID</th><th>요구사항</th><th>상세</th><th>우선</th><th>화면 · API</th></tr>
-<tr data-p="0"><td class="id">ORD-01</td><td><b>장바구니 담기 · 수정 · 삭제</b><span class="tag">구매자</span></td><td><ul><li>옵션 단위 · 수량 변경 · 단건/선택 삭제</li><li>Redis Hash, 30일 TTL(담을 때마다 연장)</li></ul></td><td><span class="p p0">P0</span></td><td class="ref">/api/carts/items<br>/cart</td></tr>
+<tr data-p="0"><td class="id">ORD-01</td><td><b>장바구니 담기 · 수정 · 삭제</b><span class="tag">구매자</span></td><td><ul><li>옵션 단위 · 수량 변경 · 단건/선택 삭제</li><li>원본은 MySQL <code>cart_item</code>, Redis Hash는 캐시(30일 TTL, 담을 때마다 연장) — 쓰기는 MySQL 먼저, 읽기는 Redis → 미스 시 MySQL</li><li>Redis 장애 시 MySQL 폴백으로 정상 동작(SYS-19)</li></ul></td><td><span class="p p0">P0</span></td><td class="ref">/api/carts/items<br>/cart</td></tr>
 <tr data-p="0"><td class="id">ORD-02</td><td><b>스토어별 장바구니 · 배송비</b><span class="tag">구매자</span></td><td><ul><li>스토어별 그룹 · 스토어별 배송비 1회(묶음배송)</li><li>"○○원 더 담으면 무료배송" · 가격 · 품절은 조회 시 product에서 재확인</li></ul></td><td><span class="p p0">P0</span></td><td class="ref">GET /api/carts</td></tr>
 <tr data-p="0"><td class="id">ORD-03</td><td><b>주문서</b><span class="tag">구매자</span></td><td><ul><li>선택 상품 · 주문자 · 배송지(입력 또는 저장된 배송지) · 약관 동의</li><li>포인트 사용 입력(PNT-01) · 금액은 서버가 재계산 (상품 + 스토어별 배송비 − 사용 포인트)</li></ul></td><td><span class="p p0">P0</span></td><td class="ref">/checkout</td></tr>
 <tr data-p="0"><td class="id">ORD-04</td><td><b>주문 생성 Saga</b><span class="tag">구매자</span></td><td><ul><li>① 주문 PENDING + 상품주문 스냅샷(상품명 · 옵션명 · 가격 · storeId · categoryId) ② user 포인트 차감(사용 시) ③ product 재고 예약 ④ payment 결제 준비(READY · <code>portone_payment_id</code>)</li><li>어느 단계든 실패 → 역순 보상 · 주문 FAILED · 결제창 미호출</li><li>응답: paymentId · 결제 금액 · 주문명</li></ul></td><td><span class="p p0">P0</span></td><td class="ref">POST /api/orders</td></tr>
@@ -1382,17 +1415,20 @@ services/{service}/src/main/resources/
 <tr data-p="0"><td class="id">SYS-05</td><td><b>인가 · 노출 범위</b><span class="tag">시스템</span></td><td><ul><li>역할 · 소유권 2단계 인가 (게이트웨이 역할 / 서비스 소유권)</li><li>업무 서비스 · Keycloak은 ClusterIP, <code>/internal/**</code> 외부 미노출</li></ul></td><td><span class="p p0">P0</span></td><td class="ref">타 스토어 상품 수정 403 테스트</td></tr>
 <tr data-p="0"><td class="id">SYS-06</td><td><b>결제 금액 무결성</b><span class="tag">시스템</span></td><td><ul><li>결제 금액은 서버 계산 · 포트원 조회로만 PAID 판정</li></ul></td><td><span class="p p0">P0</span></td><td class="ref">금액 변조 결제 → 자동 취소</td></tr>
 <tr data-p="0"><td class="id">SYS-07</td><td><b>입력 보안</b><span class="tag">시스템</span></td><td><ul><li>SQL Injection: JPA · QueryDSL 파라미터 바인딩, <code>@Query</code> · 네이티브 쿼리 문자열 이어 붙이기 금지</li><li>XSS: 리뷰 · 문의 · 입점 신청 · 상품 설명 HTML은 OWASP Java HTML Sanitizer로 저장 전 정화</li></ul></td><td><span class="p p0">P0</span></td><td class="ref">스크립트 삽입 리뷰 → 정화 확인</td></tr>
-<tr data-p="0"><td class="id">SYS-08</td><td><b>시크릿 · 접근 통제</b><span class="tag">시스템</span></td><td><ul><li>Secrets Manager(KMS 암호화) → ESO · 코드 · 주석 · 로그 · Git 히스토리에 키 금지(gitleaks)</li><li>AWS 장기 키 없음(OIDC · IRSA) · Grafana · Loki 외부 미노출</li></ul></td><td><span class="p p0">P0</span></td><td class="ref">gitleaks · 리뷰</td></tr>
+<tr data-p="0"><td class="id">SYS-08</td><td><b>시크릿 · 접근 통제</b><span class="tag">시스템</span></td><td><ul><li>GitHub Secrets 단일 소스 → <code>secrets-sync</code> → K8s Secret(SYS-21) · 코드 · 주석 · 로그 · Git 히스토리에 키 금지(gitleaks)</li><li>AWS 장기 키 없음(OIDC · IRSA) · Grafana · Loki 외부 미노출</li></ul></td><td><span class="p p0">P0</span></td><td class="ref">gitleaks · 리뷰</td></tr>
 <tr data-p="0"><td class="id">SYS-09</td><td><b>정합성</b><span class="tag">시스템</span></td><td><ul><li>이벤트 소비 · Saga 참여자 · 배치 모두 멱등</li><li>재고 초과 판매 0건</li></ul></td><td><span class="p p0">P0</span></td><td class="ref">중복 호출 · 동시 주문 테스트</td></tr>
 <tr data-p="0"><td class="id">SYS-10</td><td><b>관측성</b><span class="tag">시스템</span></td><td><ul><li>전 서비스 RED 지표 · JSON 로그 · traceId 전파 · 서킷 브레이커 상태 지표</li><li>Lambda 로그 Grafana에서 조회</li></ul></td><td><span class="p p0">P0</span></td><td class="ref">요청 1건 traceId로 전 구간 추적</td></tr>
 <tr data-p="0"><td class="id">SYS-11</td><td><b>데이터</b><span class="tag">시스템</span></td><td><ul><li>스키마 변경은 Flyway만 · 서비스별 스키마 · 계정, 서비스 간 JOIN · FK 금지</li><li>Asia/Seoul 저장 · 금액 정수 · 기본 인덱스(PK · UNIQUE · FK · 다른 서비스 ID)</li></ul></td><td><span class="p p0">P0</span></td><td class="ref">계정별 스키마 권한</td></tr>
 <tr data-p="1"><td class="id">SYS-12</td><td><b>정적 분석</b><span class="tag">시스템</span></td><td><ul><li>SonarQube Cloud 무료 플랜 — GitHub Actions에서 Gradle <code>sonar</code>, main 대상 PR에 품질 게이트 · 이슈 코멘트</li><li>비공개 저장소 5만 줄 한도 → 넘으면 중단</li></ul></td><td><span class="p p1">P1</span></td><td class="ref">PR 코멘트</td></tr>
 <tr data-p="1"><td class="id">SYS-13</td><td><b>성능</b><span class="tag">시스템</span></td><td><ul><li>상품 목록 · 상세 p95 500ms 이하 (dev, 동시 사용자 50 기준)</li></ul></td><td><span class="p p1">P1</span></td><td class="ref">k6 · Grafana p95</td></tr>
 <tr data-p="1"><td class="id">SYS-14</td><td><b>UI</b><span class="tag">시스템</span></td><td><ul><li>375px 가로 스크롤 없음 · 목업 디자인 원칙 유지 · 주요 버튼 키보드 접근</li></ul></td><td><span class="p p1">P1</span></td><td class="ref">모바일 뷰 점검</td></tr>
-<tr data-p="1"><td class="id">SYS-15</td><td><b>비용</b><span class="tag">시스템</span></td><td><ul><li>Budgets 알림 · 야간 노드 0 · 발표 후 전체 destroy</li></ul></td><td><span class="p p1">P1</span></td><td class="ref">Cost Explorer 태그</td></tr>
+<tr data-p="1"><td class="id">SYS-15</td><td><b>비용</b><span class="tag">시스템</span></td><td><ul><li>Budgets 알림 · 클러스터 매일 08:00 생성 · 22:00 삭제(SYS-20) · 발표 후 전체 destroy</li></ul></td><td><span class="p p1">P1</span></td><td class="ref">Cost Explorer 태그</td></tr>
 <tr data-p="2"><td class="id">SYS-16</td><td><b>ArgoCD 롤백 시연</b><span class="tag">시스템</span></td><td><ul><li>이전 리비전으로 롤백 → System Status에서 교체 확인</li></ul></td><td><span class="p p2">P2</span></td><td class="ref">ArgoCD History</td></tr>
 <tr data-p="2"><td class="id">SYS-17</td><td><b>게이트웨이 속도 제한 · API HTTPS</b><span class="tag">시스템</span></td><td><ul><li>경로별 요청 제한 · cert-manager로 API 인증서</li></ul></td><td><span class="p p2">P2</span></td><td class="ref">gateway · cert-manager</td></tr>
 <tr data-p="x"><td class="id">SYS-18</td><td><b>오토스케일링 · 파티셔닝 · CQRS/캐시 · 운영(prod) 환경</b></td><td><ul><li>범위 밖 — HPA · 이력 테이블 파티셔닝 · 읽기 모델은 가이드라인 20장 "실무에서는"</li></ul></td><td><span class="p px">제외</span></td><td class="ref">—</td></tr>
+<tr data-p="1"><td class="id">SYS-19</td><td><b>Redis 장애 시 장바구니 MySQL 폴백</b><span class="tag">시스템</span></td><td><ul><li>장바구니 원본 MySQL <code>cart_item</code> · Redis <code>cart:{userId}</code>는 캐시(write-through · read-through)</li><li>Resilience4j 서킷 <code>redisCart</code> + 폴백 → Redis 다운 시 장바구니 · 주문서 정상(지연만), 서킷 OPEN이 Grafana에 보임 · Redis AOF + PVC</li></ul></td><td><span class="p p1">P1</span></td><td class="ref">Redis 0개 → 장바구니 정상 · 서킷 패널</td></tr>
+<tr data-p="0"><td class="id">SYS-20</td><td><b>인프라 일일 스케줄 · 부트스트랩</b><span class="tag">시스템</span></td><td><ul><li><code>infra-schedule</code>: KST 08:00 <code>cluster/</code> apply → <code>bootstrap</code>(k8s 기본 계층 · secrets-sync · 관측성 · ArgoCD → 서비스 9개), KST 22:00 ArgoCD 앱 · LB Service · PVC 삭제 → destroy</li><li>vpc · ecr · cicd · app 상시 · EIP 고정(DuckDNS 변경 없음) · 매일 아침 빈 DB는 Flyway 시드 · Keycloak 시드 계정으로 복원 · 실패 시 <code>workflow_dispatch</code>로 수동 재실행</li></ul></td><td><span class="p p0">P0</span></td><td class="ref">아침 자동 생성 후 System Status 전부 초록</td></tr>
+<tr data-p="0"><td class="id">SYS-21</td><td><b>시크릿 GitHub Secrets 동기화</b><span class="tag">시스템</span></td><td><ul><li>비밀 값은 GitHub Secrets(gotgan-config · gotgan-backend) · Vercel 환경 변수에만 — Secrets Manager · KMS · ESO 없음</li><li><code>secrets-sync</code> 워크플로가 <code>mysql-secret</code> · <code>{service}-secret</code> · <code>keycloak-secret</code> · <code>grafana-secret</code> · <code>alert-webhook-secret</code> 생성(멱등) · realm JSON · YAML은 자리표시자만 · 목록은 <code>docs/secrets.md</code></li></ul></td><td><span class="p p0">P0</span></td><td class="ref">secrets-sync 실행 후 파드 기동 · gitleaks</td></tr>
 </table></div>
 </section>
 
@@ -1571,6 +1607,7 @@ services/{service}/src/main/resources/
 <tr><td>④</td><td><b>무중단 배포</b> — 부하를 건 상태로 새 이미지 롤링 배포</td><td>롤링 패널에서 ReplicaSet 교체 · 배포 중 5xx 0</td><td class="ref">SYS-03</td></tr>
 <tr><td>⑤</td><td>(가능하면) ArgoCD 롤백</td><td>이전 리비전으로 교체 · 초록 유지</td><td class="ref">SYS-16</td></tr>
 <tr><td>⑥</td><td>Saga 보상 — 재고 부족 · 금액 위변조</td><td>주문 FAILED · 포트원 자동 취소 · 재고 · 포인트 원복 · Saga 보상 지표 증가</td><td class="ref">ORD-04 · PAY-02 · SYS-06</td></tr>
+<tr><td>⑦</td><td><b>Redis 다운</b> — redis 레플리카 0 후 장바구니 담기 · 조회 · 주문서</td><td>Redis 칸 빨강 · 장바구니는 MySQL 폴백으로 정상(지연만) · 서킷 패널에 <code>redisCart</code> OPEN → 복구 후 CLOSED</td><td class="ref">SYS-19 · ORD-01</td></tr>
 </table></div>
 <ul class="b">
   <li>오토스케일링 시연은 하지 않음 (예매 · 경매 같은 동시성 폭주 도메인이 아님)</li>

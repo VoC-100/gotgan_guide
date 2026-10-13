@@ -45,7 +45,7 @@
 | 5 | 에러 코드 형식 | 의미형 `{도메인}_{상황}` — `ORDER_OUT_OF_STOCK` | 2-5 |
 | 6 | 프론트 언어 | JavaScript (`.js` / `.jsx`) — 목업 그대로 | 4-1 |
 | 7 | 프론트 페이지 위치 | `pages/{shop · mypage · seller · admin}/` — 로직은 `features/` | 4-2 |
-| 8 | Redis 키 이름 | `{용도}:{식별자}` — `cart:{userId}` · `blacklist:{jti}`(Could). 리프레시 토큰 키는 폐지(Keycloak이 관리) | 2-2 |
+| 8 | Redis 키 이름 | `{용도}:{식별자}` — `cart:{userId}`(캐시, 원본은 `orderdb.cart_item`) · `blacklist:{jti}`(Could). 리프레시 토큰 키는 폐지(Keycloak이 관리) | 2-2 |
 
 ### 0-4. 10/12 추가 확정
 
@@ -59,6 +59,10 @@
 | 동적 검색 | QueryDSL | 2-6 |
 | XSS | 사용자 입력 HTML은 OWASP Java HTML Sanitizer로 저장 전 정화 | 2-6 |
 | 코드 품질 | SonarQube Cloud — main 대상 PR에 품질 게이트 | 1-3 |
+| (10/13) 저장소 3개 | `gotgan-backend`(services · serverless · docker-compose · docs/api) · `gotgan-frontend`(React 루트) · `gotgan-config`(deploy · infra/terraform · scripts · docs). 모노레포 폐지. 각 저장소 `docs/CONVENTION.md`는 이 문서의 발췌본(자동 생성) — 이 문서만 고친다 | 1-4 · 5-5 |
+| (10/13) 시크릿 | **GitHub Secrets 단일 소스**(클러스터 · CI) · Vercel 환경 변수(프론트). Secrets Manager · KMS · ESO 없음. `secrets-sync` 워크플로가 K8s Secret 생성 | 1-5 · 5-3 |
+| (10/13) 인프라 일일 스케줄 | `infra/terraform/cluster/`는 `infra-schedule` 워크플로가 매일 KST 08:00 apply(→ `bootstrap`) · 22:00 destroy. 나머지 폴더는 상시. apply/destroy는 워크플로 또는 구지훈 | 5-2 |
+| (10/13) Redis 폴백 | 장바구니 원본은 MySQL `orderdb.cart_item`, Redis `cart:{userId}`는 캐시. Redis 호출은 서킷 인스턴스 `redisCart` + 폴백(MySQL) | 2-2 · 2-7 · 3-2 |
 
 ---
 
@@ -95,13 +99,16 @@
 ### 1-4. 폴더 소유권
 
 - **다른 사람이 맡은 서비스 · `features/` 폴더는 PR 없이 수정 금지.** 연동이 필요하면 이슈로 요청
-- 공유 파일(`shared/api/queryKeys.js` · `app/router.jsx` · `01-configmap.yaml` · `values.yaml`)은 **도메인별 주석 구획 안에서만** 수정
+- 공유 파일(frontend `shared/api/queryKeys.js` · `app/router.jsx`, gotgan-config `deploy/k8s/01-configmap.yaml` · `deploy/helm/sesac-gojigi-app/values.yaml`)은 **도메인별 주석 구획 안에서만** 수정. `values.yaml`의 `tag` 줄은 backend CI만 커밋
 - CODEOWNERS로 리뷰어 자동 지정
 
 ### 1-5. 시크릿
 
 - `application.yml` · `.env` · YAML에 실제 비밀 값 커밋 금지 — `${환경변수}` 자리표시자만
-- 비밀 값 위치: Secrets Manager(서버) · GitHub Secrets(CI) · Vercel 환경 변수(프론트)
+- 비밀 값 위치: **GitHub Secrets**(클러스터 · CI — gotgan-config · gotgan-backend) · Vercel 환경 변수(프론트). Secrets Manager · KMS · ESO는 쓰지 않음
+- 클러스터 시크릿은 gotgan-config의 `secrets-sync` 워크플로가 GitHub Secrets → K8s Secret으로 생성. Secret YAML 파일을 만들지 않음. 이름 · 용도는 `gotgan-config/docs/secrets.md`(값 없음), 값은 노션(팀 비공개)
+- 비밀 아닌 값은 GitHub Variables(`AWS_ACCOUNT_ID` · `AWS_REGION` · `EKS_CLUSTER_NAME` · `DUCKDNS_DOMAIN`)
+- 로컬은 `.env.local`(커밋 금지) 또는 docker-compose 기본값(`local-pass`). realm JSON · YAML에는 `${변수}` 자리표시자만
 - 실수로 커밋했다면 즉시 팀 공유 → 키 폐기 · 재발급 (히스토리 삭제만으로는 부족)
 
 ---
@@ -226,8 +233,8 @@ com.sesac.gojigi.{service}            # service = gateway · user · store · pr
 
 | 키 | 서비스 | 용도 |
 |---|---|---|
-| `cart:{userId}` | order | 장바구니 Hash (Must) |
-| `blacklist:{jti}` | gateway | 로그아웃한 Access Token 즉시 무효화 (Could) |
+| `cart:{userId}` | order | 장바구니 Hash — **캐시**, 원본은 MySQL `orderdb.cart_item`. 쓰기는 MySQL 먼저 → Redis 갱신(실패 무시 · WARN), 읽기는 Redis → 미스 · 장애 시 MySQL. 서킷 인스턴스 `redisCart` (Must) |
+| `blacklist:{jti}` | gateway | 로그아웃한 Access Token 즉시 무효화 — Redis 전용, 원본 없음 (Could) |
 
 - 한 Redis를 여러 서비스가 공유하므로 **다른 서비스의 키 접두어 사용 금지**
 - 리프레시 토큰은 Keycloak이 관리 — Redis에 `refresh:` 키를 만들지 않음. 상품 캐시 키도 없음
@@ -467,6 +474,7 @@ throw new OrderException(OrderErrorCode.ORDER_NOT_FOUND);
 | 설정 위치 | `application.yml`의 `resilience4j.*` (별도 Config 클래스 없음, 서킷 브레이커 인스턴스 이름 `{대상}Client`) — 값 임의 변경 금지 |
 
 - 목표: **서비스 하나가 죽어도 호출한 쪽은 에러 메시지로 1차 처리**하고 나머지 화면 · 기능은 정상
+- Redis 호출(장바구니 캐시)도 같은 표준: 서킷 인스턴스 `redisCart` + 폴백 → MySQL `cart_item` 원본 조회. 쓰기는 MySQL 먼저, Redis 갱신 실패는 WARN 로그만 — Redis가 죽어도 장바구니는 정상(지연만)
 
 **대시보드 조합**
 
@@ -561,7 +569,7 @@ throw new OrderException(OrderErrorCode.ORDER_NOT_FOUND);
 | userdb | `users`(`point_balance` · `grade` 포함) · `address` · `point_history` |
 | storedb | `store_application` · `application_document` · `store` · `processed_event` · `shedlock` |
 | productdb | `category` · `product` · `product_option` · `product_image` · `stock_reservation` · `processed_event` |
-| orderdb | `orders` · `order_item` · `order_store_shipment` · `order_item_history` · `order_claim` · `saga_instance` · `outbox_event` · `shedlock` |
+| orderdb | `cart_item`(장바구니 원본 — Redis `cart:{userId}`는 캐시) · `orders` · `order_item` · `order_store_shipment` · `order_item_history` · `order_claim` · `saga_instance` · `outbox_event` · `shedlock` |
 | paymentdb | `payment` · `payment_cancel` |
 | reviewdb | `review` · `review_image` · `review_eligibility` · `product_inquiry` · `processed_event` |
 | settlementdb | `category_commission` · `settlement_store`(StoreApproved 스냅샷: 스토어명 · 정산 계좌) · `settlement_item` · `settlement` · `payout` · `processed_event` · `shedlock` |
@@ -964,7 +972,6 @@ function AdminStoreListPage() {
 | SQS 큐 | `sesac-gojigi-{소비자}-{도메인}-events` | `sesac-gojigi-settlement-order-events` |
 | DLQ | 큐 이름 + `-dlq` | `sesac-gojigi-settlement-order-events-dlq` |
 | IAM 역할 (IRSA) | `sesac-gojigi-{service}-irsa` | `sesac-gojigi-order-irsa` |
-| Secrets Manager | `sesac-gojigi/{service}` | `sesac-gojigi/order-service` |
 | SSM 파라미터 | `/sesac-gojigi/dev/{종류}/{이름}` | `/sesac-gojigi/dev/sqs/notification-queue-arn` |
 | S3 버킷 | `sesac-gojigi-{용도}-{계정ID 끝 4자리}` (전역 유일) | `sesac-gojigi-images-1234`(prefix `products/` · `reviews/`) · `sesac-gojigi-seller-docs-1234` · `sesac-gojigi-reports-1234` · `sesac-gojigi-log-archive-1234` |
 | DynamoDB | `sesac-gojigi-{용도}` | `sesac-gojigi-notifications` · `sesac-gojigi-settlement-reports` (그 외 테이블 없음) |
@@ -975,7 +982,8 @@ function AdminStoreListPage() {
 - 자원 로컬 이름: snake_case, 타입 반복 금지 (`aws_s3_bucket.product_images` ○ / `aws_s3_bucket.product_images_bucket` ✗)
 - 변수 · output: snake_case + `description` 필수
 - 커밋 전 `terraform fmt -recursive` · `terraform validate`
-- apply는 AWS 담당만, 다른 사람은 plan까지
+- apply/destroy는 스케줄 워크플로(`infra-schedule`, OIDC 역할 — `cluster/` 매일 08:00 · 22:00) 또는 구지훈. 다른 사람은 plan까지(`infra.yml`이 PR에 plan 코멘트)
+- Terraform에 비밀 값 금지 — 시크릿은 GitHub Secrets → `secrets-sync`(1-5). `kms.tf` · `secrets.tf` · `eso.tf` 없음
 - `.terraform.lock.hcl` 커밋, `*.tfstate` · `.terraform/` 커밋 금지
 
 ### 5-3. Kubernetes · Helm
@@ -986,6 +994,8 @@ function AdminStoreListPage() {
 - YAML 들여쓰기 2칸, 탭 금지
 - 네임스페이스: 앱 `sesac-gojigi` · 모니터링 `monitoring` · `argocd`
 - Helm `values.yaml` 키는 camelCase, 서비스 키는 서비스 이름 (`services.order-service.tag`)
+- Secret 이름: `mysql-secret` · `{service}-secret` · `keycloak-secret` · `grafana-secret` · `alert-webhook-secret` — 파일로 커밋하지 않고 `secrets-sync` 워크플로가 생성. 서비스는 `envFrom.secretRef`로만 읽음
+- Redis는 AOF(`appendonly yes`) + PVC(`ebs-sc` 1Gi)
 - 이미지 태그: 커밋 SHA 7자리. `latest` 금지
 - 모든 컨테이너에 `resources.requests` 필수, 메모리 `limits` 필수
 
@@ -1000,8 +1010,9 @@ function AdminStoreListPage() {
 
 - 함수 폴더: kebab-case — `order-notification` · `settlement-report` · `log-archive` (3개, 사용자 API 없음), 서비스 이름 `sesac-gojigi-{폴더명}`
 - 핸들러 파일 camelCase (`notify.js`), export 이름 `handler`
-- 워크플로 파일: 영역 이름 kebab-case (`backend.yml`), job 이름 kebab-case (`bump-tag`)
-- GitHub Secrets: UPPER_SNAKE (`AWS_ROLE_ARN` · `SERVERLESS_ACCESS_KEY`)
+- 워크플로 파일: 영역 이름 kebab-case, job 이름 kebab-case (`bump-tag`). 저장소별 — gotgan-backend `backend.yml` · `serverless.yml` · `security.yml` / gotgan-frontend `frontend.yml` · `security.yml` / gotgan-config `infra.yml` · `infra-schedule.yml` · `bootstrap.yml` · `secrets-sync.yml` · `security.yml`
+- GitHub Secrets: UPPER_SNAKE (`AWS_ROLE_ARN` · `SERVERLESS_ACCESS_KEY` · `CONFIG_REPO_TOKEN` · `{SERVICE}_DB_PASSWORD`), Variables도 UPPER_SNAKE (`AWS_REGION`)
+- 저장소 간 토큰 `CONFIG_REPO_TOKEN`: fine-grained PAT, gotgan-config만 · Contents write만, 만료일은 발표(11/20) 이후
 
 ---
 
