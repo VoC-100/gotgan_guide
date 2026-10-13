@@ -1307,7 +1307,7 @@ services/{service}/src/main/resources/
 <tr data-p="1"><td class="id">REV-09</td><td><b>판매자 문의 답변</b><span class="tag">판매자</span></td><td><ul><li>미답변 필터 · 답변 작성 · 수정</li></ul></td><td><span class="p p1">P1</span></td><td class="ref">GET /api/seller/inquiries<br>/seller/qna</td></tr>
 <tr data-p="2"><td class="id">REV-10</td><td><b>FAQ 관리자 편집</b><span class="tag">관리자</span></td><td><ul><li>기본은 프론트 정적 데이터(<code>features/support/faq.js</code>) · 편집이 필요해지면 review에 테이블 1개 추가</li></ul></td><td><span class="p p2">P2</span></td><td class="ref">/help</td></tr>
 <tr data-p="x"><td class="id">REV-11</td><td><b>회원 신고 · 신고 관리 · 리뷰 신고 자동 블라인드</b></td><td><ul><li>범위 밖</li></ul></td><td><span class="p px">제외</span></td><td class="ref">—</td></tr>
-<tr data-p="2"><td class="id">REV-12</td><td><b>관리자 리뷰 블라인드</b><span class="tag">관리자</span></td><td><ul><li>리뷰 관리 목록(검토 대상 · 블라인드 · 전체, 사진 필터) · 블라인드 처리 · 해제(사유)</li><li>블라인드 리뷰는 상품 리뷰 목록 · 평균에서 제외</li></ul></td><td><span class="p p2">P2</span></td><td class="ref">GET /api/admin/reviews · PATCH /api/admin/reviews/{id}/blind<br>admin → review /internal/reviews</td></tr>
+<tr data-p="1"><td class="id">REV-12</td><td><b>리뷰 관리 — 판매자 검토 요청 · 관리자 블라인드</b><span class="tag">판매자</span><span class="tag">관리자</span></td><td><ul><li>판매자: 정책 위반 의심 리뷰에 검토 요청(사유) → FLAGGED. 삭제 · 블라인드는 불가</li><li>관리자: 리뷰 관리 목록(검토 대상 · 블라인드 · 전체, 사진 필터) · 블라인드 처리 · 해제(사유)</li><li>블라인드 리뷰는 상품 리뷰 목록 · 평균에서 제외</li></ul></td><td><span class="p p1">P1</span></td><td class="ref">PATCH /api/seller/reviews/{id}/flag<br>GET /api/admin/reviews · PATCH /api/admin/reviews/{id}/blind<br>admin → review /internal/reviews</td></tr>
 </table></div>
 
 <!-- STL -->
