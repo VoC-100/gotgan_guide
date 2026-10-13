@@ -286,8 +286,8 @@ svg .ah2{fill:var(--point)}
 <tr><td>엣지</td><td>Vercel · DuckDNS · EIP · NLB</td><td><ul><li>Vercel: 프론트 정적 파일 + <code>/api/*</code>를 API로 rewrite → 브라우저 입장 같은 출처</li><li>DuckDNS: API 도메인 → NLB 고정 IP(EIP)</li><li>NLB: LBC가 생성, 교차 영역 분산</li></ul></td></tr>
 <tr><td>게이트웨이</td><td>gateway-service ×2</td><td><ul><li>단일 진입점, 경로 → 서비스 라우팅 (03장 · 8-3 라우팅 표)</li><li>Keycloak 발급 JWT를 JWKS로 검증 (Spring Security <code>oauth2ResourceServer</code>)</li><li>클레임 → <code>X-User-Id</code> · <code>X-User-Roles</code> · <code>X-Store-Id</code> 헤더 주입</li></ul></td></tr>
 <tr><td>인증</td><td>Keycloak (realm <code>gotgan</code>)</td><td><ul><li>계정(이메일 · 비밀번호) · 역할 BUYER · SELLER · ADMIN · 토큰 발급</li><li>ClusterIP만 — 로그인 · 가입은 우리 React 화면 → user-service가 대리 호출</li></ul></td></tr>
-<tr><td>업무 서비스</td><td>user · store · product · order · payment · review · settlement · admin</td><td><ul><li>기능(데이터 소유권) 기준 분할, 데이터까지 완전히 독립</li><li>ClusterIP — 외부 직접 접근 불가, 서비스 간 동기 호출은 <code>/internal/**</code>만</li><li>admin은 DB 없음 — 관리자 화면용 조합 계층(BFF)</li></ul></td></tr>
-<tr><td>데이터</td><td>MySQL 1대(스키마 8) · Redis · DynamoDB · S3</td><td><ul><li>서비스별 스키마 · 계정, 교차 JOIN · FK 금지</li><li>Redis: <code>cart:{userId}</code> · (<code>blacklist:{jti}</code> Could) — 캐시 · 리프레시 토큰 키 없음</li><li>DynamoDB: Lambda 데이터(알림 이력 · 명세서 발송 이력)</li></ul></td></tr>
+<tr><td>업무 서비스 (백 티어)</td><td>user · store · product · order · payment · review · settlement · admin — EKS <code>app</code> 노드(t3.large ×2)</td><td><ul><li>기능(데이터 소유권) 기준 분할, 데이터까지 완전히 독립</li><li>ClusterIP — 외부 직접 접근 불가, 서비스 간 동기 호출은 <code>/internal/**</code>만</li><li>admin은 DB 없음 — 관리자 화면용 조합 계층(BFF)</li></ul></td></tr>
+<tr><td>데이터 (DB 티어)</td><td>MySQL 1대(스키마 8) · Redis — EKS <code>db</code> 노드(t3.medium, 2a) + EBS 볼륨(gp3 디스크) · DynamoDB · S3</td><td><ul><li>서비스별 스키마 · 계정, 교차 JOIN · FK 금지</li><li>NetworkPolicy: 3306 · 6379는 백 티어(<code>tier=backend</code>) 파드만, DB 파드는 밖으로 안 나감</li><li>Redis: <code>cart:{userId}</code> · (<code>blacklist:{jti}</code> Could) — 캐시 · 리프레시 토큰 키 없음</li><li>DynamoDB: Lambda 데이터(알림 이력 · 명세서 발송 이력)</li></ul></td></tr>
 <tr><td>비동기</td><td>SNS 토픽 3 · SQS 큐 · DLQ</td><td><ul><li>"일어난 일" 통보 (입점 승인, 결제 완료, 구매확정, 취소 · 반품, 정산 지급)</li><li>3회 실패 시 DLQ</li></ul></td></tr>
 <tr><td>서버리스</td><td>Lambda 3 · SES · EventBridge</td><td><ul><li>배치 · 로깅만, 사용자 API 없음</li><li>알림 메일 · 정산 명세서 · 로그 아카이브</li></ul></td></tr>
 <tr><td>외부</td><td>포트원 V2 (테스트 채널)</td><td><ul><li>브라우저 결제창, payment-service가 결제 조회 · 취소 API로 검증</li></ul></td></tr>
@@ -671,8 +671,10 @@ gotgan-config/           sesac-final-1/gotgan-config — ArgoCD가 감시하는 
 <tr><td>리전 · AZ</td><td>ap-northeast-2 · 2a, 2c</td></tr>
 <tr><td>네트워크</td><td>VPC 10.0.0.0/16 · 퍼블릭 /24 ×2 · 프라이빗 /24 ×2 · NAT 1개 · EKS 서브넷 태그</td></tr>
 <tr><td>EKS</td><td>1.35 · 퍼블릭 엔드포인트 · access entries(팀원 4명 관리자)</td></tr>
-<tr><td>노드 그룹</td><td><b>t3.large ×2</b> (2 vCPU · 8GiB · 파드 35개/노드) · AL2023 · gp3 40GiB 암호화 · min 0 / max 3 · On-Demand · 장애 · 자동 복구 시연 때만 3대 (오토스케일링 · HPA 없음)</td></tr>
-<tr><td>파드 예산</td><td>약 42개 · 메모리 requests 약 11.3Gi — 업무 8 × 512Mi · gateway ×2 · Keycloak 1Gi · MySQL · Redis · 관측성 · ArgoCD · 시스템. t3.large ×2(할당 약 14Gi)에 롤링 배포 여유 포함, t3.medium ×3은 메모리 부족</td></tr>
+<tr><td>노드 그룹 (3티어)</td><td>2개 — 백 티어 <b><code>app</code> t3.large ×2</b> (2 vCPU · 8GiB · 파드 35개/노드 · 프라이빗 2a · 2c · min 0 / max 3 · 라벨 <code>tier=app</code>) + DB 티어 <b><code>db</code> t3.medium ×1</b> (2 vCPU · 4GiB · 프라이빗 2a 고정 · min 0 / max 1 · 라벨 + 테인트 <code>tier=db:NoSchedule</code> · MySQL · Redis만). AL2023 · gp3 암호화 · On-Demand · 장애 · 자동 복구 시연 때만 app 3대 (오토스케일링 · HPA 없음). 프론트 티어는 Vercel</td></tr>
+<tr><td>파드 예산</td><td>app: 약 35개 · 메모리 requests 약 9.8Gi — gateway ×2 · 업무 8 × 512Mi · Keycloak 1Gi · 관측성 5(Prometheus · Loki · Zipkin · Grafana · kube-state-metrics, blackbox 없음) · ArgoCD 5 · 시스템 ~14 → t3.large ×2(할당 약 14Gi) 여유 약 4Gi. db: MySQL 1Gi + Redis 128Mi + 시스템 ≈ 1.7Gi → t3.medium(할당 약 3.4Gi)</td></tr>
+<tr><td>DB 티어 격리</td><td><code>deploy/k8s/02-networkpolicy.yaml</code> — <code>tier=db</code> 파드의 3306 · 6379 ingress는 네임스페이스 sesac-gojigi의 <code>tier=backend</code> 파드만, DB 파드 egress는 DNS뿐(NAT 경로 없음). Helm Deployment: <code>nodeSelector tier=app</code> + 파드 라벨 <code>tier: backend</code> / MySQL · Redis: <code>nodeSelector tier=db</code> + toleration + 라벨 <code>tier: db</code>. EBS 볼륨(gp3 디스크) PVC는 2a에 묶임</td></tr>
+<tr><td>비용 (6주 · 매일 14h)</td><td>EKS 제어 평면 약 $60 · app t3.large ×2 약 $125 · <b>db t3.medium ×1 약 $31</b> · NAT 약 $60~ · NLB 약 $15 · EIP 약 $10 · 기타 $20 이하 → <b>합계 약 $320</b> (24h 상시였다면 약 $470)</td></tr>
 <tr><td>애드온</td><td>VPC CNI · CoreDNS · kube-proxy · EBS CSI(IRSA) · metrics-server · LBC(IRSA) — External Secrets 없음(시크릿은 GitHub Secrets)</td></tr>
 <tr><td>로드 밸런서</td><td>gateway Service → LBC → NLB(internet-facing · ip 타깃 · 교차 영역) + <b>EIP 2개 고정</b></td></tr>
 <tr><td>도메인</td><td>API: DuckDNS → EIP · 프론트: Vercel 기본 도메인</td></tr>
@@ -811,7 +813,6 @@ gotgan-config/deploy/
 <div class="tbl"><table>
 <tr><th>요소</th><th>도구 · 버전</th><th>수집 방식</th></tr>
 <tr><td>지표 (Metrics)</td><td>Prometheus v2.51.0 · Micrometer · kube-state-metrics</td><td>Pull — 15초마다 파드 <code>/actuator/prometheus</code> (파드 어노테이션으로 자동 발견) · 레플리카 · 파드 Ready 상태</td></tr>
-<tr><td>외부 체크</td><td>blackbox exporter</td><td>게이트웨이 <code>/actuator/health</code> HTTP 프로브 (사용자 입장 가용성)</td></tr>
 <tr><td>로그 (Logs)</td><td>Loki 3.0.0 · loki-logback-appender 1.5.1</td><td>앱이 직접 전송 (<code>k8s</code> 프로필에서만)</td></tr>
 <tr><td>트레이스 (Traces)</td><td>Zipkin 3.0.6 · Micrometer Tracing</td><td>앱이 스팬 전송 · 게이트웨이 → 서비스 traceId 전파</td></tr>
 <tr><td>시각화 · 알림</td><td>Grafana 10.4.0</td><td>데이터소스 · 대시보드 프로비저닝 · Alerting</td></tr>
@@ -842,7 +843,7 @@ gotgan-config/deploy/
 <tr><td>State timeline (최근 30분)</td><td><code>up</code> · 파드 Ready — 죽었다 살아나는 구간이 시간축에 빨강 → 초록으로</td><td>Prometheus <code>up</code> · kube-state-metrics</td></tr>
 <tr><td>롤링 배포</td><td>ReplicaSet 교체 · 배포 중 5xx 비율 0 확인</td><td>kube-state-metrics · Micrometer</td></tr>
 <tr><td>파드 재시작 · 서킷 상태</td><td>재시작 수 · 서킷 브레이커 OPEN 여부</td><td>kube-state-metrics · Resilience4j 지표</td></tr>
-<tr><td>외부 체크</td><td>게이트웨이 health 응답 · 응답 시간</td><td>blackbox exporter</td></tr>
+<tr><td>입구 생존</td><td>gateway 파드 2개의 <code>up</code> → 1 초록 · 0 빨강 (blackbox exporter 없음 — 10/13 3차)</td><td>Prometheus <code>up</code></td></tr>
 </table></div>
 <ul class="b">
   <li>시연 때 kiosk 모드로 한 화면에 띄움 · 관리자 화면에는 링크만 (별도 "시스템 상태" 페이지 없음) · 담당 박지연</li>
@@ -874,7 +875,6 @@ gotgan-config/deploy/
 ├── 00-namespace.yaml
 ├── prometheus.yaml              ConfigMap(수집 설정) · RBAC · Deployment · Service · PVC
 ├── kube-state-metrics.yaml      레플리카 · 파드 상태 지표 (System Status 필수)
-├── blackbox-exporter.yaml       게이트웨이 health 외부 체크
 ├── loki.yaml                    보존 7일 · PVC
 ├── zipkin.yaml
 ├── grafana.yaml                 데이터소스 프로비저닝(Prometheus · Loki · Zipkin · CloudWatch)
@@ -909,10 +909,10 @@ gotgan-config/                ArgoCD가 감시하는 쪽 · 인프라 자동화
 ├── README.md · .gitignore
 ├── docs/                     adr/ · events.md · secrets.md · README.md(인수인계) · CONVENTION.md(발췌본)
 ├── scripts/                  scale-nodes.sh(수동 보조) · duckdns-update.sh
-├── infra/terraform/          global/s3 · vpc · ecr · cluster(매일 재생성) · cicd · app
+├── infra/terraform/          global/s3 · vpc · ecr · cluster(매일 재생성 · 노드 그룹 app · db) · cicd · app
 ├── deploy/
-│   ├── k8s/                  namespace · configmap · db · keycloak(keycloak.yaml · realm-gotgan.json)  ※ Secret YAML 없음
-│   ├── observability/        prometheus · kube-state-metrics · blackbox · loki · zipkin · grafana · dashboards · alerting
+│   ├── k8s/                  namespace · configmap · 02-networkpolicy(DB 티어) · db · keycloak(keycloak.yaml · realm-gotgan.json)  ※ Secret YAML 없음
+│   ├── observability/        prometheus · kube-state-metrics · loki · zipkin · grafana · dashboards · alerting (blackbox 없음)
 │   ├── helm/sesac-gojigi-app/ Chart.yaml · values.yaml · templates/
 │   └── argocd/               application.yaml
 └── .github/workflows/        infra.yml · infra-schedule.yml · bootstrap.yml · secrets-sync.yml · security.yml</code></pre>
@@ -1040,7 +1040,7 @@ gotgan-config/                ArgoCD가 감시하는 쪽 · 인프라 자동화
 <tr><td><code>global/s3/main.tf</code></td><td>상태 파일 버킷(버전 관리 · 삭제 방지) + 잠금 테이블. 이 폴더만 상태가 로컬</td><td>1 (팀에서 1번)</td></tr>
 <tr><td><code>vpc/main.tf</code></td><td>VPC 모듈: 서브넷 4 · IGW · NAT · 라우트 · EKS 서브넷 태그</td><td>2</td></tr>
 <tr><td><code>ecr/main.tf</code></td><td>저장소 9개(gateway · user · store · product · order · payment · review · settlement · admin) · 수명주기(최근 10개)</td><td>3</td></tr>
-<tr><td><code>cluster/main.tf</code></td><td>EKS 모듈: 제어 평면 · 노드 그룹(t3.large) · access entries · OIDC 공급자 — <b>cluster/ 전체가 매일 08:00 apply · 22:00 destroy</b>(infra-schedule)</td><td>4</td></tr>
+<tr><td><code>cluster/main.tf</code></td><td>EKS 모듈: 제어 평면 · 노드 그룹 2개(<code>app</code> t3.large ×2 라벨 <code>tier=app</code> / <code>db</code> t3.medium ×1 2a 고정 · 라벨 + 테인트 <code>tier=db:NoSchedule</code>) · access entries · OIDC 공급자 — <b>cluster/ 전체가 매일 08:00 apply · 22:00 destroy</b>(infra-schedule)</td><td>4</td></tr>
 <tr><td><code>cluster/ebs-csi-driver.tf</code></td><td>EBS CSI 애드온 + IRSA 역할 (MySQL · Prometheus 볼륨)</td><td>4</td></tr>
 <tr><td><code>cluster/lbc.tf</code> · <code>iam_policy.json</code></td><td>Load Balancer Controller Helm 설치 + IRSA · 공식 권한 정책 파일</td><td>4</td></tr>
 <tr><td><code>cluster/metrics-server.tf</code></td><td>metrics-server (kubectl top · 자원 확인)</td><td>4</td></tr>
@@ -1061,16 +1061,17 @@ gotgan-config/                ArgoCD가 감시하는 쪽 · 인프라 자동화
 <tr><th>경로</th><th>역할</th><th>적용</th></tr>
 <tr><td><code>k8s/00-namespace.yaml</code></td><td><code>sesac-gojigi</code> 네임스페이스</td><td>kubectl 1회</td></tr>
 <tr><td><code>k8s/01-configmap.yaml</code></td><td><code>app-config</code>: 프로필 · DB/Redis 호스트 · 서비스 주소(CoreDNS) · Keycloak issuer · Loki/Zipkin 주소 · 데모 주기 값</td><td>kubectl · 변경 후 <code>rollout restart</code></td></tr>
+<tr><td><code>k8s/02-networkpolicy.yaml</code></td><td>NetworkPolicy 2개 — <code>db-ingress-from-backend</code>(<code>tier=db</code> 파드 3306 · 6379는 <code>tier=backend</code> 파드만) · <code>db-egress-deny-except-dns</code>(DB 파드 egress는 kube-dns 53뿐). 3티어 경계</td><td>kubectl (configmap 직후)</td></tr>
 <tr><td>(파일 없음) Secret <code>mysql-secret</code> · <code>{service}-secret</code> · <code>keycloak-secret</code> · <code>grafana-secret</code> · <code>alert-webhook-secret</code></td><td>GitHub Secrets → <code>secrets-sync</code> 워크플로가 <code>kubectl create secret generic ... --dry-run=client -o yaml | kubectl apply</code>로 생성</td><td>bootstrap이 호출 · 값 변경 시 수동 실행 + <code>rollout restart</code></td></tr>
 <tr><td><code>k8s/db/storageclass.yaml</code></td><td><code>ebs-sc</code>: gp3 · 암호화 · WaitForFirstConsumer</td><td>kubectl 1회</td></tr>
-<tr><td><code>k8s/db/mysql.yaml</code></td><td>Headless Service + StatefulSet(1) + PVC 템플릿 + 초기화 스크립트 마운트</td><td>kubectl 1회</td></tr>
+<tr><td><code>k8s/db/mysql.yaml</code></td><td>Headless Service + StatefulSet(1) + PVC 템플릿(EBS 볼륨 gp3 디스크 20Gi) + 초기화 스크립트 마운트 · <code>nodeSelector tier=db</code> + toleration + 라벨 <code>tier: db</code></td><td>kubectl 1회</td></tr>
 <tr><td><code>k8s/db/init-schemas.sh</code></td><td>최초 기동 시 스키마 8개(서비스 7 + keycloakdb) · 계정 8개 · 권한 생성 (docker-compose도 재사용)</td><td>ConfigMap으로 마운트</td></tr>
-<tr><td><code>k8s/db/redis.yaml</code></td><td>Redis Service + Deployment(1) · <b>AOF(<code>appendonly yes</code>) + PVC(<code>ebs-sc</code> 1Gi)</b> — 파드 재시작에도 장바구니 캐시 유지</td><td>kubectl 1회</td></tr>
+<tr><td><code>k8s/db/redis.yaml</code></td><td>Redis Service + StatefulSet(1) · <b>AOF(<code>appendonly yes</code>) + PVC(<code>ebs-sc</code> 1Gi, EBS 볼륨 gp3 디스크 — ElastiCache 아님)</b> — 파드 재시작에도 장바구니 캐시 유지 · <code>nodeSelector tier=db</code> + toleration + 라벨 <code>tier: db</code></td><td>kubectl 1회</td></tr>
 <tr><td><code>k8s/keycloak/keycloak.yaml</code></td><td>Keycloak Deployment(1) + ClusterIP Service · keycloakdb 연결 · <code>KC_HOSTNAME=http://keycloak:8080</code> · 외부 미노출</td><td>kubectl 1회</td></tr>
 <tr><td><code>k8s/keycloak/realm-gotgan.json</code></td><td>realm import — 역할 3종 · 클라이언트 <code>gotgan-backend</code>(secret은 <code>${GOTGAN_BACKEND_CLIENT_SECRET}</code> 자리표시자 → <code>keycloak-secret</code>으로 치환) · 프로토콜 매퍼 · ADMIN 시드 계정</td><td>기동 시 import (매일 아침)</td></tr>
 <tr><td><code>observability/00-namespace.yaml</code></td><td><code>monitoring</code> 네임스페이스</td><td>kubectl 1회</td></tr>
 <tr><td><code>observability/prometheus.yaml</code></td><td>수집 설정(파드 어노테이션 발견 · 15초) · RBAC · Deployment · PVC</td><td>kubectl</td></tr>
-<tr><td><code>observability/kube-state-metrics.yaml</code> · <code>blackbox-exporter.yaml</code></td><td>레플리카 · 파드 Ready 지표 / 게이트웨이 health 외부 체크 (System Status 데이터)</td><td>kubectl</td></tr>
+<tr><td><code>observability/kube-state-metrics.yaml</code></td><td>레플리카 · 파드 Ready 지표 (System Status 데이터). blackbox exporter는 없음(10/13 3차)</td><td>kubectl</td></tr>
 <tr><td><code>observability/loki.yaml</code></td><td>로그 저장소 · 보존 7일 · PVC</td><td>kubectl</td></tr>
 <tr><td><code>observability/zipkin.yaml</code></td><td>트레이스 저장 · UI</td><td>kubectl</td></tr>
 <tr><td><code>observability/grafana.yaml</code></td><td>Grafana + 데이터소스 자동 등록(Prometheus · Loki · Zipkin · CloudWatch)</td><td>kubectl</td></tr>
@@ -1078,7 +1079,7 @@ gotgan-config/                ArgoCD가 감시하는 쪽 · 인프라 자동화
 <tr><td><code>observability/alerting/</code></td><td>알림 규칙 · 연락처(Discord/Slack 웹훅)</td><td>ConfigMap으로 프로비저닝</td></tr>
 <tr><td><code>helm/sesac-gojigi-app/Chart.yaml</code></td><td>차트 이름 · 버전 (ArgoCD가 Helm 앱으로 인식하는 기준)</td><td>ArgoCD</td></tr>
 <tr><td><code>helm/sesac-gojigi-app/values.yaml</code></td><td>서비스별 이미지 저장소 · <b>태그(CI가 수정)</b> · 포트 · 레플리카 · 자원 · IRSA 역할 · Secret 이름 · gateway NLB 어노테이션</td><td>ArgoCD</td></tr>
-<tr><td><code>helm/…/templates/deployment.yaml</code></td><td>서비스마다 Deployment — 롤링 전략(maxUnavailable 0 · maxSurge 1) · 이미지 · envFrom(ConfigMap · Secret) · startup/readiness/liveness probe · preStop · Downward API · 노드 분산</td><td>ArgoCD</td></tr>
+<tr><td><code>helm/…/templates/deployment.yaml</code></td><td>서비스마다 Deployment — 롤링 전략(maxUnavailable 0 · maxSurge 1) · 이미지 · envFrom(ConfigMap · Secret) · startup/readiness/liveness probe · preStop · <code>nodeSelector tier=app</code> · 파드 라벨 <code>tier: backend</code>(NetworkPolicy가 DB 접근을 허용하는 기준)</td><td>ArgoCD</td></tr>
 <tr><td><code>helm/…/templates/service.yaml</code></td><td>서비스마다 Service — 기본 ClusterIP, gateway만 LoadBalancer(NLB)</td><td>ArgoCD</td></tr>
 <tr><td><code>helm/…/templates/serviceaccount.yaml</code></td><td>IRSA 역할이 있는 서비스의 ServiceAccount</td><td>ArgoCD</td></tr>
 <tr><td><code>argocd/application.yaml</code></td><td>감시할 저장소(<code>gotgan-config</code>) · 경로(<code>deploy/helm/sesac-gojigi-app</code>) · 대상 네임스페이스 · 자동 동기화</td><td>bootstrap(ArgoCD 설치 직후)</td></tr>
@@ -1408,7 +1409,7 @@ gotgan-config/                ArgoCD가 감시하는 쪽 · 인프라 자동화
 </div>
 <div class="tbl req"><table>
 <tr><th>ID</th><th>요구사항</th><th>상세</th><th>우선</th><th>확인 방법</th></tr>
-<tr data-p="0"><td class="id">SYS-01</td><td><b>헬스 체크 대시보드</b><span class="tag">시스템</span></td><td><ul><li>Grafana "System Status": 서비스별 Stat(가용/원하는 레플리카 → 초록 · 노랑 · 빨강) · State timeline(<code>up</code> · 파드 Ready, 최근 30분) · 롤링 배포 패널 · 파드 재시작 수 · blackbox exporter → 게이트웨이 health</li><li>kube-state-metrics 필수 · 시연 때 kiosk 모드</li></ul></td><td><span class="p p0">P0</span></td><td class="ref">dashboards/system-status.json</td></tr>
+<tr data-p="0"><td class="id">SYS-01</td><td><b>헬스 체크 대시보드</b><span class="tag">시스템</span></td><td><ul><li>Grafana "System Status": 서비스별 Stat(가용/원하는 레플리카 → 초록 · 노랑 · 빨강) · State timeline(<code>up</code> · 파드 Ready, 최근 30분) · 롤링 배포 패널 · 파드 재시작 수 · gateway <code>up</code> Stat(입구 생존)</li><li>데이터는 Prometheus <code>up</code> · kube-state-metrics만 (blackbox exporter 없음) · 시연 때 kiosk 모드</li></ul></td><td><span class="p p0">P0</span></td><td class="ref">dashboards/system-status.json</td></tr>
 <tr data-p="0"><td class="id">SYS-02</td><td><b>장애 격리</b><span class="tag">시스템</span></td><td><ul><li>모든 동기 호출(Saga · 대시보드 조합 · admin)에 Resilience4j: 타임아웃 연결 2s · 읽기 3s · 서킷 브레이커 · 재시도는 멱등 GET만 · 폴백</li><li>서비스 하나가 죽어도 나머지는 정상, 해당 기능은 에러 메시지로 1차 처리</li></ul></td><td><span class="p p0">P0</span></td><td class="ref">order 0개 → 상품 조회 · 대시보드 정상 + 에러 메시지</td></tr>
 <tr data-p="0"><td class="id">SYS-03</td><td><b>무중단 배포</b><span class="tag">시스템</span></td><td><ul><li>롤링 업데이트(maxUnavailable 0 · maxSurge 1) + readiness probe + graceful shutdown · preStop</li><li>배포 중 요청 실패 0</li></ul></td><td><span class="p p0">P0</span></td><td class="ref">배포 중 부하 → 5xx 0 · 롤링 패널</td></tr>
 <tr data-p="0"><td class="id">SYS-04</td><td><b>자동 복구 · 가용성</b><span class="tag">시스템</span></td><td><ul><li>startup · readiness · liveness probe 분리 · gateway 레플리카 2 · 노드 분산</li><li>파드 강제 삭제 → 재생성 → 초록 복귀</li></ul></td><td><span class="p p0">P0</span></td><td class="ref">파드 삭제 시연</td></tr>
@@ -1426,9 +1427,9 @@ gotgan-config/                ArgoCD가 감시하는 쪽 · 인프라 자동화
 <tr data-p="2"><td class="id">SYS-16</td><td><b>ArgoCD 롤백 시연</b><span class="tag">시스템</span></td><td><ul><li>이전 리비전으로 롤백 → System Status에서 교체 확인</li></ul></td><td><span class="p p2">P2</span></td><td class="ref">ArgoCD History</td></tr>
 <tr data-p="2"><td class="id">SYS-17</td><td><b>게이트웨이 속도 제한 · API HTTPS</b><span class="tag">시스템</span></td><td><ul><li>경로별 요청 제한 · cert-manager로 API 인증서</li></ul></td><td><span class="p p2">P2</span></td><td class="ref">gateway · cert-manager</td></tr>
 <tr data-p="x"><td class="id">SYS-18</td><td><b>오토스케일링 · 파티셔닝 · CQRS/캐시 · 운영(prod) 환경</b></td><td><ul><li>범위 밖 — HPA · 이력 테이블 파티셔닝 · 읽기 모델은 가이드라인 20장 "실무에서는"</li></ul></td><td><span class="p px">제외</span></td><td class="ref">—</td></tr>
-<tr data-p="1"><td class="id">SYS-19</td><td><b>Redis 장애 시 장바구니 MySQL 폴백</b><span class="tag">시스템</span></td><td><ul><li>장바구니 원본 MySQL <code>cart_item</code> · Redis <code>cart:{userId}</code>는 캐시(write-through · read-through)</li><li>Resilience4j 서킷 <code>redisCart</code> + 폴백 → Redis 다운 시 장바구니 · 주문서 정상(지연만), 서킷 OPEN이 Grafana에 보임 · Redis AOF + PVC</li></ul></td><td><span class="p p1">P1</span></td><td class="ref">Redis 0개 → 장바구니 정상 · 서킷 패널</td></tr>
-<tr data-p="0"><td class="id">SYS-20</td><td><b>인프라 일일 스케줄 · 부트스트랩</b><span class="tag">시스템</span></td><td><ul><li><code>infra-schedule</code>: KST 08:00 <code>cluster/</code> apply → <code>bootstrap</code>(k8s 기본 계층 · secrets-sync · 관측성 · ArgoCD → 서비스 9개), KST 22:00 ArgoCD 앱 · LB Service · PVC 삭제 → destroy</li><li>vpc · ecr · cicd · app 상시 · EIP 고정(DuckDNS 변경 없음) · 매일 아침 빈 DB는 Flyway 시드 · Keycloak 시드 계정으로 복원 · 실패 시 <code>workflow_dispatch</code>로 수동 재실행</li></ul></td><td><span class="p p0">P0</span></td><td class="ref">아침 자동 생성 후 System Status 전부 초록</td></tr>
+<tr data-p="1"><td class="id">SYS-19</td><td><b>Redis 장애 시 장바구니 MySQL 폴백</b><span class="tag">시스템</span></td><td><ul><li>장바구니 원본 MySQL <code>cart_item</code> · Redis <code>cart:{userId}</code>는 캐시(write-through · read-through)</li><li>Resilience4j 서킷 <code>redisCart</code> + 폴백 → Redis 다운 시 장바구니 · 주문서 정상(지연만), 서킷 OPEN이 Grafana에 보임 · Redis AOF + PVC</li></ul></td><td><span class="p p1">P1</span></td><td class="ref">Redis 0개 → 장바구니 정상 · 서킷 패널</td></tr><tr data-p="0"><td class="id">SYS-20</td><td><b>인프라 일일 스케줄 · 부트스트랩</b><span class="tag">시스템</span></td><td><ul><li><code>infra-schedule</code>: KST 08:00 <code>cluster/</code> apply → <code>bootstrap</code>(k8s 기본 계층 · secrets-sync · 관측성 · ArgoCD → 서비스 9개), KST 22:00 ArgoCD 앱 · LB Service · PVC 삭제 → destroy</li><li>vpc · ecr · cicd · app 상시 · EIP 고정(DuckDNS 변경 없음) · 매일 아침 빈 DB는 Flyway 시드 · Keycloak 시드 계정으로 복원 · 실패 시 <code>workflow_dispatch</code>로 수동 재실행</li></ul></td><td><span class="p p0">P0</span></td><td class="ref">아침 자동 생성 후 System Status 전부 초록</td></tr>
 <tr data-p="0"><td class="id">SYS-21</td><td><b>시크릿 GitHub Secrets 동기화</b><span class="tag">시스템</span></td><td><ul><li>비밀 값은 GitHub Secrets(gotgan-config · gotgan-backend) · Vercel 환경 변수에만 — Secrets Manager · KMS · ESO 없음</li><li><code>secrets-sync</code> 워크플로가 <code>mysql-secret</code> · <code>{service}-secret</code> · <code>keycloak-secret</code> · <code>grafana-secret</code> · <code>alert-webhook-secret</code> 생성(멱등) · realm JSON · YAML은 자리표시자만 · 목록은 <code>docs/secrets.md</code></li></ul></td><td><span class="p p0">P0</span></td><td class="ref">secrets-sync 실행 후 파드 기동 · gitleaks</td></tr>
+<tr data-p="0"><td class="id">SYS-22</td><td><b>DB 티어 분리 · NetworkPolicy</b><span class="tag">시스템</span></td><td><ul><li>3티어: 프론트(Vercel) → 백(EKS <code>app</code> 노드 그룹 t3.large ×2) → DB(EKS <code>db</code> 노드 그룹 t3.medium ×1, 2a, 테인트 <code>tier=db:NoSchedule</code>) — MySQL · Redis만 db 노드에</li><li><code>02-networkpolicy.yaml</code>: DB 파드 3306 · 6379는 <code>tier=backend</code> 파드만, DB 파드 egress는 DNS뿐. 사용자 → DB · Vercel → 서비스 직접 경로 없음(예외는 presigned S3 PUT)</li></ul></td><td><span class="p p0">P0</span></td><td class="ref"><code>kubectl get pod -o wide</code>(노드 배치) · 라벨 없는 파드에서 3306 접속 실패</td></tr>
 </table></div>
 </section>
 
