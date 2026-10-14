@@ -1051,7 +1051,7 @@ gotgan-config/                ArgoCD가 감시하는 쪽 · 인프라 자동화
 <tr><td><code>cluster/irsa.tf</code></td><td>서비스별 IAM 역할 + 정책 (ServiceAccount와 연결) — 신뢰 정책이 그날의 OIDC 공급자를 가리키므로 클러스터와 함께 매일 재생성, 이름 고정 → ARN 불변. 권한 대상 ARN은 app/ remote state</td><td>5</td></tr>
 <tr><td><code>cluster/ebs-csi-driver.tf</code></td><td>EBS CSI 애드온 + IRSA 역할 (MySQL · Prometheus 볼륨)</td><td>5</td></tr>
 <tr><td><code>cluster/lbc.tf</code> · <code>iam_policy.json</code></td><td>Load Balancer Controller Helm 설치 + IRSA · 공식 권한 정책 파일</td><td>5</td></tr>
-<tr><td><code>cluster/metrics-server.tf</code></td><td>metrics-server (kubectl top · 자원 확인)</td><td>5</td></tr>
+<tr><td><code>cluster/metrics-server.tf</code></td><td>metrics-server — EKS 관리형 애드온(Helm 아님, kubectl top · 자원 확인)</td><td>5</td></tr>
 </table></div>
 
 <!-- deploy -->
