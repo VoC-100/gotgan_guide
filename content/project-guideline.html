@@ -732,11 +732,16 @@ locals {
   account_id = data.aws_caller_identity.current.account_id
   cluster_admin_arns = merge(
     { for u in var.team_iam_users : u =&gt; "arn:aws:iam::${local.account_id}:user/${u}" },  # sesac-a1 ~ a4 (variables.tf 기본값)
-    { github_actions = data.terraform_remote_state.cicd.outputs.github_actions_role_arn }  # cicd/ 를 먼저 apply
+    { for arn in data.aws_iam_roles.github_actions.arns : "github_actions" =&gt; arn }        # 역할이 있을 때만 (없으면 빈 map)
   )
+}
+
+# cluster/data.tf — Actions 역할은 cicd/ 상태가 아니라 이름으로 찾는다 (cicd/ 는 이경석 · 상태 의존 없음)
+data "aws_iam_roles" "github_actions" {
+  name_regex = "^sesac-gojigi-github-actions$"   # 없으면 빈 목록 — 에러 없이 access entries 에서 빠짐
 }</code></pre>
 <div class="box warn"><b class="t">학습 가이드 그대로 두면 생기는 문제</b>
-<code>enable_cluster_creator_admin_permissions = true</code>는 <b>terraform apply를 실행한 주체만</b> 클러스터 관리자로 등록합니다. 이 프로젝트에서 클러스터를 매일 만드는 주체는 <b>GitHub Actions 역할</b>(<code>infra-schedule</code>)이므로, 그대로 두면 Actions 역할만 관리자가 되고 구지훈을 포함한 팀원 4명 모두 <code>kubectl</code>에서 <code>Unauthorized</code>를 받습니다. 그래서 자동 등록을 끄고(<code>false</code>) <b>팀원 4명(IAM 사용자 <code>sesac-a1</code> ~ <code>a4</code>)과 Actions 역할을 <code>access_entries</code>에 같은 권한</b>(<code>AmazonEKSClusterAdminPolicy</code>, 클러스터 범위)으로 명시합니다(10/14). <code>true</code>로 둔 채 같은 주체를 또 적으면 중복 등록 오류가 납니다. <code>*.tfvars</code>는 gitignore라 CI가 읽지 못하므로 사용자 이름 목록은 <code>variables.tf</code>의 기본값으로 둡니다. 팀원은 <code>aws eks update-kubeconfig</code>만 하면 됩니다.</div>
+<code>enable_cluster_creator_admin_permissions = true</code>는 <b>terraform apply를 실행한 주체만</b> 클러스터 관리자로 등록합니다. 이 프로젝트에서 클러스터를 매일 만드는 주체는 <b>GitHub Actions 역할</b>(<code>infra-schedule</code>)이므로, 그대로 두면 Actions 역할만 관리자가 되고 구지훈을 포함한 팀원 4명 모두 <code>kubectl</code>에서 <code>Unauthorized</code>를 받습니다. 그래서 자동 등록을 끄고(<code>false</code>) <b>팀원 4명(IAM 사용자 <code>sesac-a1</code> ~ <code>a4</code>)과 Actions 역할을 <code>access_entries</code>에 같은 권한</b>(<code>AmazonEKSClusterAdminPolicy</code>, 클러스터 범위)으로 명시합니다(10/14). <code>true</code>로 둔 채 같은 주체를 또 적으면 중복 등록 오류가 납니다. <code>*.tfvars</code>는 gitignore라 CI가 읽지 못하므로 사용자 이름 목록은 <code>variables.tf</code>의 기본값으로 둡니다. Actions 역할은 <code>cicd/</code> remote state 대신 <b>이름(<code>sesac-gojigi-github-actions</code>)으로 조회</b>합니다 — <code>cicd/</code>(이경석)가 apply되기 전에도 클러스터를 만들 수 있고, 역할이 생기면 다음 날 08:00 apply 때 자동으로 들어갑니다(10/14). 팀원은 <code>aws eks update-kubeconfig</code>만 하면 됩니다.</div>
 
 <h3>구지훈이 Terraform으로 만들 것 · 폴더 구성</h3>
 <p>학습 가이드의 "폴더 1개 = apply 1번" 구조를 유지하고, 애플리케이션이 쓰는 AWS 자원을 담을 <code>app/</code> 폴더를 추가합니다. 폴더는 <code>gotgan-config/infra/terraform/</code> 아래에 있습니다. Lambda 함수와 그 트리거(SQS 구독 · EventBridge 규칙)는 Serverless Framework로 배포합니다(11장). 시크릿을 담는 AWS 자원(Secrets Manager · KMS)은 두지 않습니다 — 시크릿은 GitHub Secrets가 단일 소스입니다.</p>
@@ -745,7 +750,7 @@ locals {
 <tr><td><code>global/s3</code></td><td>상태 버킷 (잠금은 S3 자체 <code>use_lockfile</code> — DynamoDB 잠금 테이블 없음)</td><td>상시</td><td>1주차 1일</td></tr>
 <tr><td><code>vpc/</code></td><td>VPC <code>10.0.0.0/16</code>, 서브넷 4(public 10.0.1/2.0/24 · private 10.0.11/12.0/24), IGW, NAT 1(2a), 라우팅, EKS 태그</td><td>상시</td><td>1주차 1~2일</td></tr>
 <tr><td><code>ecr/</code></td><td>저장소 9개 (gateway, user, store, product, order, payment, review, settlement, admin) + 수명주기</td><td>상시</td><td>구지훈 · 1주차 2일 (9개 한 번에)</td></tr>
-<tr><td><code>cicd/</code></td><td>GitHub OIDC 공급자, Actions 역할 (ECR push · Serverless 배포 · 스케줄 apply/destroy · bootstrap)</td><td>상시</td><td>이경석이 작성 · 구지훈이 리뷰</td></tr>
+<tr><td><code>cicd/</code></td><td>GitHub OIDC 공급자, Actions 역할 (ECR push · Serverless 배포 · 스케줄 apply/destroy · bootstrap)</td><td>상시</td><td><b>이경석 작성 · apply</b> — 워크플로가 쓸 역할을 만드는 폴더라 로컬 apply(컨벤션 5-2 예외). 다른 폴더와 상태 의존 없음</td></tr>
 <tr><td><b><code>app/</code></b></td><td>
 <ul>
 <li><b>NLB용 EIP 2개</b> (05장 DuckDNS)</li>
@@ -758,7 +763,7 @@ locals {
 </ul></td><td>상시</td><td>전원 · EIP는 1주차, 나머지는 2주차 인수인계 전까지</td></tr>
 <tr><td><code>cluster/</code></td><td>EKS, 노드 그룹 2개(<code>app</code> t3.xlarge × 2 · <code>db</code> t3.medium × 1, 라벨 · 테인트), access entries(팀원 4명 + Actions 역할), IRSA 역할(<code>irsa.tf</code>), EBS CSI, LBC, metrics-server, 클러스터 OIDC 공급자(IRSA용 — 매일 새 ARN)</td><td><b>매일 08:00 apply · 22:00 destroy</b></td><td>전원 · 1주차 중</td></tr>
 </table></div>
-<p><b>apply 순서는 표의 위에서 아래</b>입니다: <code>global/s3</code> → <code>vpc</code> → <code>ecr</code> → <code>cicd</code> → <code>app</code> → <code>cluster</code>(10/14). <code>cluster/</code>가 <code>cicd/</code>(Actions 역할 ARN → access entries)와 <code>app/</code>(S3 · SQS · SNS ARN → IRSA)의 output을 읽으므로 맨 뒤이고, 상시 폴더는 매일 사라지는 <code>cluster/</code>를 읽지 않습니다 — 의존은 <code>cluster/</code> → 상시 폴더 한 방향뿐이라 순환이 생기지 않습니다. 전체 삭제는 역순(<code>cluster</code> → <code>app</code> → <code>cicd</code> → <code>ecr</code> → <code>vpc</code>)입니다.</p>
+<p><b>apply 순서</b>: <code>global/s3</code> → <code>vpc</code> → <code>ecr</code> → <code>app</code> → <code>cluster</code>(10/14). <code>cicd/</code>는 다른 폴더와 상태 의존이 없어 <code>global/s3</code> 이후 언제든 apply합니다(이경석). <code>cluster/</code>는 <code>app/</code>(S3 · SQS · SNS ARN → IRSA)의 output을 읽으므로 맨 뒤이고 — Actions 역할은 output이 아니라 이름으로 찾습니다 — 상시 폴더는 매일 사라지는 <code>cluster/</code>를 읽지 않습니다 — 의존은 <code>cluster/</code> → 상시 폴더 한 방향뿐이라 순환이 생기지 않습니다. 전체 삭제는 <code>cluster</code> → <code>app</code> → <code>cicd</code> → <code>ecr</code> → <code>vpc</code>입니다.</p>
 <p class="cap">SQS 구독 큐 — 이벤트 표(10장)의 구독자마다 큐 1개</p>
 <div class="tbl"><table>
 <tr><th>토픽</th><th>구독 큐 (서비스 · Lambda)</th></tr>
@@ -777,7 +782,7 @@ locals {
 <li>user-service: SQS 수신(store-events · order-events 구독 큐)</li>
 <li>settlement-service: SQS 수신(order-events · store-events 구독 큐), <code>sns:Publish</code>(settlement-events), <code>s3:GetObject</code>(reports — 명세서 presigned 링크)</li>
 <li>admin-service · gateway-service: AWS 권한 없음</li>
-<li>grafana: CloudWatch 읽기 (Lambda 로그)</li>
+<li>grafana: CloudWatch 읽기 (Lambda 로그) — <b>박지연</b>(관측성 담당)이 <code>cluster/irsa_grafana.tf</code>로 작성</li>
 <li>KMS · Secrets Manager 권한은 없습니다 (쓰지 않음)</li>
 </ul></div>
 <div class="card"><h4>시크릿은 GitHub Secrets → secrets-sync 워크플로 → K8s Secret (12장)</h4>
@@ -2922,9 +2927,9 @@ gotgan-config/                              sesac-final-1/gotgan-config — Argo
 │   ├── global/s3/                          상태 버킷 (잠금은 use_lockfile)                     ─ 상시
 │   ├── vpc/                                네트워크                                            ─ 상시
 │   ├── ecr/                                이미지 저장소 9개                                   ─ 상시
-│   ├── cicd/                               GitHub Actions OIDC 역할                            ─ 상시
 │   ├── app/                                EIP · S3 4 · SNS 3 · SQS(구독자별 + DLQ) · DynamoDB 2 · SES · SSM  ─ 상시
-│   └── cluster/                            EKS · 노드 그룹 2개(app · db) · 애드온 · LBC · metrics-server · irsa  ─ 매일 08:00 apply · 22:00 destroy
+│   ├── cluster/                            EKS · 노드 그룹 2개(app · db) · 애드온 · LBC · metrics-server · irsa  ─ 매일 08:00 apply · 22:00 destroy
+│   └── cicd/                               GitHub Actions OIDC 역할 (이경석 · 상태 의존 없음 — 순서 무관)  ─ 상시
 ├── scripts/                                scale-nodes.sh(수동 보조: 시연 때 노드 3대) · duckdns-update.sh
 ├── docs/
 │   ├── adr/                                결정 기록 (0001-service-split.md · 0002-keycloak.md ...)
@@ -2940,7 +2945,7 @@ gotgan-config/                              sesac-final-1/gotgan-config — Argo
 <div class="tbl"><table>
 <tr><th>폴더</th><th>결과물</th><th>실행 주체 · 도구</th><th>빈도</th></tr>
 <tr><td>config <code>infra/terraform/cluster/</code></td><td>EKS · 노드 · 애드온</td><td><b><code>infra-schedule</code> 워크플로</b>(OIDC 역할) — 수동은 구지훈</td><td><b>매일 08:00 apply · 22:00 destroy</b></td></tr>
-<tr><td>config <code>infra/terraform/</code> 나머지(global · vpc · ecr · cicd · app)</td><td>상시 AWS 자원</td><td>구지훈 · <code>terraform apply</code> (다른 사람은 plan까지, <code>infra.yml</code>이 PR에 plan 코멘트)</td><td>처음 + 변경 시</td></tr>
+<tr><td>config <code>infra/terraform/</code> 나머지(global · vpc · ecr · app · cicd)</td><td>상시 AWS 자원</td><td>구지훈 · <code>terraform apply</code>(<code>cicd/</code>는 이경석) (다른 사람은 plan까지, <code>infra.yml</code>이 PR에 plan 코멘트)</td><td>처음 + 변경 시</td></tr>
 <tr><td>config <code>deploy/k8s/</code> (namespace · configmap · networkpolicy · db · keycloak)</td><td>네임스페이스 · 설정 · NetworkPolicy(DB 티어) · MySQL · Redis · Keycloak · realm <code>gotgan</code></td><td><b><code>bootstrap</code> 워크플로</b> · <code>kubectl apply</code> (파일 작성: 구지훈, keycloak은 이경석)</td><td>매일 아침 + 변경 시 수동 apply</td></tr>
 <tr><td>(파일 없음) K8s Secret</td><td><code>mysql-secret</code> · <code>{service}-secret</code> · <code>keycloak-secret</code> · <code>grafana-secret</code> · <code>alert-webhook-secret</code></td><td><b><code>secrets-sync</code> 워크플로</b> — GitHub Secrets → <code>kubectl create secret</code> (구지훈 관리, 12장)</td><td>매일 아침(bootstrap이 호출) + 값 변경 시 수동 실행</td></tr>
 <tr><td>config <code>deploy/observability/</code></td><td>Prometheus · Loki · Zipkin · Grafana · System Status 대시보드</td><td><code>bootstrap</code> 워크플로 · <code>kubectl apply</code> / Helm (파일 작성: 박지연)</td><td>매일 아침 + 대시보드 변경 시</td></tr>
@@ -3481,9 +3486,9 @@ spec:
 <tr><td><code>global/s3/</code></td><td>main.tf</td><td>상태 버킷 (잠금은 각 backend의 <code>use_lockfile</code>)</td><td>모든 폴더의 backend</td></tr>
 <tr><td><code>vpc/</code></td><td>provider.tf · main.tf · outputs.tf</td><td>VPC · 서브넷 4 · NAT · EKS 태그</td><td>cluster/ · app/ (퍼블릭 서브넷 ID → NLB 어노테이션)</td></tr>
 <tr><td><code>ecr/</code></td><td>provider.tf · main.tf · outputs.tf</td><td>저장소 9개(gateway · user · store · product · order · payment · review · settlement · admin) + 수명주기</td><td>backend.yml · Helm values</td></tr>
-<tr><td><code>cicd/</code></td><td>provider.tf · variables.tf · main.tf · outputs.tf</td><td>GitHub OIDC 공급자 · Actions 역할</td><td>GitHub Secret <code>AWS_ROLE_ARN</code> · cluster/ (access entries)</td></tr>
+<tr><td><code>cicd/</code></td><td>provider.tf · variables.tf · main.tf · outputs.tf</td><td>GitHub OIDC 공급자 · Actions 역할 (이경석 작성 · apply)</td><td>GitHub Secret <code>AWS_ROLE_ARN</code>. cluster/는 이 output이 아니라 역할 이름으로 조회</td></tr>
 <tr><td><code>app/</code> (상시)</td><td>provider.tf · data.tf(vpc 상태만 — cluster는 읽지 않음) · eip.tf · s3.tf · sns_sqs.tf · dynamodb.tf · ses.tf · ssm.tf · outputs.tf</td><td>05 · 09 · 10 · 11장의 AWS 자원 (아래 표). <code>kms.tf</code> · <code>secrets.tf</code>는 삭제됨(시크릿은 GitHub Secrets, 12장)</td><td>Helm values(EIP) · cluster/irsa.tf(S3 · SQS · SNS ARN) · serverless.yml(SSM)</td></tr>
-<tr><td><code>cluster/</code> (<b>매일 08:00 apply · 22:00 destroy</b>)</td><td>provider.tf · data.tf(vpc · cicd · app 상태) · variables.tf(<code>team_iam_users</code>) · main.tf · irsa.tf · ebs-csi-driver.tf · lbc.tf + iam_policy.json · metrics-server.tf · outputs.tf</td><td>EKS · 노드 그룹 2개(<code>app</code> t3.xlarge × 2, min 0 · max 3, 라벨 <code>tier=app</code> / <code>db</code> t3.medium × 1, min 0 · max 1, 2a 고정, 라벨 + 테인트 <code>tier=db:NoSchedule</code>) · access entries(팀원 4명 + Actions 역할) · IRSA 역할 · 애드온 · Helm 릴리스(LBC · metrics-server)</td><td>다른 폴더는 읽지 않음(매일 사라짐) — 워크플로가 클러스터 이름으로 kubeconfig만 받음. IRSA 역할은 이름 고정이라 Helm values의 <code>roleArn</code> 불변</td></tr>
+<tr><td><code>cluster/</code> (<b>매일 08:00 apply · 22:00 destroy</b>)</td><td>provider.tf · data.tf(vpc · app 상태 + Actions 역할 이름 조회) · variables.tf(<code>team_iam_users</code>) · main.tf · irsa.tf · ebs-csi-driver.tf · lbc.tf + iam_policy.json · metrics-server.tf · outputs.tf</td><td>EKS · 노드 그룹 2개(<code>app</code> t3.xlarge × 2, min 0 · max 3, 라벨 <code>tier=app</code> / <code>db</code> t3.medium × 1, min 0 · max 1, 2a 고정, 라벨 + 테인트 <code>tier=db:NoSchedule</code>) · access entries(팀원 4명 + Actions 역할) · IRSA 역할 · 애드온 · Helm 릴리스(LBC · metrics-server)</td><td>다른 폴더는 읽지 않음(매일 사라짐) — 워크플로가 클러스터 이름으로 kubeconfig만 받음. IRSA 역할은 이름 고정이라 Helm values의 <code>roleArn</code> 불변</td></tr>
 </table></div>
 <p class="cap">gotgan-config/infra/terraform/app/ 이 만드는 자원</p>
 <div class="tbl"><table>
@@ -3492,7 +3497,7 @@ spec:
 <tr><td><code>sns_sqs.tf</code></td><td>토픽 3개: <code>sesac-gojigi-store-events</code> · <code>sesac-gojigi-order-events</code> · <code>sesac-gojigi-settlement-events</code><br>구독자별 큐 + DLQ(3회, <code>-dlq</code>), SNS 필터 정책으로 필요한 이벤트만:<br>store-events → <code>sesac-gojigi-user-store-events</code> · <code>-product-store-events</code> · <code>-settlement-store-events</code> · <code>-notification-store-events</code><br>order-events → <code>sesac-gojigi-user-order-events</code> · <code>-review-order-events</code> · <code>-settlement-order-events</code> · <code>-notification-order-events</code><br>settlement-events → <code>sesac-gojigi-report-settlement-events</code></td></tr>
 <tr><td><code>dynamodb.tf</code></td><td>테이블 2개: <code>sesac-gojigi-notifications</code>(알림 멱등 · 이력) · <code>sesac-gojigi-settlement-reports</code>(명세서 발송 이력)</td></tr>
 <tr><td><code>ses.tf</code></td><td>발신 도메인/주소 인증 (샌드박스, 수신자도 인증)</td></tr>
-<tr><td><code>irsa.tf</code> → <b>cluster/</b>로 이동(10/13: 신뢰 정책이 그날의 OIDC 공급자를 가리켜 클러스터와 함께 재생성)</td><td><code>sesac-gojigi-{service}-irsa</code>: user(sqs) · store(sns · s3 seller-docs) · product(sqs · s3 images) · order(sns) · review(sqs · s3 images) · settlement(sqs · sns · s3 reports) · grafana(CloudWatch 읽기). gateway · payment · admin은 없음. <code>kms:Decrypt</code>는 없음(KMS 미사용)</td></tr>
+<tr><td><code>irsa.tf</code> → <b>cluster/</b>로 이동(10/13: 신뢰 정책이 그날의 OIDC 공급자를 가리켜 클러스터와 함께 재생성)</td><td><code>sesac-gojigi-{service}-irsa</code>: user(sqs) · store(sns · s3 seller-docs) · product(sqs · s3 images) · order(sns) · review(sqs · s3 images) · settlement(sqs · sns · s3 reports). grafana(CloudWatch 읽기)는 박지연이 <code>cluster/irsa_grafana.tf</code>로. gateway · payment · admin은 없음. <code>kms:Decrypt</code>는 없음(KMS 미사용)</td></tr>
 <tr><td><code>ssm.tf</code> · <code>eip.tf</code></td><td>Lambda가 읽을 ARN(<code>/sesac-gojigi/dev/...</code>) · 게이트웨이 NLB용 EIP</td></tr>
 </table></div>
 <div class="box warn"><b class="t">Terraform에는 비밀 값을 쓰지 않기</b>
@@ -3617,7 +3622,7 @@ Windows에서 커밋한 <code>gradlew</code>나 <code>.sh</code> 파일이 CRLF 
 <p>담당은 03장 · 8-1 기준입니다: <b>구지훈</b>(AWS IaC · settlement · admin · 알림 메일 · 정산 명세서) · <b>이경석</b>(CI/CD · Keycloak · user · gateway 인증) · <b>박지연</b>(관측성 · 헬스 체크 · product · store · 로그 아카이브) · <b>이종빈</b>(order · payment · review). 화면은 각자 담당 서비스의 화면을 함께 맡습니다.</p>
 <div class="tbl"><table>
 <tr><th>주차 · 기간 · 목표</th><th>구지훈</th><th>이경석</th><th>박지연</th><th>이종빈</th></tr>
-<tr><td><b>1주차</b><br>10/12 ~ 10/16<br><b>인프라 ①</b> AWS 기반</td><td>IAM · global/s3 · vpc · ecr(9) · cicd apply(Actions 역할 — cluster의 access entries가 읽음) · cluster(노드 그룹 2개: app t3.xlarge × 2 · db t3.medium × 1 · access entries · EBS CSI · LBC · metrics-server) · <code>02-networkpolicy.yaml</code>(DB 티어) · EIP + DuckDNS · 팀원 kubectl 접근 · GitHub Secrets · Variables 등록(3개 저장소) · <code>docs/secrets.md</code></td><td>클러스터 없이 할 수 있는 것: 저장소 3개 생성 · 브랜치 보호 · PR 템플릿 · <b>3개 저장소 CI 골격 · 레포 간 토큰(<code>CONFIG_REPO_TOKEN</code>)</b> · cicd/(OIDC 역할) 작성 → 구지훈 리뷰 · Keycloak realm 설계(역할 · 매퍼 · <code>gotgan-backend</code>) · gateway 골격 · 로컬 docker-compose로 Keycloak 로그인 확인</td><td>관측성 매니페스트 작성(Prometheus · Loki · Grafana · Zipkin · kube-state-metrics) · <code>logback-spring.xml</code> 공통 형식 · product · store API 계약 · DDL</td><td>order · payment · review API · 이벤트 계약 + DDL · 로컬 docker-compose로 <b>Saga 골격</b>(order → product → payment 스텁) · 서비스 템플릿 점검 · 프론트 골격(목업 이식 시작: 라우터 · 레이아웃 · axios · Query)</td></tr>
+<tr><td><b>1주차</b><br>10/12 ~ 10/16<br><b>인프라 ①</b> AWS 기반</td><td>IAM · global/s3 · vpc · ecr(9) · app/eip · cluster(노드 그룹 2개: app t3.xlarge × 2 · db t3.medium × 1 · access entries · EBS CSI · LBC · metrics-server) · <code>02-networkpolicy.yaml</code>(DB 티어) · EIP + DuckDNS · 팀원 kubectl 접근 · GitHub Secrets · Variables 등록(3개 저장소) · <code>docs/secrets.md</code></td><td>클러스터 없이 할 수 있는 것: 저장소 3개 생성 · 브랜치 보호 · PR 템플릿 · <b>3개 저장소 CI 골격 · 레포 간 토큰(<code>CONFIG_REPO_TOKEN</code>)</b> · cicd/(OIDC 역할) 작성 · apply · <code>AWS_ROLE_ARN</code> 등록 · Keycloak realm 설계(역할 · 매퍼 · <code>gotgan-backend</code>) · gateway 골격 · 로컬 docker-compose로 Keycloak 로그인 확인</td><td>관측성 매니페스트 작성(Prometheus · Loki · Grafana · Zipkin · kube-state-metrics) · <code>logback-spring.xml</code> 공통 형식 · product · store API 계약 · DDL</td><td>order · payment · review API · 이벤트 계약 + DDL · 로컬 docker-compose로 <b>Saga 골격</b>(order → product → payment 스텁) · 서비스 템플릿 점검 · 프론트 골격(목업 이식 시작: 라우터 · 레이아웃 · axios · Query)</td></tr>
 <tr><td colspan="5"><b>1주차 완료 기준</b>: EKS가 떠 있고 4명 모두 kubectl 가능 · ECR 9개 · EIP + DuckDNS 주소 확정 · 도메인별 API · 이벤트 계약과 DDL 리뷰 완료</td></tr>
 <tr><td><b>2주차</b><br>10/19 ~ 10/23<br><b>인프라 ②</b> 인수인계 · 걷는 뼈대</td><td>app/ 자원(S3 4종 · SNS 토픽 3 · SQS + DLQ · DynamoDB 2 · SSM) · <code>cluster/irsa.tf</code>(서비스별 IRSA) · MySQL(스키마 8 · 서비스별 계정) · Redis(AOF + PVC) · <b><code>secrets-sync</code> · <code>infra-schedule</code> · <code>bootstrap</code> 워크플로</b>(08:00 up · 22:00 down 1회 검증) · <b>인프라 인수인계</b>(산출물 목록 · 접근 방법 · 주소를 문서로 공유) → 이경석 · 박지연이 그 위에 연결</td><td>Actions 실제 job(테스트 → Sonar → ECR push → gotgan-config <code>values.yaml</code> 태그 커밋) · ArgoCD(gotgan-config 감시) · Keycloak 배포(secrets-sync Secret · realm 자리표시자 · 시드 계정 스크립트) · <b>목업 서비스 1개</b> 파이프라인 · Vercel 연결</td><td>monitoring 스택 배포 · 목업 서비스 로그/지표 확인 · <b>System Status v1</b>(Stat · State timeline)</td><td>로컬에서 Saga 골격 동작 확인 · 공통 템플릿(ApiResponse · 에러 핸들러 · <code>@CurrentUser</code>) 전 서비스 적용 · 프론트 골격 완료(MSW 픽스처)</td></tr>
 <tr><td colspan="5"><b>2주차 완료 기준 (걷는 뼈대)</b>: 목업 서비스 1개가 <code>https://gotgan.vercel.app/api/...</code>로 응답(<b>Vercel → DuckDNS → NLB → gateway → 서비스</b>) · Grafana에 로그 · 지표가 보임 · main에 push하면 자동 배포(Actions → ECR → gotgan-config 태그 커밋 → ArgoCD) · 아침 자동 생성(infra-schedule → bootstrap) 1회 성공 · 인프라 인수인계 완료</td></tr>
