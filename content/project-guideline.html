@@ -859,7 +859,8 @@ output "nlb_eip_allocation_ids" { value = aws_eip.nlb[*].id }          # Helm va
 output "nlb_eip_public_ips"     { value = aws_eip.nlb[*].public_ip }   # DuckDNS에 넣을 값</code></pre>
 <p class="cap">deploy/helm/sesac-gojigi-app/values.yaml — gateway Service 어노테이션에 추가</p>
 <pre><code>    service.beta.kubernetes.io/aws-load-balancer-subnets: subnet-aaaa,subnet-cccc          # 퍼블릭 서브넷 2개
-    service.beta.kubernetes.io/aws-load-balancer-eip-allocations: eipalloc-1111,eipalloc-2222  # 서브넷 수와 개수가 같아야 함</code></pre>
+    service.beta.kubernetes.io/aws-load-balancer-eip-allocations: eipalloc-1111,eipalloc-2222  # 서브넷 수와 개수가 같아야 함 · 같은 AZ 순서
+    service.beta.kubernetes.io/aws-load-balancer-attributes: load_balancing.cross_zone.enabled=true  # ★ 없으면 파드가 없는 AZ 의 EIP 는 응답 없음 (10/14 검증)</code></pre>
 <p>NLB(LoadBalancer 타입 Service)는 <b>gateway에만</b> 붙입니다. Keycloak · 업무 서비스는 ClusterIP라 외부에서 닿지 않습니다.</p>
 
 <h3>2단계 · DuckDNS 등록 (구지훈)</h3>
