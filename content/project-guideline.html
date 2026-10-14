@@ -662,9 +662,16 @@ DB를 공유하거나, 서로의 API를 촘촘히 호출해야 해서 "배포는
   vpc_id     = data.terraform_remote_state.vpc.outputs.vpc_id
   subnet_ids = data.terraform_remote_state.vpc.outputs.private_subnets
 
+  # ★ 파드가 IMDS 로 노드 IAM 역할을 빌리지 못하게 (기본 hop limit 2 면 IRSA 없는 파드도 노드 권한을 가짐 — 10/14 재현)
+  eks_managed_node_group_defaults = {
+    metadata_options = { http_endpoint = "enabled", http_tokens = "required", http_put_response_hop_limit = 1 }
+  }
+
   eks_managed_node_groups = {
     # ── 백 티어: gateway · 업무 서비스 · Keycloak · 관측성 · ArgoCD
     app = {
+      name            = "sesac-gojigi-app"   # 이름 고정 — 기본값은 타임스탬프 접두라 매일 바뀜 (scale-nodes.sh)
+      use_name_prefix = false
       ami_type       = "AL2023_x86_64_STANDARD"
       instance_types = ["t3.xlarge"]    # 4 vCPU / 16GiB, 파드 58개 — 10/14 t3.large 에서 조정 (실사용 12~13Gi · N-1 수용)
       capacity_type  = "ON_DEMAND"      # 비용을 더 줄이려면 SPOT (아래 참고)
@@ -690,6 +697,8 @@ DB를 공유하거나, 서로의 API를 촘촘히 호출해야 해서 "배포는
 
     # ── DB 티어: MySQL · Redis 만. EBS gp3 PVC 가 2a 에 묶이므로 노드도 2a 하나로 고정
     db = {
+      name            = "sesac-gojigi-db"
+      use_name_prefix = false
       ami_type       = "AL2023_x86_64_STANDARD"
       instance_types = ["t3.medium"]    # 2 vCPU / 4GiB — MySQL 1Gi + Redis 128Mi + 시스템 ≈ 1.7Gi
       capacity_type  = "ON_DEMAND"
