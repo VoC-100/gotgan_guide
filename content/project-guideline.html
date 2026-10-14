@@ -596,7 +596,7 @@ DB를 공유하거나, 서로의 API를 촘촘히 호출해야 해서 "배포는
 <tr><td>VPC · 서브넷 4 · IGW · <b>NAT GW</b> · 라우팅 · EKS용 태그</td><td><code>vpc/</code></td><td>1주차, 그대로 유지</td><td>야간 비용의 대부분(NAT 시간당 요금)</td></tr>
 <tr><td>ECR 저장소 9개 + 수명주기</td><td><code>ecr/</code></td><td>1주차</td><td>이미지가 남아 있어 아침에 다시 빌드할 필요 없음</td></tr>
 <tr><td>GitHub OIDC 공급자 · Actions 역할</td><td><code>cicd/</code></td><td>1주차</td><td>스케줄 · bootstrap 워크플로가 이 역할로 apply/destroy</td></tr>
-<tr><td><b>EIP 2</b> · S3 4 · SNS 3 + SQS/DLQ · DynamoDB 2 · SES 자격 증명 · 서비스별 IRSA 역할 · SSM 파라미터 · 작업용 EC2(선택)</td><td><code>app/</code></td><td>EIP는 1주차, 나머지 2주차까지</td><td>EIP가 남으므로 <b>DuckDNS 레코드는 바꾸지 않음</b>. DynamoDB 발송 이력 · S3 파일은 보존</td></tr>
+<tr><td><b>EIP 2</b> · S3 4 · SNS 3 + SQS/DLQ · DynamoDB 2 · SES 자격 증명 · SSM 파라미터 · 작업용 EC2(선택)</td><td><code>app/</code></td><td>EIP는 1주차, 나머지 2주차까지</td><td>EIP가 남으므로 <b>DuckDNS 레코드는 바꾸지 않음</b>. DynamoDB 발송 이력 · S3 파일은 보존</td></tr>
 <tr><td rowspan="2"><b>매일 재생성</b><br>08:00 생성 · 22:00 삭제</td><td>EKS 제어 평면 · 관리형 노드 그룹 2개(<code>app</code> t3.xlarge × 2 · <code>db</code> t3.medium × 1) · access entries · IRSA 역할 · 애드온(EBS CSI · LBC · metrics-server)</td><td><code>cluster/</code> — <code>infra-schedule.yml</code>(cron <code>0 23 * * *</code> UTC = KST 08:00 apply, <code>0 13 * * *</code> UTC = KST 22:00 destroy)</td><td>매일 (주말 포함)</td><td>apply → bootstrap까지 <b>약 20분</b>(제어 평면 10분 + 노드 + 애드온). destroy 전에 ArgoCD 앱 · LoadBalancer Service · PVC를 먼저 지워 NLB · EBS가 고아로 남지 않게</td></tr>
 <tr><td>클러스터 안의 전부: 파드(app 노드 — gateway 2 · 업무 서비스 8 · Keycloak · 관측성 · ArgoCD / db 노드 — MySQL · Redis) · <b>NLB</b>(LBC) · <b>EBS 볼륨</b>(gp3 디스크, PVC) · NetworkPolicy · K8s Secret · ConfigMap</td><td><code>bootstrap.yml</code>(apply 직후 자동) → <code>deploy/k8s/</code>(namespace · configmap · <b>02-networkpolicy</b> · db · keycloak) → <code>secrets-sync</code> → 관측성 → ArgoCD → 서비스 9개</td><td>08:00 apply 직후</td><td>NLB는 상시 EIP를 어노테이션으로 다시 붙임 → 주소 불변</td></tr>
 </table></div>
@@ -710,11 +710,12 @@ DB를 공유하거나, 서로의 API를 촘촘히 호출해야 해서 "배포는
     }
   }
 
-  enable_cluster_creator_admin_permissions = true
+  # 클러스터를 매일 만드는 주체는 GitHub Actions 역할 → 자동 관리자 등록을 끄고 아래에 전부 명시
+  enable_cluster_creator_admin_permissions = false
 
-  # ★ 팀원 3명도 kubectl을 쓸 수 있게 (빠뜨리면 팀원은 클러스터에 접근 못 함)
+  # ★ 팀원 4명 + Actions 역할 모두 같은 권한 (빠뜨리면 그 주체는 클러스터에 접근 못 함)
   access_entries = {
-    for name, arn in var.team_member_arns : name =&gt; {
+    for name, arn in local.cluster_admin_arns : name =&gt; {
       principal_arn = arn
       policy_associations = {
         admin = {
@@ -724,18 +725,26 @@ DB를 공유하거나, 서로의 API를 촘촘히 호출해야 해서 "배포는
       }
     }
   }
+}
+
+# cluster/main.tf (locals) — 계정 ID는 하드코딩하지 않고 조합 (컨벤션 5-1)
+locals {
+  account_id = data.aws_caller_identity.current.account_id
+  cluster_admin_arns = merge(
+    { for u in var.team_iam_users : u =&gt; "arn:aws:iam::${local.account_id}:user/${u}" },  # sesac-a1 ~ a4 (variables.tf 기본값)
+    { github_actions = data.terraform_remote_state.cicd.outputs.github_actions_role_arn }  # cicd/ 를 먼저 apply
+  )
 }</code></pre>
 <div class="box warn"><b class="t">학습 가이드 그대로 두면 생기는 문제</b>
-<code>enable_cluster_creator_admin_permissions</code>는 <b>terraform apply를 실행한 사람(구지훈)만</b> 클러스터 관리자로 등록합니다. 팀원 IAM 사용자 ARN을 <code>access_entries</code>에 넣지 않으면 이경석 · 박지연 · 이종빈은 <code>kubectl</code>에서 <code>Unauthorized</code>를 받습니다. 팀원이 <code>aws eks update-kubeconfig</code>만 하면 되도록 1주차 초에 처리합니다.</div>
+<code>enable_cluster_creator_admin_permissions = true</code>는 <b>terraform apply를 실행한 주체만</b> 클러스터 관리자로 등록합니다. 이 프로젝트에서 클러스터를 매일 만드는 주체는 <b>GitHub Actions 역할</b>(<code>infra-schedule</code>)이므로, 그대로 두면 Actions 역할만 관리자가 되고 구지훈을 포함한 팀원 4명 모두 <code>kubectl</code>에서 <code>Unauthorized</code>를 받습니다. 그래서 자동 등록을 끄고(<code>false</code>) <b>팀원 4명(IAM 사용자 <code>sesac-a1</code> ~ <code>a4</code>)과 Actions 역할을 <code>access_entries</code>에 같은 권한</b>(<code>AmazonEKSClusterAdminPolicy</code>, 클러스터 범위)으로 명시합니다(10/14). <code>true</code>로 둔 채 같은 주체를 또 적으면 중복 등록 오류가 납니다. <code>*.tfvars</code>는 gitignore라 CI가 읽지 못하므로 사용자 이름 목록은 <code>variables.tf</code>의 기본값으로 둡니다. 팀원은 <code>aws eks update-kubeconfig</code>만 하면 됩니다.</div>
 
 <h3>구지훈이 Terraform으로 만들 것 · 폴더 구성</h3>
 <p>학습 가이드의 "폴더 1개 = apply 1번" 구조를 유지하고, 애플리케이션이 쓰는 AWS 자원을 담을 <code>app/</code> 폴더를 추가합니다. 폴더는 <code>gotgan-config/infra/terraform/</code> 아래에 있습니다. Lambda 함수와 그 트리거(SQS 구독 · EventBridge 규칙)는 Serverless Framework로 배포합니다(11장). 시크릿을 담는 AWS 자원(Secrets Manager · KMS)은 두지 않습니다 — 시크릿은 GitHub Secrets가 단일 소스입니다.</p>
 <div class="tbl"><table>
 <tr><th>폴더</th><th>만드는 자원</th><th>수명</th><th>누가 기다리나 · 언제까지</th></tr>
-<tr><td><code>global/s3</code></td><td>상태 버킷 (+잠금)</td><td>상시</td><td>1주차 1일</td></tr>
+<tr><td><code>global/s3</code></td><td>상태 버킷 (잠금은 S3 자체 <code>use_lockfile</code> — DynamoDB 잠금 테이블 없음)</td><td>상시</td><td>1주차 1일</td></tr>
 <tr><td><code>vpc/</code></td><td>VPC <code>10.0.0.0/16</code>, 서브넷 4(public 10.0.1/2.0/24 · private 10.0.11/12.0/24), IGW, NAT 1(2a), 라우팅, EKS 태그</td><td>상시</td><td>1주차 1~2일</td></tr>
 <tr><td><code>ecr/</code></td><td>저장소 9개 (gateway, user, store, product, order, payment, review, settlement, admin) + 수명주기</td><td>상시</td><td>구지훈 · 1주차 2일 (9개 한 번에)</td></tr>
-<tr><td><code>cluster/</code></td><td>EKS, 노드 그룹 2개(<code>app</code> t3.xlarge × 2 · <code>db</code> t3.medium × 1, 라벨 · 테인트), access entries, IRSA 역할(<code>irsa.tf</code>), EBS CSI, LBC, metrics-server, 클러스터 OIDC 공급자(IRSA용 — 매일 새 ARN)</td><td><b>매일 08:00 apply · 22:00 destroy</b></td><td>전원 · 1주차 중</td></tr>
 <tr><td><code>cicd/</code></td><td>GitHub OIDC 공급자, Actions 역할 (ECR push · Serverless 배포 · 스케줄 apply/destroy · bootstrap)</td><td>상시</td><td>이경석이 작성 · 구지훈이 리뷰</td></tr>
 <tr><td><b><code>app/</code></b></td><td>
 <ul>
@@ -744,9 +753,12 @@ DB를 공유하거나, 서로의 API를 촘촘히 호출해야 해서 "배포는
 <li>SNS 토픽 3개: <code>sesac-gojigi-store-events</code> · <code>order-events</code> · <code>settlement-events</code> + 구독자별 SQS 큐 · DLQ(3회)</li>
 <li>DynamoDB 2개: <code>sesac-gojigi-notifications</code> · <code>sesac-gojigi-settlement-reports</code></li>
 <li>SES 이메일 자격 증명</li>
-<li><b>서비스별 IRSA 역할</b>(신뢰 정책은 bootstrap이 매일 갱신 — 위 "매일 다시 생긴다는 것의 뜻" 참고), SSM 파라미터(서버리스가 읽을 ARN) · 작업용 EC2 + SSM 인스턴스 프로파일(선택)</li>
+<li>SSM 파라미터(서버리스가 읽을 ARN) · 작업용 EC2 + SSM 인스턴스 프로파일(선택)</li>
+<li>서비스별 IRSA 역할은 여기 없음 → <code>cluster/irsa.tf</code>(위 "매일 다시 생긴다는 것의 뜻"). <code>app/</code>은 <code>cluster/</code>를 읽지 않습니다</li>
 </ul></td><td>상시</td><td>전원 · EIP는 1주차, 나머지는 2주차 인수인계 전까지</td></tr>
+<tr><td><code>cluster/</code></td><td>EKS, 노드 그룹 2개(<code>app</code> t3.xlarge × 2 · <code>db</code> t3.medium × 1, 라벨 · 테인트), access entries(팀원 4명 + Actions 역할), IRSA 역할(<code>irsa.tf</code>), EBS CSI, LBC, metrics-server, 클러스터 OIDC 공급자(IRSA용 — 매일 새 ARN)</td><td><b>매일 08:00 apply · 22:00 destroy</b></td><td>전원 · 1주차 중</td></tr>
 </table></div>
+<p><b>apply 순서는 표의 위에서 아래</b>입니다: <code>global/s3</code> → <code>vpc</code> → <code>ecr</code> → <code>cicd</code> → <code>app</code> → <code>cluster</code>(10/14). <code>cluster/</code>가 <code>cicd/</code>(Actions 역할 ARN → access entries)와 <code>app/</code>(S3 · SQS · SNS ARN → IRSA)의 output을 읽으므로 맨 뒤이고, 상시 폴더는 매일 사라지는 <code>cluster/</code>를 읽지 않습니다 — 의존은 <code>cluster/</code> → 상시 폴더 한 방향뿐이라 순환이 생기지 않습니다. 전체 삭제는 역순(<code>cluster</code> → <code>app</code> → <code>cicd</code> → <code>ecr</code> → <code>vpc</code>)입니다.</p>
 <p class="cap">SQS 구독 큐 — 이벤트 표(10장)의 구독자마다 큐 1개</p>
 <div class="tbl"><table>
 <tr><th>토픽</th><th>구독 큐 (서비스 · Lambda)</th></tr>
@@ -792,8 +804,8 @@ DB를 공유하거나, 서로의 API를 촘촘히 호출해야 해서 "배포는
 <tr><td>SonarQube Cloud (무료 플랜)</td><td>—</td><td>$0</td><td>$0</td><td>비공개 저장소 5만 줄 한도. 넘으면 사용 중단</td></tr>
 <tr><td><b>합계</b></td><td></td><td><b>약 $440</b></td><td>약 $690</td><td>이전(t3.large × 2) 약 $320 / $470. 야간(22:00~08:00) 시간당 약 $0.07 = NAT + EIP</td></tr>
 </table></div>
-<div class="box warn"><b class="t">첫날 할 일: AWS Budgets 알람</b>
-월 예산(예: $350)의 50% · 80% · 100%에서 팀 전원에게 메일이 가도록 Budgets를 만듭니다. 단가는 바뀌므로 <b>AWS Pricing Calculator로 직접 확인</b>하고, 모든 자원에 <code>Project=sesac-gojigi</code> 태그를 붙여 Cost Explorer에서 걸러 볼 수 있게 합니다. 야간 절약은 <code>infra-schedule.yml</code>의 22:00 destroy가 맡고(12장), 낮에 시연이 끝나 일찍 내리고 싶으면 같은 워크플로를 <code>workflow_dispatch</code>로 실행합니다. 발표(11-20) 후에는 상시 자원(<code>app/</code> · <code>vpc/</code> 등)까지 destroy 합니다.</div>
+<div class="box warn"><b class="t">비용 가드 — AWS Budgets는 쓰지 않음 (10/14 확인)</b>
+팀 AWS 계정은 교육 과정 조직(AWS Organizations)의 <b>연계 계정(linked account)</b>이라 Budgets · Cost Explorer가 관리(payer) 계정에서만 열립니다 — 우리 계정에서는 CLI · 콘솔 모두 <code>AccessDenied</code>. 예산 알림이 필요하면 교육 운영측에 요청합니다. 단가는 <b>AWS Pricing Calculator로 직접 확인</b>하고, 모든 자원에 <code>Project=sesac-gojigi</code> 태그를 붙여 Resource Groups · Tag Editor에서 남은 자원을 찾을 수 있게 합니다. 야간 절약은 <code>infra-schedule.yml</code>의 22:00 destroy가 맡고(12장), 낮에 시연이 끝나 일찍 내리고 싶으면 같은 워크플로를 <code>workflow_dispatch</code>로 실행합니다. 발표(11-20) 후에는 상시 자원(<code>app/</code> · <code>vpc/</code> 등)까지 destroy 합니다.</div>
 <div class="box prod"><b class="t">더 줄이고 싶다면 (선택)</b>
 <b>Spot 인스턴스</b>(<code>capacity_type = "SPOT"</code>, <code>instance_types = ["t3.xlarge","t3a.xlarge","m5.xlarge"]</code>)는 60~70% 저렴하지만 2분 예고 후 회수될 수 있습니다. MySQL · Redis(EBS 볼륨은 한 AZ에 묶임)가 다른 AZ로 옮겨 가면 뜨지 못하므로 <code>db</code> 노드 그룹은 반드시 On-Demand, Spot을 쓴다면 <code>app</code>만. VPC CNI의 <b>prefix delegation</b>을 켜면 노드당 파드 수 제한도 크게 늘어납니다.</div>
 
@@ -804,8 +816,8 @@ DB를 공유하거나, 서로의 API를 촘촘히 호출해야 해서 "배포는
 <li>설치: AWS CLI v2, kubectl 1.35, Helm, Terraform, Docker, JDK 21. 학습 가이드 02장 명령을 그대로 사용.</li>
 <li>상태 파일은 S3에 있으므로 어디서 실행해도 같지만, <b>apply/destroy는 스케줄 워크플로(OIDC 역할) 또는 구지훈만</b> 합니다. 다른 사람은 <code>terraform plan</code>까지(컨벤션 5-2).</li>
 </ul>
-<div class="box prod"><b class="t">Terraform 1.10 이상이라면</b>
-상태 잠금에 DynamoDB 대신 S3 자체 잠금(<code>backend "s3" { use_lockfile = true }</code>)을 쓸 수 있습니다. 학습 가이드의 "dynamodb_table 사용 중단 경고"가 이것 때문입니다. 지금 구조로도 동작하므로 바꾸는 것은 선택입니다.</div>
+<div class="box rec"><b class="t">Terraform 버전 고정 · S3 자체 잠금 (10/14 결정)</b>
+팀 전원과 CI가 <b>Terraform 1.16.5</b>를 씁니다(<code>required_version = "~&gt; 1.16.0"</code>, 워크플로 <code>terraform_version: '1.16.5'</code>). 새 버전이 쓴 상태 파일은 옛 버전이 읽지 못하므로 로컬과 CI 버전을 같게 둡니다. 상태 잠금은 DynamoDB 대신 <b>S3 자체 잠금</b>(<code>backend "s3" { use_lockfile = true }</code>, 1.10 이상 필요)이라 잠금 테이블을 만들지 않습니다 — 학습 가이드의 "dynamodb_table 사용 중단 경고"가 이것 때문입니다. Windows에서 만든 <code>.terraform.lock.hcl</code>을 CI(Linux)도 쓰므로 <code>terraform providers lock -platform=windows_amd64 -platform=linux_amd64</code>로 두 플랫폼 해시를 채워 커밋합니다(컨벤션 5-2).</div>
 </section>
 
 <!-- ============================================================ 05 서빙 도메인 -->
@@ -856,18 +868,18 @@ output "nlb_eip_public_ips"     { value = aws_eip.nlb[*].public_ip }   # DuckDNS
 
 <h3>3단계 · Vercel 연결 (프론트 담당 + 이경석(CI/CD))</h3>
 <ol>
-<li>Vercel에서 GitHub 저장소 Import → <b>Root Directory = <code>frontend</code></b>, Framework = Vite, Build = <code>npm run build</code>, Output = <code>dist</code></li>
+<li>Vercel에서 GitHub 저장소 <code>sesac-final-1/gotgan-frontend</code> Import → <b>Root Directory는 비워 둠</b>(앱이 저장소 루트, 10/13 저장소 분리), Framework = Vite, Build = <code>npm run build</code>, Output = <code>dist</code></li>
 <li>main 머지 → 운영(Production) 배포, PR마다 <b>미리보기 URL</b>이 자동 생성 → 리뷰어가 화면을 바로 확인</li>
-<li><code>frontend/vercel.json</code>으로 API rewrite와 SPA 새로고침 404를 해결</li>
+<li>저장소 루트의 <code>vercel.json</code>으로 API rewrite와 SPA 새로고침 404를 해결</li>
 </ol>
-<p class="cap">frontend/vercel.json — rewrite는 /api/* 하나뿐</p>
+<p class="cap">gotgan-frontend/vercel.json — rewrite는 /api/* 하나뿐</p>
 <pre><code>{
   "rewrites": [
     { "source": "/api/:path*", "destination": "http://gotgan-api.duckdns.org/api/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }</code></pre>
-<p class="cap">frontend/vite.config.js — 로컬 개발도 같은 출처 구조로</p>
+<p class="cap">gotgan-frontend/vite.config.js — 로컬 개발도 같은 출처 구조로</p>
 <pre><code>export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: { proxy: { "/api": "http://localhost:8080" } },   // 로컬 게이트웨이(또는 port-forward)
@@ -2513,7 +2525,7 @@ jobs:
 </ul></div>
 
 <h3>인프라 일일 스케줄 — infra-schedule · bootstrap 워크플로</h3>
-<p>(10/13 결정) EKS 클러스터(<code>infra/terraform/cluster/</code>)는 <b>매일 08:00(KST)에 만들고 22:00에 삭제</b>합니다. 노드만 0으로 줄이는 방식(이전 <code>nightly-scale.yml</code>)은 폐기 — 제어 평면 요금(시간당 약 $0.10)이 계속 나가고 "노드 0인 클러스터"라는 애매한 상태가 남습니다. 매일 아침 "빈 클러스터 → 기본 계층 → 시크릿 → 관측성 → ArgoCD → 서비스 9개"가 사람 손 없이 올라오는 것 자체가 IaC · 자동 복구 시연이 됩니다. <code>vpc/</code> · <code>ecr/</code> · <code>cicd/</code> · <code>app/</code>(S3 · SNS/SQS · DynamoDB · IRSA · EIP · SSM)는 <b>상시 유지</b>합니다 — 야간 비용은 NAT 게이트웨이 · EIP 정도입니다.</p>
+<p>(10/13 결정) EKS 클러스터(<code>infra/terraform/cluster/</code>)는 <b>매일 08:00(KST)에 만들고 22:00에 삭제</b>합니다. 노드만 0으로 줄이는 방식(이전 <code>nightly-scale.yml</code>)은 폐기 — 제어 평면 요금(시간당 약 $0.10)이 계속 나가고 "노드 0인 클러스터"라는 애매한 상태가 남습니다. 매일 아침 "빈 클러스터 → 기본 계층 → 시크릿 → 관측성 → ArgoCD → 서비스 9개"가 사람 손 없이 올라오는 것 자체가 IaC · 자동 복구 시연이 됩니다. <code>vpc/</code> · <code>ecr/</code> · <code>cicd/</code> · <code>app/</code>(S3 · SNS/SQS · DynamoDB · SES · EIP · SSM)는 <b>상시 유지</b>합니다(IRSA 역할은 <code>cluster/irsa.tf</code>라 클러스터와 함께 매일 재생성) — 야간 비용은 NAT 게이트웨이 · EIP 정도입니다.</p>
 <div class="tbl"><table>
 <tr><th>워크플로 (gotgan-config)</th><th>트리거</th><th>하는 일</th></tr>
 <tr><td><code>infra-schedule.yml</code> <b>up</b></td><td>cron <code>0 23 * * *</code>(UTC = KST 08:00) · <code>workflow_dispatch</code></td><td>OIDC 역할 → <code>terraform apply</code> <code>cluster/</code>(EKS · 노드 그룹 · EBS CSI · LBC · metrics-server) → <code>bootstrap.yml</code> 호출</td></tr>
@@ -2749,8 +2761,8 @@ Prometheus · Loki 데이터는 EBS PVC(각 10Gi)에 두고 보존 7일로 제�
 </table></div>
 
 <h3>폴더 구조 · 담당</h3>
-<p class="cap">frontend/src (컨벤션 4-2 기준, <code>features/{도메인}</code> = 담당 경계)</p>
-<pre><code>frontend/
+<p class="cap">gotgan-frontend (저장소 루트 = 앱, 컨벤션 4-2 기준, <code>features/{도메인}</code> = 담당 경계)</p>
+<pre><code>gotgan-frontend/
 ├─ vercel.json            /api rewrite + SPA 새로고침 (05장)
 ├─ vite.config.js         로컬 /api 프록시
 ├─ .env.example           VITE_PORTONE_STORE_ID, VITE_PORTONE_CHANNEL_KEY (실제 값은 Vercel 환경 변수)
@@ -2906,13 +2918,13 @@ gotgan-config/                              sesac-final-1/gotgan-config — Argo
 │   └── observability/                      monitoring 네임스페이스
 │       ├── prometheus · loki · zipkin · grafana · kube-state-metrics   (blackbox exporter 없음 — 10/13 3차)
 │       └── dashboards/                     system-status.json(헬스 체크) · services.json · saga.json
-├── infra/terraform/                        AWS 자원. 폴더 1개 = terraform apply 1번 = 상태 파일 1개
-│   ├── global/s3/                          상태 버킷 (+잠금)                                   ─ 상시
+├── infra/terraform/                        AWS 자원. 폴더 1개 = terraform apply 1번 = 상태 파일 1개 (위에서 아래 순서로 apply)
+│   ├── global/s3/                          상태 버킷 (잠금은 use_lockfile)                     ─ 상시
 │   ├── vpc/                                네트워크                                            ─ 상시
 │   ├── ecr/                                이미지 저장소 9개                                   ─ 상시
-│   ├── cluster/                            EKS · 노드 그룹 2개(app · db) · 애드온 · LBC · metrics-server · irsa  ─ 매일 08:00 apply · 22:00 destroy
 │   ├── cicd/                               GitHub Actions OIDC 역할                            ─ 상시
-│   └── app/                                EIP · S3 4 · SNS 3 · SQS(구독자별 + DLQ) · DynamoDB 2 · SES · IRSA · SSM  ─ 상시
+│   ├── app/                                EIP · S3 4 · SNS 3 · SQS(구독자별 + DLQ) · DynamoDB 2 · SES · SSM  ─ 상시
+│   └── cluster/                            EKS · 노드 그룹 2개(app · db) · 애드온 · LBC · metrics-server · irsa  ─ 매일 08:00 apply · 22:00 destroy
 ├── scripts/                                scale-nodes.sh(수동 보조: 시연 때 노드 3대) · duckdns-update.sh
 ├── docs/
 │   ├── adr/                                결정 기록 (0001-service-split.md · 0002-keycloak.md ...)
@@ -3466,12 +3478,12 @@ spec:
 <h3>8. Terraform 폴더별 파일</h3>
 <div class="tbl"><table>
 <tr><th>폴더</th><th>파일</th><th>만드는 것</th><th>output을 쓰는 곳</th></tr>
-<tr><td><code>global/s3/</code></td><td>main.tf</td><td>상태 버킷 · 잠금</td><td>모든 폴더의 backend</td></tr>
+<tr><td><code>global/s3/</code></td><td>main.tf</td><td>상태 버킷 (잠금은 각 backend의 <code>use_lockfile</code>)</td><td>모든 폴더의 backend</td></tr>
 <tr><td><code>vpc/</code></td><td>provider.tf · main.tf · outputs.tf</td><td>VPC · 서브넷 4 · NAT · EKS 태그</td><td>cluster/ · app/ (퍼블릭 서브넷 ID → NLB 어노테이션)</td></tr>
 <tr><td><code>ecr/</code></td><td>provider.tf · main.tf · outputs.tf</td><td>저장소 9개(gateway · user · store · product · order · payment · review · settlement · admin) + 수명주기</td><td>backend.yml · Helm values</td></tr>
-<tr><td><code>cluster/</code> (<b>매일 08:00 apply · 22:00 destroy</b>)</td><td>provider.tf · data.tf · variables.tf(<code>team_member_arns</code>) · main.tf · ebs-csi-driver.tf · lbc.tf + iam_policy.json · metrics-server.tf · outputs.tf</td><td>EKS · 노드 그룹 2개(<code>app</code> t3.xlarge × 2, min 0 · max 3, 라벨 <code>tier=app</code> / <code>db</code> t3.medium × 1, min 0 · max 1, 2a 고정, 라벨 + 테인트 <code>tier=db:NoSchedule</code>) · access entries · IRSA 역할 · 애드온 · Helm 릴리스(LBC · metrics-server)</td><td>app/ (OIDC 공급자 ARN → IRSA — 클러스터를 다시 만들면 OIDC 공급자 URL이 바뀌므로 IRSA 신뢰 정책은 bootstrap이 갱신하거나 app/을 다시 apply)</td></tr>
-<tr><td><code>cicd/</code></td><td>provider.tf · variables.tf · main.tf · outputs.tf</td><td>GitHub OIDC 공급자 · Actions 역할</td><td>GitHub Secret <code>AWS_ROLE_ARN</code></td></tr>
-<tr><td><code>app/</code> (상시)</td><td>provider.tf · data.tf(vpc · cluster 상태) · eip.tf · s3.tf · sns_sqs.tf · dynamodb.tf · ses.tf · ssm.tf · outputs.tf</td><td>05 · 09 · 10 · 11장의 AWS 자원 (아래 표). <code>kms.tf</code> · <code>secrets.tf</code>는 삭제됨(시크릿은 GitHub Secrets, 12장)</td><td>Helm values(EIP · 역할 ARN) · serverless.yml(SSM)</td></tr>
+<tr><td><code>cicd/</code></td><td>provider.tf · variables.tf · main.tf · outputs.tf</td><td>GitHub OIDC 공급자 · Actions 역할</td><td>GitHub Secret <code>AWS_ROLE_ARN</code> · cluster/ (access entries)</td></tr>
+<tr><td><code>app/</code> (상시)</td><td>provider.tf · data.tf(vpc 상태만 — cluster는 읽지 않음) · eip.tf · s3.tf · sns_sqs.tf · dynamodb.tf · ses.tf · ssm.tf · outputs.tf</td><td>05 · 09 · 10 · 11장의 AWS 자원 (아래 표). <code>kms.tf</code> · <code>secrets.tf</code>는 삭제됨(시크릿은 GitHub Secrets, 12장)</td><td>Helm values(EIP) · cluster/irsa.tf(S3 · SQS · SNS ARN) · serverless.yml(SSM)</td></tr>
+<tr><td><code>cluster/</code> (<b>매일 08:00 apply · 22:00 destroy</b>)</td><td>provider.tf · data.tf(vpc · cicd · app 상태) · variables.tf(<code>team_iam_users</code>) · main.tf · irsa.tf · ebs-csi-driver.tf · lbc.tf + iam_policy.json · metrics-server.tf · outputs.tf</td><td>EKS · 노드 그룹 2개(<code>app</code> t3.xlarge × 2, min 0 · max 3, 라벨 <code>tier=app</code> / <code>db</code> t3.medium × 1, min 0 · max 1, 2a 고정, 라벨 + 테인트 <code>tier=db:NoSchedule</code>) · access entries(팀원 4명 + Actions 역할) · IRSA 역할 · 애드온 · Helm 릴리스(LBC · metrics-server)</td><td>다른 폴더는 읽지 않음(매일 사라짐) — 워크플로가 클러스터 이름으로 kubeconfig만 받음. IRSA 역할은 이름 고정이라 Helm values의 <code>roleArn</code> 불변</td></tr>
 </table></div>
 <p class="cap">gotgan-config/infra/terraform/app/ 이 만드는 자원</p>
 <div class="tbl"><table>
@@ -3605,9 +3617,9 @@ Windows에서 커밋한 <code>gradlew</code>나 <code>.sh</code> 파일이 CRLF 
 <p>담당은 03장 · 8-1 기준입니다: <b>구지훈</b>(AWS IaC · settlement · admin · 알림 메일 · 정산 명세서) · <b>이경석</b>(CI/CD · Keycloak · user · gateway 인증) · <b>박지연</b>(관측성 · 헬스 체크 · product · store · 로그 아카이브) · <b>이종빈</b>(order · payment · review). 화면은 각자 담당 서비스의 화면을 함께 맡습니다.</p>
 <div class="tbl"><table>
 <tr><th>주차 · 기간 · 목표</th><th>구지훈</th><th>이경석</th><th>박지연</th><th>이종빈</th></tr>
-<tr><td><b>1주차</b><br>10/12 ~ 10/16<br><b>인프라 ①</b> AWS 기반</td><td>Budgets · IAM · global/s3 · vpc · ecr(9) · cluster(노드 그룹 2개: app t3.xlarge × 2 · db t3.medium × 1 · access entries · EBS CSI · LBC · metrics-server) · <code>02-networkpolicy.yaml</code>(DB 티어) · EIP + DuckDNS · 팀원 kubectl 접근 · GitHub Secrets · Variables 등록(3개 저장소) · <code>docs/secrets.md</code></td><td>클러스터 없이 할 수 있는 것: 저장소 3개 생성 · 브랜치 보호 · PR 템플릿 · <b>3개 저장소 CI 골격 · 레포 간 토큰(<code>CONFIG_REPO_TOKEN</code>)</b> · cicd/(OIDC 역할) 작성 → 구지훈 리뷰 · Keycloak realm 설계(역할 · 매퍼 · <code>gotgan-backend</code>) · gateway 골격 · 로컬 docker-compose로 Keycloak 로그인 확인</td><td>관측성 매니페스트 작성(Prometheus · Loki · Grafana · Zipkin · kube-state-metrics) · <code>logback-spring.xml</code> 공통 형식 · product · store API 계약 · DDL</td><td>order · payment · review API · 이벤트 계약 + DDL · 로컬 docker-compose로 <b>Saga 골격</b>(order → product → payment 스텁) · 서비스 템플릿 점검 · 프론트 골격(목업 이식 시작: 라우터 · 레이아웃 · axios · Query)</td></tr>
+<tr><td><b>1주차</b><br>10/12 ~ 10/16<br><b>인프라 ①</b> AWS 기반</td><td>IAM · global/s3 · vpc · ecr(9) · cicd apply(Actions 역할 — cluster의 access entries가 읽음) · cluster(노드 그룹 2개: app t3.xlarge × 2 · db t3.medium × 1 · access entries · EBS CSI · LBC · metrics-server) · <code>02-networkpolicy.yaml</code>(DB 티어) · EIP + DuckDNS · 팀원 kubectl 접근 · GitHub Secrets · Variables 등록(3개 저장소) · <code>docs/secrets.md</code></td><td>클러스터 없이 할 수 있는 것: 저장소 3개 생성 · 브랜치 보호 · PR 템플릿 · <b>3개 저장소 CI 골격 · 레포 간 토큰(<code>CONFIG_REPO_TOKEN</code>)</b> · cicd/(OIDC 역할) 작성 → 구지훈 리뷰 · Keycloak realm 설계(역할 · 매퍼 · <code>gotgan-backend</code>) · gateway 골격 · 로컬 docker-compose로 Keycloak 로그인 확인</td><td>관측성 매니페스트 작성(Prometheus · Loki · Grafana · Zipkin · kube-state-metrics) · <code>logback-spring.xml</code> 공통 형식 · product · store API 계약 · DDL</td><td>order · payment · review API · 이벤트 계약 + DDL · 로컬 docker-compose로 <b>Saga 골격</b>(order → product → payment 스텁) · 서비스 템플릿 점검 · 프론트 골격(목업 이식 시작: 라우터 · 레이아웃 · axios · Query)</td></tr>
 <tr><td colspan="5"><b>1주차 완료 기준</b>: EKS가 떠 있고 4명 모두 kubectl 가능 · ECR 9개 · EIP + DuckDNS 주소 확정 · 도메인별 API · 이벤트 계약과 DDL 리뷰 완료</td></tr>
-<tr><td><b>2주차</b><br>10/19 ~ 10/23<br><b>인프라 ②</b> 인수인계 · 걷는 뼈대</td><td>app/ 자원(S3 4종 · SNS 토픽 3 · SQS + DLQ · DynamoDB 2 · IRSA · SSM) · MySQL(스키마 8 · 서비스별 계정) · Redis(AOF + PVC) · <b><code>secrets-sync</code> · <code>infra-schedule</code> · <code>bootstrap</code> 워크플로</b>(08:00 up · 22:00 down 1회 검증) · <b>인프라 인수인계</b>(산출물 목록 · 접근 방법 · 주소를 문서로 공유) → 이경석 · 박지연이 그 위에 연결</td><td>Actions 실제 job(테스트 → Sonar → ECR push → gotgan-config <code>values.yaml</code> 태그 커밋) · ArgoCD(gotgan-config 감시) · Keycloak 배포(secrets-sync Secret · realm 자리표시자 · 시드 계정 스크립트) · <b>목업 서비스 1개</b> 파이프라인 · Vercel 연결</td><td>monitoring 스택 배포 · 목업 서비스 로그/지표 확인 · <b>System Status v1</b>(Stat · State timeline)</td><td>로컬에서 Saga 골격 동작 확인 · 공통 템플릿(ApiResponse · 에러 핸들러 · <code>@CurrentUser</code>) 전 서비스 적용 · 프론트 골격 완료(MSW 픽스처)</td></tr>
+<tr><td><b>2주차</b><br>10/19 ~ 10/23<br><b>인프라 ②</b> 인수인계 · 걷는 뼈대</td><td>app/ 자원(S3 4종 · SNS 토픽 3 · SQS + DLQ · DynamoDB 2 · SSM) · <code>cluster/irsa.tf</code>(서비스별 IRSA) · MySQL(스키마 8 · 서비스별 계정) · Redis(AOF + PVC) · <b><code>secrets-sync</code> · <code>infra-schedule</code> · <code>bootstrap</code> 워크플로</b>(08:00 up · 22:00 down 1회 검증) · <b>인프라 인수인계</b>(산출물 목록 · 접근 방법 · 주소를 문서로 공유) → 이경석 · 박지연이 그 위에 연결</td><td>Actions 실제 job(테스트 → Sonar → ECR push → gotgan-config <code>values.yaml</code> 태그 커밋) · ArgoCD(gotgan-config 감시) · Keycloak 배포(secrets-sync Secret · realm 자리표시자 · 시드 계정 스크립트) · <b>목업 서비스 1개</b> 파이프라인 · Vercel 연결</td><td>monitoring 스택 배포 · 목업 서비스 로그/지표 확인 · <b>System Status v1</b>(Stat · State timeline)</td><td>로컬에서 Saga 골격 동작 확인 · 공통 템플릿(ApiResponse · 에러 핸들러 · <code>@CurrentUser</code>) 전 서비스 적용 · 프론트 골격 완료(MSW 픽스처)</td></tr>
 <tr><td colspan="5"><b>2주차 완료 기준 (걷는 뼈대)</b>: 목업 서비스 1개가 <code>https://gotgan.vercel.app/api/...</code>로 응답(<b>Vercel → DuckDNS → NLB → gateway → 서비스</b>) · Grafana에 로그 · 지표가 보임 · main에 push하면 자동 배포(Actions → ECR → gotgan-config 태그 커밋 → ArgoCD) · 아침 자동 생성(infra-schedule → bootstrap) 1회 성공 · 인프라 인수인계 완료</td></tr>
 <tr><td><b>3주차</b><br>10/26 ~ 10/30<br><b>도메인 ①</b> 핵심 CRUD + 화면</td><td>settlement 골격 + <code>category_commission</code> · admin 골격(<code>/api/admin/**</code> → <code>/internal/**</code>, Resilience4j) · SonarQube Cloud 연동(Actions <code>sonar</code> · PR 코멘트) · SES 검증</td><td>user-service 가입 · 로그인 · refresh · 로그아웃(Keycloak 대리 호출) · 배송지 · gateway 인증(<code>oauth2ResourceServer</code> · 헤더 주입 · 라우트 권한) · 화면: 로그인 · 가입 · 라우트 가드</td><td>product: 카테고리 · 상품 · 옵션 CRUD · 목록 · 상세 · QueryDSL 검색 · 이미지 presign / store: 입점 신청 · 서류 presign · 심사 <code>/internal</code> API · 화면: 상품 · 입점 신청</td><td>장바구니(MySQL <code>cart_item</code> 원본 + Redis 캐시, <code>redisCart</code> 서킷 · <b>Redis 폴백</b>) · 주문서 금액 계산(가격은 product에서 재확인) · order · payment · review dev 배포 · 화면: 장바구니 · 주문서</td></tr>
 <tr><td colspan="5"><b>3주차 완료 기준 (E2E #1)</b>: 9개 서비스 dev 배포 · 가입 · 로그인 → 입점 신청 → 관리자 승인(admin → store) → 상품 등록 → 구매자가 장바구니에 담기</td></tr>
@@ -3616,7 +3628,7 @@ Windows에서 커밋한 <code>gradlew</code>나 <code>.sh</code> 파일이 CRLF 
 <tr><td><b>5주차</b><br>11/09 ~ 11/13<br><b>도메인 ③</b> 전체 흐름 완주 · 동결</td><td>주간 정산 집계 · 지급 · 보류 · <code>SettlementPaid</code> · 정산 명세서 Lambda · 알림 메일 Lambda · <b>관리자 대시보드</b>(조합 · 부분 응답) · 시연용 노드 3대 리허설 · IAM 최소 권한 · 비용 점검</td><td>회원등급(<code>OrderItemConfirmed</code> → 누적 구매액) · 취소 · 반품 시 포인트 환원 · 회수 · 화면: 포인트 · 등급 · 무중단 배포 검증(롤링 + readiness · preStop, 배포 중 실패 0) · (Could) ArgoCD 롤백</td><td><b>판매자 대시보드</b>(<code>store/dashboard</code>, <code>/internal/stats</code> 병렬 조합) · 재고 복원 API · 스토어 휴면/정지 → 상품 숨김 · 장애 시연 대시보드(order 0개 · 파드 삭제 → 초록 복귀) · kiosk 모드 · (Could) 로그 아카이브 Lambda</td><td>발주확인 · 송장 수기 · 배송완료 · 구매확정(스케줄러) · <code>OrderItemConfirmed</code> · <b>취소 · 반품 Saga</b>(포트원 부분 취소 → 재고 복원 → 포인트) · 교환(status) · 리뷰 작성 자격 · 상품문의 · 답변 · 화면: 판매자 주문 · 클레임 · Saga 보상 시연 점검</td></tr>
 <tr><td colspan="5"><b>5주차 완료 기준</b>: <b>11/11(수) E2E 전체 흐름 1회 완주</b>(입점 → 상품 → 주문 · 결제 → 발주확인 → 송장 → 배송완료 → 구매확정 → 리뷰 → 정산 집계 → 지급 → 명세서 메일) · <b>11/13(금) 기능 동결</b> · 시연 시나리오(13장: 정상 흐름 · 서비스 다운 · 파드 삭제 → 자동 복구 · 무중단 배포 · Saga 보상)를 리허설할 수 있는 상태</td></tr>
 <tr><td><b>6주차</b><br>11/16 ~ 11/20<br>QA · 발표</td><td colspan="4">전체 QA 1회 · 버그 수정 · README(서비스별) · ADR 정리 · 발표 자료(<b>각자 담당 영역을 직접 설명</b>) · 리허설 2회 · 시연용 시드 데이터 · <b>11/20 발표</b> · 발표 후 <code>infra-schedule</code> down → 상시 자원(app · cicd · ecr · vpc) 순서대로 destroy(NLB → EIP 순서 주의)</td></tr>
-<tr><td colspan="5"><b>6주차 완료 기준</b>: 11/20 발표 완료 · AWS 자원 삭제 확인(Budgets · Cost Explorer)</td></tr>
+<tr><td colspan="5"><b>6주차 완료 기준</b>: 11/20 발표 완료 · AWS 자원 삭제 확인(Tag Editor로 <code>Project=sesac-gojigi</code> 검색 — 연계 계정이라 Cost Explorer 불가)</td></tr>
 </table></div>
 
 <h3>스프린트 리듬</h3>
@@ -3689,7 +3701,7 @@ Windows에서 커밋한 <code>gradlew</code>나 <code>.sh</code> 파일이 CRLF 
 <tr><td><b>Lambda · Serverless Framework</b></td><td>SQS 트리거 · 배치 크기 · 부분 실패 응답, <code>serverless.yml</code>, 로그 · 재시도</td><td><code>order-notification</code> · <code>settlement-report</code> (11장)</td></tr>
 <tr><td>정산 배치 · <b>ShedLock</b></td><td><code>@Scheduled</code> + ShedLock, 배치 멱등(UNIQUE 키), <code>long</code>(원) · <code>BigDecimal</code>(비율) · 반올림, ISO 주차 · Asia/Seoul</td><td>주간 집계 · 지급 · 보류, 카테고리 수수료(적용 시작일)</td></tr>
 <tr><td>admin 조합 · <b>Resilience4j</b></td><td><code>CompletableFuture</code> 병렬 호출, 서비스별 타임아웃 · 서킷 브레이커 · 폴백, 부분 응답(<code>unavailable</code>)</td><td>관리자 API 진입점 · 관리자 대시보드 (03 · 13장)</td></tr>
-<tr><td>SonarQube Cloud · 비용</td><td>Gradle <code>sonar</code> · 품질 게이트 · PR 코멘트 / Budgets · 과금 자원(EKS · NAT · LB · EBS · EIP)</td><td>12장, 예산 초과 사고 방지</td></tr>
+<tr><td>SonarQube Cloud · 비용</td><td>Gradle <code>sonar</code> · 품질 게이트 · PR 코멘트 / 과금 자원(EKS · NAT · LB · EBS · EIP)</td><td>12장, 예산 초과 사고 방지</td></tr>
 </table></div>
 
 <h3>이경석 — CI/CD · Keycloak · user · gateway 인증</h3>
