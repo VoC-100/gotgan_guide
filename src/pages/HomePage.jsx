@@ -38,12 +38,13 @@ export default function HomePage() {
       <section className="home-hero">
         <div className="kicker">GOTGAN · PROJECT DOCS</div>
         <h1>곳간 프로젝트 문서</h1>
-        <p>스마트스토어형 멀티 스토어 오픈마켓 · MSA · AWS EKS · 4인 6주</p>
+        <p>소상공인을 위한 스마트스토어형 오픈마켓 · MSA · AWS EKS · 4인 · 2026-10-12 ~ 11-20</p>
         <ul className="hero-facts">
-          <li><b>서비스</b>게이트웨이 + 업무 5개</li>
+          <li><b>서비스</b>게이트웨이 + 업무 8개 + Keycloak</li>
           <li><b>백엔드</b>Java 21 · Spring Boot 4.1</li>
           <li><b>프론트</b>React · TanStack · Vercel</li>
-          <li><b>인프라</b>Terraform · EKS · ArgoCD</li>
+          <li><b>저장소</b>backend · frontend · config</li>
+          <li><b>인프라</b>3티어 · EKS(app t3.xlarge ×2 · db t3.medium) · Terraform · ArgoCD</li>
         </ul>
       </section>
 
@@ -157,10 +158,11 @@ export default function HomePage() {
       <section className="home-block">
         <h2>먼저 볼 것</h2>
         <ul className="quick">
-          <li><Link to="/guideline#s15"><b>가이드라인 18</b>결정 기록 — 10/08 컨벤션 회의 · 10/12 멘토링</Link></li>
+          <li><Link to="/guideline#s15"><b>가이드라인 18</b>결정 기록 — 10/08 컨벤션 · 10/12 멘토링 · 10/13 회의 · 10/14 사이징</Link></li>
           <li><Link to="/convention#c0-3"><b>컨벤션 0-3</b>확정 컨벤션 요약</Link></li>
           <li><Link to="/guideline#s3"><b>가이드라인 03</b>서비스 구성 · 업무 분장 — 서비스 9개 · 담당자</Link></li>
-                    <li><Link to="/spec#s5"><b>스펙 06</b>P0 완료 기준 — 4주차까지 완주할 E2E 시나리오</Link></li>
+          <li><Link to="/guideline#s2"><b>가이드라인 02</b>전체 아키텍처 구조도 — 3티어 · AWS · 흐름 15개</Link></li>
+                    <li><Link to="/spec#s5"><b>스펙 06</b>P0 완료 기준 — 11/11까지 완주할 E2E 시나리오 · 복원력 시연</Link></li>
         </ul>
       </section>
 

@@ -4,6 +4,7 @@
 
 - 문서 사이트(가이드 문서 전체 + 목업 바로가기): https://gotganguide.vercel.app/
 - 목업 페이지: https://mockup-page-sable.vercel.app/
+- 프로젝트 저장소: [gotgan-backend](https://github.com/sesac-final-1/gotgan-backend) · [gotgan-frontend](https://github.com/sesac-final-1/gotgan-frontend) · [gotgan-config](https://github.com/sesac-final-1/gotgan-config)
 
 | 문서 | 경로 | 답하는 질문 |
 |---|---|---|
@@ -11,7 +12,7 @@
 | 스펙 상세 | `/spec` | 무엇을 — 요구사항 · 파트별 스펙 · 파일 구조 |
 | 컨벤션 | `/convention` | 어떻게 — 코드 · DB · 프론트 · 인프라 규칙 |
 
-홈(`/`)에는 배포된 **목업 화면**(https://mockup-page-sable.vercel.app/) 영역별 바로가기가 있고, **파트별로 보기**에서 백엔드 · 프론트엔드 · AWS · CI/CD · Logging · 요구사항 · 일정/결정를 고르면 세 문서에서 봐야 할 장만 모아 보여 줍니다.
+홈(`/`)에는 배포된 **목업 화면**(https://mockup-page-sable.vercel.app/) 영역별 바로가기가 있고, **파트별로 보기**에서 백엔드 · 프론트엔드 · AWS · CI/CD · Logging · 요구사항 · 일정 · 결정을 고르면 세 문서에서 봐야 할 장만 모아 보여 줍니다.
 
 ## 실행
 
@@ -29,6 +30,7 @@ content/                    문서 원본 — 사이트는 이 파일을 그대�
 ├── project-spec.html
 ├── project-convention.md   컨벤션 원본 (수정은 여기서)
 └── project-convention.html npm run convention 으로 MD에서 생성
+public/img/                 아키텍처 도면 SVG (aws-architecture · infra-network) — 가이드라인 02 · 04장이 참조
 scripts/
 ├── md2html.mjs             컨벤션 MD → HTML 변환
 └── conv-template.html      변환 HTML 틀

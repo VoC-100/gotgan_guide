@@ -10,7 +10,7 @@ export const DOCS = [
     name: '가이드라인',
     question: '왜',
     summary: '설계 배경과 결정 이유',
-    points: ['서비스 9개 + Keycloak · 담당자 확정', 'Saga · 장애 격리 · 인증 · 결제 결정', '10/12~11/20 일정 · 결정 기록 · 위험 요소'],
+    points: ['서비스 9개 + Keycloak · 담당자 확정', 'Saga · 장애 격리 · 인증 · 결제 결정', '10/12~11/20 일정 · 3티어 · 결정 기록 · 위험 요소'],
     scope: 'doc-g',
     raw: guidelineRaw,
   },
@@ -19,7 +19,7 @@ export const DOCS = [
     name: '스펙 상세',
     question: '무엇을',
     summary: '요구사항 · 파트별 스펙 · 파일 구조',
-    points: ['최종 아키텍처', '파트별 스펙 · 전체 파일 역할', '도메인별 요구사항 141건 · 우선순위'],
+    points: ['최종 아키텍처', '파트별 스펙 · 전체 파일 역할', '도메인별 요구사항 145건 · 우선순위'],
     scope: 'doc-s',
     raw: specRaw,
     enhance: enhanceSpec,
@@ -29,7 +29,7 @@ export const DOCS = [
     name: '컨벤션',
     question: '어떻게',
     summary: '코드 · DB · 프론트 · 인프라 규칙',
-    points: ['확정 컨벤션 요약 (10/08 · 10/12)', '백엔드 · DB · 프론트 규칙', '리뷰 체크리스트'],
+    points: ['확정 컨벤션 요약 (10/08 · 10/12 · 10/13)', '백엔드 · DB · 프론트 규칙', '리뷰 체크리스트'],
     scope: 'doc-s doc-c',
     raw: conventionRaw,
   },
@@ -40,7 +40,7 @@ export const MOCKUP_URL = 'https://mockup-page-sable.vercel.app/';
 // 목업 화면 영역별 시작 경로 (MockupPage README "사용자별 진입 경로")
 export const MOCKUP_AREAS = [
   { name: '쇼핑몰', path: '/', who: '구매자', desc: '메인 · 상품 목록/상세 · 스토어 · 장바구니 · 주문서 · 입점 신청' },
-  { name: '마이페이지', path: '/mypage/orders', who: '구매자', desc: '주문/배송 · 클레임 · 리뷰 · 회원정보 · 배송지' },
+  { name: '마이페이지', path: '/mypage/orders', who: '구매자', desc: '주문/배송 · 클레임 · 리뷰 · 포인트 · 회원정보 · 배송지' },
   { name: '판매자센터', path: '/seller', who: '판매자', desc: '대시보드 · 상품 · 주문 · 클레임 · 정산 · 스토어 설정' },
   { name: '관리자', path: '/admin', who: '스토어 관리자', desc: '대시보드 · 입점 심사 · 스토어 · 정산 · 회원 · 카테고리' },
 ];
@@ -71,7 +71,7 @@ export const PARTS = [
     mockup: true, // 파트 패널에 목업 화면 바로가기 표시
     links: [
       ['spec', 'p-fe', '2-2', '프론트엔드 스펙', '스택 · 화면 영역 · 규칙 · 폴더 구조'],
-      ['spec', 'f-fe', '03-3', 'frontend/ 파일 역할', '설정 파일 · src 하위 역할'],
+      ['spec', 'f-fe', '03-3', 'gotgan-frontend 파일 역할', '설정 파일 · src 하위 역할'],
       ['convention', 'c4', '04', '프론트엔드 컨벤션', '구조 · 인증 · TanStack Query · Table 규칙'],
       ['guideline', 's12', '14', '프론트엔드 가이드', '폴더 · 담당 · Query 패턴 · 포인트 · 배포'],
       ['guideline', 's-domain', '05', '서빙 도메인', 'Vercel rewrite · 같은 출처 구성'],
@@ -86,7 +86,7 @@ export const PARTS = [
       ['spec', 'p-aws', '2-3', 'AWS · 서버리스 스펙', '자원 목록 · IRSA · Lambda 3종'],
       ['spec', 'f-tf', '03-4', 'infra/terraform/ 파일 역할', '폴더별 .tf · apply 순서'],
       ['convention', 'c5', '05', '인프라 · 배포 네이밍', 'AWS · Terraform · K8s 이름 규칙'],
-      ['guideline', 's4', '04', 'AWS 인프라 · EC2 사이징', '노드 크기 · 비용 · 팀원 접근'],
+      ['guideline', 's4', '04', 'AWS 인프라 · EC2 사이징', '네트워크 도면 · 3티어 노드 그룹 · 비용 · 일일 스케줄'],
       ['guideline', 's-domain', '05', 'DuckDNS · EIP', 'API 주소 고정 · 삭제 순서'],
       ['guideline', 's7', '09', 'Redis · DynamoDB', '활용처 · 테이블 설계'],
       ['guideline', 's9', '11', '서버리스 (배치 · 로깅)', '알림 메일 · 정산 명세서 · 로그 아카이브'],
@@ -95,7 +95,7 @@ export const PARTS = [
   {
     key: 'cicd',
     name: 'CI/CD',
-    desc: 'GitHub Actions · ArgoCD · Helm · SonarQube Cloud',
+    desc: '저장소 3개 · GitHub Actions · ArgoCD · Helm · SonarQube Cloud · GitHub Secrets',
     links: [
       ['spec', 'p-cicd', '2-4', 'CI/CD 스펙', '워크플로 · 협업 규칙 · 폴더 구조'],
       ['spec', 'f-deploy', '03-5', 'deploy/ 파일 역할', 'k8s · Helm · ArgoCD YAML'],
@@ -121,7 +121,7 @@ export const PARTS = [
     mockup: true,
     links: [
       ['spec', 's1', '01', '최종 아키텍처', '구성도 · 동기 호출 · 이벤트 흐름'],
-      ['spec', 's3', '04', '도메인별 요구사항', '141건 · 우선순위 필터'],
+      ['spec', 's3', '04', '도메인별 요구사항', '145건 · 우선순위 필터'],
       ['spec', 's4', '05', '업무 규칙', '상태 전이 · 정산 · 배송비'],
       ['spec', 's5', '06', '범위 요약', 'Must E2E 시나리오 · 복원력 시연'],
     ],
@@ -131,8 +131,8 @@ export const PARTS = [
     name: '일정 · 결정',
     desc: '10/12~11/20 계획 · 결정 기록 · 사전 학습',
     links: [
-      ['convention', 'c0-3', '0-3', '확정 컨벤션 요약', '회의에서 확정한 8가지'],
-      ['guideline', 's15', '18', '결정 기록', '10/08 컨벤션 회의 · 10/12 멘토링 결정'],
+      ['convention', 'c0-3', '0-3', '확정 컨벤션 요약', '10/08 확정 8가지 · 0-4 추가 확정'],
+      ['guideline', 's15', '18', '결정 기록', '10/08 컨벤션 · 10/12 멘토링 · 10/13 회의 · 10/14 사이징'],
       ['guideline', 's3', '03', '서비스 구성 · 업무 분장', '서비스 9개 · 담당자 확정'],
       ['guideline', 's13', '16', '일정 · 범위', '10/12~11/20 주차별 계획 · MoSCoW'],
       ['guideline', 's14', '17', '사전 학습', '담당자별 체크리스트'],

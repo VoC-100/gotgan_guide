@@ -165,7 +165,7 @@ svg .arrowhead2{fill:var(--accent)}
 <tr><td>서비스 구성</td><td><b>업무 기능(데이터 소유권) 기준으로 Spring 9개 + Keycloak.</b> gateway + 업무 8개(user · store · product · order · payment · review · settlement · admin). <b>admin은 DB 없음</b> — 각 서비스 <code>/internal/**</code>을 호출해 조합만 하는 관리자용 계층. <b>카테고리(상위/하위)는 product</b>, 카테고리별 수수료는 settlement. 상품문의 · 답변은 review, FAQ는 프론트 정적 데이터.</td><td>03</td></tr>
 <tr><td>업무 분장</td><td><b>구지훈</b> AWS IaC · settlement · admin / <b>이경석</b> CI/CD · Keycloak · user · 게이트웨이 인증 / <b>박지연</b> 로깅 · 관측성 · 헬스 체크 · product · store / <b>이종빈</b> order · payment · review. 발표도 각자 담당 영역을 직접 설명.</td><td>03</td></tr>
 <tr><td>대시보드</td><td>판매자 대시보드 = store, 관리자 대시보드 = admin 안의 <code>dashboard</code> 패키지. 각 서비스의 <code>/internal/stats/**</code>를 <b>병렬 호출해 DTO 하나로 조합</b>하고, 한 서비스가 죽으면 그 영역만 <code>null</code> + <code>unavailable</code>로 <b>부분 응답(200)</b>. 집계 계산은 데이터 주인 서비스가.</td><td>03 · 06</td></tr>
-<tr><td>EC2 크기</td><td>3티어 — 백 티어 <b><code>app</code> t3.large × 2</b>(min 0 · max 3, 시연 때 3대) + DB 티어 <b><code>db</code> t3.medium × 1</b>(2a 고정, MySQL · Redis만, NetworkPolicy로 백 티어만 접근). OS는 AL2023. app 파드 약 35개 · requests 약 9.8Gi라 "서비스 9개 + Keycloak × 기본 자원" 산수로 large가 맞음.</td><td>04</td></tr>
+<tr><td>EC2 크기</td><td>3티어 — 백 티어 <b><code>app</code> t3.xlarge × 2</b>(min 0 · max 3, 시연 때 3대) + DB 티어 <b><code>db</code> t3.medium × 1</b>(2a 고정, MySQL · Redis만, NetworkPolicy로 백 티어만 접근). OS는 AL2023. app 파드 약 35개 · requests 약 9.8Gi지만 JVM 실사용은 약 12~13Gi라 t3.large × 2로는 여유 1~2Gi · 노드 1대 장애(N-1) 시연 불가 → 10/14 t3.xlarge × 2로 조정(할당 약 30Gi).</td><td>04</td></tr>
 <tr><td>서빙 도메인</td><td>프론트는 <b>Vercel</b>(기본 HTTPS · PR 미리보기), API는 NLB <b>고정 IP(EIP)</b> + <b>DuckDNS</b>. Vercel rewrites로 <code>/api/*</code>를 API로 넘겨 브라우저에서는 같은 출처로 보이게.</td><td>05</td></tr>
 <tr><td>서비스별 DB · 장애 격리</td><td>MySQL <b>물리 1대 + 스키마 8개</b>(업무 7 + <code>keycloakdb</code>) · 계정도 서비스별. 다른 서비스 테이블 FK · JOIN 금지, ID만 참조 · 스냅샷 복사, 스키마 변경은 서비스마다 <b>Flyway</b>. 장바구니 원본도 orderdb <code>cart_item</code>(Redis는 캐시). 클러스터를 매일 다시 만들므로 시연 데이터는 Flyway 시드로 복원. 모든 동기 호출은 <b>Resilience4j</b>(타임아웃 · 서킷 브레이커 · 폴백)로 "서비스 하나를 죽여도 에러 메시지로 1차 처리".</td><td>06</td></tr>
 <tr><td>Saga · 포인트</td><td>order가 오케스트레이터. <b>주문 생성</b> = user(포인트 사용 차감) → product(재고 예약) → payment(결제 준비 · 포트원 검증), 실패 시 역순 보상. <b>결제 후 취소 · 반품</b> = payment 포트원 취소 → product 재고 복원 → user 포인트 환원 · 회수. 포인트는 실결제금액의 <b>5% 적립</b>(<code>OrderPaid</code> 이벤트) · 다음 결제에서 사용.</td><td>06</td></tr>
@@ -260,7 +260,7 @@ svg .arrowhead2{fill:var(--accent)}
 <path class="ln" d="M390,55 H636" marker-end="url(#ah)"/>
 <path class="ln2" d="M390,132 H410 V68 H636" marker-end="url(#ah2)"/>
 <!-- EKS -->
-<rect class="ns" x="420" y="100" width="760" height="388"/><text x="432" y="120" class="b">EKS · 워커 t3.large × 2 (최대 3)</text>
+<rect class="ns" x="420" y="100" width="760" height="388"/><text x="432" y="120" class="b">EKS · app t3.xlarge × 2 · db t3.medium</text>
 <rect class="ns" x="432" y="130" width="508" height="346"/><text x="442" y="148" class="s">namespace sesac-gojigi</text>
 <rect class="bx" x="446" y="158" width="144" height="40"/><text x="518" y="176" text-anchor="middle" class="b">Keycloak</text><text x="518" y="191" text-anchor="middle" class="s">내부 전용 · keycloakdb</text>
 <rect class="hl" x="618" y="158" width="308" height="40"/><text x="772" y="176" text-anchor="middle" class="b">gateway-service × 2</text><text x="772" y="191" text-anchor="middle" class="s">Keycloak JWKS로 JWT 검증 · 라우팅 · CORS</text>
@@ -554,31 +554,31 @@ DB를 공유하거나, 서로의 API를 촘촘히 호출해야 해서 "배포는
 <!-- ============================================================ 04 -->
 <section id="s4">
 <h2><span class="n">04</span>AWS 인프라 · EC2 사이징</h2>
-<p class="lead">결론: EKS 워커는 노드 그룹 2개 — 백 티어 <b><code>app</code> t3.large × 2 (min 0 · max 3, 프라이빗 2a · 2c)</b> + DB 티어 <b><code>db</code> t3.medium × 1 (min 0 · max 1, 프라이빗 2a)</b>. app 노드에 서비스 9개 + Keycloak + 관측성 · ArgoCD를 올리면 파드 약 35개 · 메모리 requests 약 9.8Gi, db 노드에는 MySQL · Redis만(약 1.7Gi) 두고 NetworkPolicy로 백 티어에서만 접근합니다(10/13 3차). Terraform은 구지훈이 만들고, 클러스터(<code>cluster/</code>)는 <b>매일 08:00 만들고 22:00 지우며</b>, 나머지(VPC · ECR · EIP · S3 등)는 상시 유지합니다. SonarQube는 Cloud라 AWS 자원이 필요 없습니다.</p>
+<p class="lead">결론: EKS 워커는 노드 그룹 2개 — 백 티어 <b><code>app</code> t3.xlarge × 2 (min 0 · max 3, 프라이빗 2a · 2c)</b> + DB 티어 <b><code>db</code> t3.medium × 1 (min 0 · max 1, 프라이빗 2a)</b>. app 노드에 서비스 9개 + Keycloak + 관측성 · ArgoCD를 올리면 파드 약 35개 · 메모리 requests 약 9.8Gi(실사용 약 12~13Gi — 그래서 10/14에 t3.large에서 t3.xlarge로 올림), db 노드에는 MySQL · Redis만(약 1.7Gi) 두고 NetworkPolicy로 백 티어에서만 접근합니다(10/13 3차). Terraform은 구지훈이 만들고, 클러스터(<code>cluster/</code>)는 <b>매일 08:00 만들고 22:00 지우며</b>, 나머지(VPC · ECR · EIP · S3 등)는 상시 유지합니다. SonarQube는 Cloud라 AWS 자원이 필요 없습니다.</p>
 
 <h3>먼저 짚을 점: "우분투 EC2"는 어디에 쓰나</h3>
 <div class="tbl"><table>
 <tr><th>용도</th><th>추천 OS · 크기</th><th>이유</th></tr>
-<tr><td><b>EKS 워커 노드 — <code>app</code> 노드 그룹(백 티어)</b></td><td><b>Amazon Linux 2023</b> (관리형 노드 그룹 <code>AL2023_x86_64_STANDARD</code>) · <b>t3.large × 2</b> (min 0 · max 3, 프라이빗 2a · 2c, 라벨 <code>tier=app</code>)</td><td>관리형 노드 그룹이 AMI·부트스트랩·업데이트를 대신 처리. 우분투 EKS AMI(Canonical 제공)도 가능하지만 시작 템플릿에 AMI ID와 부트스트랩 스크립트를 직접 넣어야 해 장애 지점이 늘어납니다. 노드에 SSH로 들어갈 일도 거의 없습니다. gateway · 업무 서비스 8 · Keycloak · 관측성 · ArgoCD가 여기에 뜹니다.</td></tr>
+<tr><td><b>EKS 워커 노드 — <code>app</code> 노드 그룹(백 티어)</b></td><td><b>Amazon Linux 2023</b> (관리형 노드 그룹 <code>AL2023_x86_64_STANDARD</code>) · <b>t3.xlarge × 2</b> (4 vCPU · 16GiB, min 0 · max 3, 프라이빗 2a · 2c, 라벨 <code>tier=app</code>)</td><td>관리형 노드 그룹이 AMI·부트스트랩·업데이트를 대신 처리. 우분투 EKS AMI(Canonical 제공)도 가능하지만 시작 템플릿에 AMI ID와 부트스트랩 스크립트를 직접 넣어야 해 장애 지점이 늘어납니다. 노드에 SSH로 들어갈 일도 거의 없습니다. gateway · 업무 서비스 8 · Keycloak · 관측성 · ArgoCD가 여기에 뜹니다.</td></tr>
 <tr><td><b>EKS 워커 노드 — <code>db</code> 노드 그룹(DB 티어)</b></td><td>같은 AMI · <b>t3.medium × 1</b> (min 0 · max 1, 프라이빗 2a, 라벨 + 테인트 <code>tier=db:NoSchedule</code>)</td><td>MySQL · Redis만 두는 노드. 테인트 때문에 toleration이 있는 DB 파드 외에는 스케줄되지 않고, EBS gp3 PVC가 2a에 묶이므로 노드도 2a 고정입니다. NetworkPolicy(<code>deploy/k8s/02-networkpolicy.yaml</code>)로 3306 · 6379는 백 티어 파드(<code>tier=backend</code>)에서만 들어오고, DB 파드는 DNS 외에 밖으로 나가지 않습니다.</td></tr>
-<tr><td>작업용 EC2 (선택)</td><td><b>Ubuntu 24.04 LTS</b> · t3.small(2GiB) · gp3 20GiB · 퍼블릭 서브넷(2c)</td><td>아래 인프라 도면의 "작업용 EC2"입니다. 팀이 공용으로 kubectl · <code>terraform plan</code>을 돌리는 곳이 필요할 때만 만들고, 접속은 <b>SSM Session Manager만</b>(22번 포트 닫힘). EKS API는 퍼블릭 엔드포인트라 각자 WSL에서 바로 kubectl을 쓸 수 있으므로 <b>필수는 아닙니다</b>.</td></tr>
+<tr><td>작업용 EC2 (선택)</td><td><b>Ubuntu 24.04 LTS</b> · t3.small(2GiB) · gp3 20GiB · 퍼블릭 서브넷(2a)</td><td>아래 인프라 도면의 "작업용 EC2"입니다. 팀이 공용으로 kubectl · <code>terraform plan</code>을 돌리는 곳이 필요할 때만 만들고, 접속은 <b>SSM Session Manager만</b>(22번 포트 닫힘). EKS API는 퍼블릭 엔드포인트라 각자 WSL에서 바로 kubectl을 쓸 수 있으므로 <b>필수는 아닙니다</b>.</td></tr>
 <tr><td>SonarQube · CI 서버</td><td><b>필요 없음</b></td><td>정적 분석은 <b>SonarQube Cloud 무료 플랜</b>, 빌드는 GitHub Actions(12장). EC2 · 클러스터 자원을 쓰지 않습니다.</td></tr>
 <tr><td>개발 VM (로컬)</td><td>WSL2 Ubuntu 24.04</td><td>Docker Desktop의 WSL 메모리를 8GiB 이상으로 (<code>.wslconfig</code>). 로컬 docker-compose로 MSA 골격을 먼저 검증합니다</td></tr>
 </table></div>
 
 <h3>인프라 아키텍처 (네트워크 · 자원 배치)</h3>
-<p>02장 도면이 "요청이 어느 서비스를 지나가나"였다면, 이 도면은 "그 서비스가 AWS 어디에 놓이나"입니다. VPC <code>10.0.0.0/16</code> 하나, AZ 두 개(2a · 2c), 퍼블릭 서브넷에는 인터넷과 맞닿는 것(NLB · NAT · 선택 작업용 EC2)만, 프라이빗 서브넷에는 EKS 워커 노드와 그 위의 파드 전부를 둡니다. 프라이빗 안은 <b>3티어</b>로 나뉩니다 — 백 티어 <code>app</code> 노드 그룹(t3.large × 2, 2a · 2c)과 DB 티어 <code>db</code> 노드 그룹(t3.medium × 1, 2a — MySQL · Redis + EBS gp3 볼륨), 그리고 프론트 티어는 VPC 밖의 Vercel입니다. 파드가 바깥(ECR · S3 · 포트원 등)으로 나가는 길은 NAT 게이트웨이 하나뿐이고(DB 티어는 NetworkPolicy로 그 길도 막음), 사용자가 들어오는 길은 NLB(EIP 고정) → gateway 파드뿐입니다. Vercel → 서비스 직접 경로, 사용자 → DB 직접 경로는 없고, 파일 업로드만 백엔드가 발급한 presigned URL로 브라우저가 S3에 직접 PUT 합니다(유일한 예외). 색은 수명을 뜻합니다 — 주황 점선 프레임(EKS 컨트롤 플레인 · 노드 그룹 · 워커 노드 · 파드 · EBS)은 <b>매일 08:00 생성 · 22:00 삭제</b>(<code>cluster/</code>), 나머지는 <b>상시 유지</b>입니다. 클릭하면 원본 크기로 열립니다.</p>
+<p>02장 도면이 "요청이 어느 서비스를 지나가나"였다면, 이 도면은 "그 서비스가 AWS 어디에 놓이나"입니다. VPC <code>10.0.0.0/16</code> 하나, AZ 두 개(2a · 2c), 퍼블릭 서브넷에는 인터넷과 맞닿는 것(NLB · NAT · 선택 작업용 EC2)만, 프라이빗 서브넷에는 EKS 워커 노드와 그 위의 파드 전부를 둡니다. 프라이빗 안은 <b>3티어</b>로 나뉩니다 — 백 티어 <code>app</code> 노드 그룹(t3.xlarge × 2, 2a · 2c)과 DB 티어 <code>db</code> 노드 그룹(t3.medium × 1, 2a — MySQL · Redis + EBS gp3 볼륨), 그리고 프론트 티어는 VPC 밖의 Vercel입니다. 파드가 바깥(ECR · S3 · 포트원 등)으로 나가는 길은 NAT 게이트웨이 하나뿐이고(DB 티어는 NetworkPolicy로 그 길도 막음), 사용자가 들어오는 길은 NLB(EIP 고정) → gateway 파드뿐입니다. Vercel → 서비스 직접 경로, 사용자 → DB 직접 경로는 없고, 파일 업로드만 백엔드가 발급한 presigned URL로 브라우저가 S3에 직접 PUT 합니다(유일한 예외). 색은 수명을 뜻합니다 — 주황 점선 프레임(EKS 컨트롤 플레인 · 노드 그룹 · 워커 노드 · 파드 · EBS)은 <b>매일 08:00 생성 · 22:00 삭제</b>(<code>cluster/</code>), 나머지는 <b>상시 유지</b>입니다. 클릭하면 원본 크기로 열립니다.</p>
 <div class="diagram">
 <a href="/img/infra-network.svg" target="_blank" rel="noreferrer"><img src="/img/infra-network.svg" alt="곳간 인프라 네트워크 도면 — VPC · 서브넷 · 3티어 노드 그룹 · NetworkPolicy · 상시/매일 자원" style="display:block;width:100%;height:auto"></a>
 </div>
 <p class="cap">자원 배치 · 접근 경로 — CIDR은 권장값(vpc/의 variables.tf 기본값으로 둔다)</p>
 <div class="tbl"><table>
 <tr><th>서브넷 (CIDR · AZ)</th><th>들어가는 자원</th><th>라우팅 · 인바운드 / 아웃바운드</th><th>보안 그룹 (말로)</th><th>만드는 Terraform 폴더</th></tr>
-<tr><td><b>public</b> <code>10.0.1.0/24</code> · 2a<br>태그 <code>kubernetes.io/role/elb=1</code></td><td>IGW(VPC 공통) · <b>NAT GW 1개</b> · NLB 노드 #1(EIP #1)</td><td>라우팅 <code>0.0.0.0/0 → IGW</code>. 인바운드: 인터넷 → NLB <b>80 · 443만</b>. 아웃바운드: IGW 직접</td><td>NLB: 리스너 80/443만, 대상은 <code>gateway-service</code>의 LoadBalancer Service(NodePort). 다른 Service는 ClusterIP라 밖에서 안 보임. NAT GW는 SG 없음</td><td><code>vpc/</code>(서브넷 · IGW · NAT · 라우팅) · <code>app/</code>(EIP 2) · <code>cluster/</code>(NLB는 LBC가 어노테이션으로 생성)</td></tr>
-<tr><td><b>public</b> <code>10.0.2.0/24</code> · 2c</td><td>NLB 노드 #2(EIP #2) · <b>작업용 EC2 t3.small(선택)</b></td><td>라우팅 <code>0.0.0.0/0 → IGW</code>. NAT는 2a 것을 공용(1개로 충분, 비용)</td><td>작업용 EC2: <b>인바운드 규칙 없음(22 닫힘)</b>, 접속은 SSM Session Manager(인스턴스 프로파일 <code>AmazonSSMManagedInstanceCore</code>). 아웃바운드 전체</td><td><code>vpc/</code> · <code>app/</code>(EC2 · 프로파일, 만들 때만)</td></tr>
-<tr><td><b>private</b> <code>10.0.11.0/24</code> · 2a<br>태그 <code>kubernetes.io/role/internal-elb=1</code></td><td><code>app</code> 노드 1(t3.large) + 백 티어 파드</td><td>라우팅 <code>0.0.0.0/0 → NAT(2a)</code>. 인바운드는 VPC 안에서만. 아웃바운드: NAT → IGW → ECR · S3 · SNS/SQS · DynamoDB · SES · 포트원</td><td>노드 SG 인바운드: NLB → gateway NodePort(80/443 대응 포트) · 제어 평면 443 · 노드끼리 전체(파드 간 통신). 아웃바운드: 전체</td><td><code>vpc/</code>(서브넷 · 태그) · <code>cluster/</code>(노드 그룹 · 노드 SG · 클러스터 SG)</td></tr>
+<tr><td><b>public</b> <code>10.0.1.0/24</code> · 2a<br>태그 <code>kubernetes.io/role/elb=1</code></td><td>IGW(VPC 공통) · <b>NAT GW 1개</b> · NLB 노드 #1(EIP #1) · <b>작업용 EC2 t3.small(선택)</b></td><td>라우팅 <code>0.0.0.0/0 → IGW</code>. 인바운드: 인터넷 → NLB <b>80 · 443만</b>. 아웃바운드: IGW 직접</td><td>NLB: 리스너 80/443만, 대상은 <code>gateway-service</code>의 LoadBalancer Service(NodePort). 다른 Service는 ClusterIP라 밖에서 안 보임. NAT GW는 SG 없음. 작업용 EC2: <b>인바운드 규칙 없음(22 닫힘)</b>, 접속은 SSM Session Manager(인스턴스 프로파일 <code>AmazonSSMManagedInstanceCore</code>)</td><td><code>vpc/</code>(서브넷 · IGW · NAT · 라우팅) · <code>app/</code>(EIP 2) · <code>cluster/</code>(NLB는 LBC가 어노테이션으로 생성)</td></tr>
+<tr><td><b>public</b> <code>10.0.2.0/24</code> · 2c</td><td>NLB 노드 #2(EIP #2)</td><td>라우팅 <code>0.0.0.0/0 → IGW</code>. NAT는 2a 것을 공용(1개로 충분, 비용)</td><td>NLB 노드만 있음 — 보안 그룹 규칙은 2a와 같음</td><td><code>vpc/</code> · <code>cluster/</code>(NLB는 LBC가 생성)</td></tr>
+<tr><td><b>private</b> <code>10.0.11.0/24</code> · 2a<br>태그 <code>kubernetes.io/role/internal-elb=1</code></td><td><code>app</code> 노드 1(t3.xlarge) + 백 티어 파드</td><td>라우팅 <code>0.0.0.0/0 → NAT(2a)</code>. 인바운드는 VPC 안에서만. 아웃바운드: NAT → IGW → ECR · S3 · SNS/SQS · DynamoDB · SES · 포트원</td><td>노드 SG 인바운드: NLB → gateway NodePort(80/443 대응 포트) · 제어 평면 443 · 노드끼리 전체(파드 간 통신). 아웃바운드: 전체</td><td><code>vpc/</code>(서브넷 · 태그) · <code>cluster/</code>(노드 그룹 · 노드 SG · 클러스터 SG)</td></tr>
 <tr><td><b>private</b> <code>10.0.11.0/24</code> · 2a (같은 서브넷)</td><td><b><code>db</code> 노드 1(t3.medium)</b> + MySQL · Redis 파드 · <b>EBS 볼륨(gp3 디스크, PVC — AZ 2a에 묶임)</b></td><td>서브넷 라우팅은 같지만 <b>NetworkPolicy</b>(<code>deploy/k8s/02-networkpolicy.yaml</code>)로 DB 파드 egress는 DNS뿐 → 사실상 NAT 경로 없음. 인바운드 3306 · 6379는 <code>tier=backend</code> 라벨 파드(네임스페이스 sesac-gojigi)만</td><td>같은 노드 SG. 파드 단위 통제는 SG가 아니라 NetworkPolicy. 노드 테인트 <code>tier=db:NoSchedule</code>로 다른 파드가 섞이지 않음</td><td><code>cluster/</code>(노드 그룹 <code>db</code>) · <code>deploy/k8s/02-networkpolicy.yaml</code>(bootstrap)</td></tr>
-<tr><td><b>private</b> <code>10.0.12.0/24</code> · 2c</td><td><code>app</code> 노드 2(t3.large) + 백 티어 파드</td><td>라우팅 <code>0.0.0.0/0 → NAT(2a)</code> — AZ 간 트래픽이지만 양이 적어 무시</td><td>2a와 같은 노드 SG</td><td>같음</td></tr>
+<tr><td><b>private</b> <code>10.0.12.0/24</code> · 2c</td><td><code>app</code> 노드 2(t3.xlarge) + 백 티어 파드</td><td>라우팅 <code>0.0.0.0/0 → NAT(2a)</code> — AZ 간 트래픽이지만 양이 적어 무시</td><td>2a와 같은 노드 SG</td><td>같음</td></tr>
 <tr><td>VPC 밖 (리전)</td><td>EKS 제어 평면(AWS 관리형 VPC · 퍼블릭 엔드포인트, 서브넷에 ENI만) · ECR · S3 · SNS/SQS · DynamoDB · SES · 포트원(외부)</td><td>노드 → NAT → IGW → 리전 엔드포인트. VPC 엔드포인트는 두지 않음(비용 · 범위)</td><td>제어 평면 ↔ 노드: EKS가 만드는 클러스터 SG. 서비스별 권한은 SG가 아니라 IRSA(IAM)</td><td><code>cluster/</code>(EKS) · <code>ecr/</code> · <code>app/</code> · <code>cicd/</code>(OIDC 공급자 · Actions 역할)</td></tr>
 </table></div>
 <div class="tbl"><table>
@@ -597,7 +597,7 @@ DB를 공유하거나, 서로의 API를 촘촘히 호출해야 해서 "배포는
 <tr><td>ECR 저장소 9개 + 수명주기</td><td><code>ecr/</code></td><td>1주차</td><td>이미지가 남아 있어 아침에 다시 빌드할 필요 없음</td></tr>
 <tr><td>GitHub OIDC 공급자 · Actions 역할</td><td><code>cicd/</code></td><td>1주차</td><td>스케줄 · bootstrap 워크플로가 이 역할로 apply/destroy</td></tr>
 <tr><td><b>EIP 2</b> · S3 4 · SNS 3 + SQS/DLQ · DynamoDB 2 · SES 자격 증명 · 서비스별 IRSA 역할 · SSM 파라미터 · 작업용 EC2(선택)</td><td><code>app/</code></td><td>EIP는 1주차, 나머지 2주차까지</td><td>EIP가 남으므로 <b>DuckDNS 레코드는 바꾸지 않음</b>. DynamoDB 발송 이력 · S3 파일은 보존</td></tr>
-<tr><td rowspan="2"><b>매일 재생성</b><br>08:00 생성 · 22:00 삭제</td><td>EKS 제어 평면 · 관리형 노드 그룹 2개(<code>app</code> t3.large × 2 · <code>db</code> t3.medium × 1) · access entries · IRSA 역할 · 애드온(EBS CSI · LBC · metrics-server)</td><td><code>cluster/</code> — <code>infra-schedule.yml</code>(cron <code>0 23 * * *</code> UTC = KST 08:00 apply, <code>0 13 * * *</code> UTC = KST 22:00 destroy)</td><td>매일 (주말 포함)</td><td>apply → bootstrap까지 <b>약 20분</b>(제어 평면 10분 + 노드 + 애드온). destroy 전에 ArgoCD 앱 · LoadBalancer Service · PVC를 먼저 지워 NLB · EBS가 고아로 남지 않게</td></tr>
+<tr><td rowspan="2"><b>매일 재생성</b><br>08:00 생성 · 22:00 삭제</td><td>EKS 제어 평면 · 관리형 노드 그룹 2개(<code>app</code> t3.xlarge × 2 · <code>db</code> t3.medium × 1) · access entries · IRSA 역할 · 애드온(EBS CSI · LBC · metrics-server)</td><td><code>cluster/</code> — <code>infra-schedule.yml</code>(cron <code>0 23 * * *</code> UTC = KST 08:00 apply, <code>0 13 * * *</code> UTC = KST 22:00 destroy)</td><td>매일 (주말 포함)</td><td>apply → bootstrap까지 <b>약 20분</b>(제어 평면 10분 + 노드 + 애드온). destroy 전에 ArgoCD 앱 · LoadBalancer Service · PVC를 먼저 지워 NLB · EBS가 고아로 남지 않게</td></tr>
 <tr><td>클러스터 안의 전부: 파드(app 노드 — gateway 2 · 업무 서비스 8 · Keycloak · 관측성 · ArgoCD / db 노드 — MySQL · Redis) · <b>NLB</b>(LBC) · <b>EBS 볼륨</b>(gp3 디스크, PVC) · NetworkPolicy · K8s Secret · ConfigMap</td><td><code>bootstrap.yml</code>(apply 직후 자동) → <code>deploy/k8s/</code>(namespace · configmap · <b>02-networkpolicy</b> · db · keycloak) → <code>secrets-sync</code> → 관측성 → ArgoCD → 서비스 9개</td><td>08:00 apply 직후</td><td>NLB는 상시 EIP를 어노테이션으로 다시 붙임 → 주소 불변</td></tr>
 </table></div>
 <div class="box rec"><b class="t">매일 다시 생긴다는 것의 뜻 — 코드가 이렇게 준비돼 있어야 한다</b>
@@ -612,7 +612,7 @@ DB를 공유하거나, 서로의 API를 촘촘히 호출해야 해서 "배포는
 
 <h3>파드 예산으로 노드 크기 정하기</h3>
 <p>학습 가이드의 t3.medium × 2는 서비스 3개 기준으로도 "파드 31/34, 여유 3개"였습니다. 업무 서비스 8개 + 게이트웨이 + Keycloak + 헬스 체크용 메트릭까지 올리면 아래와 같습니다. 오토스케일링(HPA)은 쓰지 않으므로 업무 서비스는 1개씩입니다. 10/13 3차 결정으로 MySQL · Redis는 별도 <code>db</code> 노드로 분리했으므로 예산도 노드 그룹별로 나눕니다.</p>
-<p class="cap"><code>app</code> 노드 그룹(t3.large × 2) — 백 티어 파드 예산</p>
+<p class="cap"><code>app</code> 노드 그룹(t3.xlarge × 2) — 백 티어 파드 예산</p>
 <div class="tbl"><table>
 <tr><th>항목</th><th>파드 수</th><th>메모리 requests</th><th>비고</th></tr>
 <tr><td>gateway × 2</td><td>2</td><td>512Mi × 2 = 1Gi</td><td>항상 2개 (한 개가 죽어도 진입점 유지)</td></tr>
@@ -621,7 +621,7 @@ DB를 공유하거나, 서로의 API를 촘촘히 호출해야 해서 "배포는
 <tr><td>관측성 (Prometheus · Loki · Zipkin · Grafana · kube-state-metrics)</td><td>5</td><td>약 1.8Gi</td><td>kube-state-metrics는 헬스 체크 대시보드에 필수(13장). blackbox exporter는 쓰지 않음(10/13 3차)</td></tr>
 <tr><td>ArgoCD</td><td>5</td><td>약 0.8Gi</td><td>dex · notifications는 0으로</td></tr>
 <tr><td>시스템 (aws-node, kube-proxy, coredns, EBS CSI, LBC, metrics-server)</td><td>약 14</td><td>약 1.2Gi</td><td>DaemonSet은 노드 수만큼 늘어남</td></tr>
-<tr><td><b>합계</b></td><td><b>약 35</b></td><td><b>약 9.8Gi</b></td><td>t3.large × 2 할당 가능 약 14Gi → <b>여유 약 4Gi</b>. 시크릿은 K8s Secret(secrets-sync)이라 운영자 파드가 없음</td></tr>
+<tr><td><b>합계</b></td><td><b>약 35</b></td><td><b>약 9.8Gi</b></td><td>t3.xlarge × 2 할당 가능 약 30Gi → <b>requests 여유 약 20Gi, 실사용(약 12~13Gi) 기준 여유 약 17Gi</b>. 노드 1대만 남아도(약 15Gi) 실사용 수용. 시크릿은 K8s Secret(secrets-sync)이라 운영자 파드가 없음</td></tr>
 </table></div>
 <p class="cap"><code>db</code> 노드 그룹(t3.medium × 1) — DB 티어 파드 예산</p>
 <div class="tbl"><table>
@@ -635,14 +635,18 @@ DB를 공유하거나, 서로의 API를 촘촘히 호출해야 해서 "배포는
 <tr><th>후보 (app 노드 그룹)</th><th>vCPU · 메모리</th><th>노드당 최대 파드</th><th>할당 가능 메모리 · 파드</th><th>판단</th></tr>
 <tr><td>t3.medium × 2</td><td>2 · 4GiB</td><td>17</td><td>약 6.8GiB · 34파드</td><td>파드 수 · 메모리 모두 부족</td></tr>
 <tr><td>t3.medium × 3</td><td>2 · 4GiB</td><td>17</td><td>약 10GiB · 51파드</td><td>메모리는 겨우 맞지만 롤링 배포 · 시연용 여유가 없음</td></tr>
-<tr><td><b>t3.large × 2 (채택)</b> + <b>db t3.medium × 1</b></td><td>2 · 8GiB / 2 · 4GiB</td><td>35 / 17</td><td><b>약 14GiB · 70파드</b> / 약 3.4GiB · 17파드</td><td>app 여유 약 4Gi → 롤링 배포 때 잠깐 생기는 새 파드 1~2개까지 감당. DB를 떼어 내 JVM 파드와 메모리 경쟁이 없음. 장애 · 자동 복구 시연 때만 app 3대</td></tr>
-<tr><td>t3.xlarge × 2</td><td>4 · 16GiB</td><td>58</td><td>약 29GiB</td><td>과함. 비용 2배</td></tr>
+<tr><td>t3.large × 2 (10/13까지 채택)</td><td>2 · 8GiB</td><td>35</td><td>약 14.6GiB · 70파드</td><td>requests 기준 여유 약 4Gi로 보이지만 <b>실사용 여유 1~2Gi</b>. 노드 1대(약 7.3Gi)로 실사용 12~13Gi를 못 받아 <b>N-1 시연 불가</b>. CPU 4 vCPU 합계 · 기준 성능 30%라 08:00 JVM 동시 기동 때 크레딧 소모가 큼</td></tr>
+<tr><td>t3.large × 3 (대안)</td><td>2 · 8GiB</td><td>35</td><td>약 22GiB · 105파드</td><td>시간당 $0.312로 xlarge × 2보다 쌈. 하지만 노드가 늘고 노드당 CPU · 메모리는 그대로라 버스트 · N-1 여유가 작음</td></tr>
+<tr><td><b>t3.xlarge × 2 (채택, 10/14)</b> + <b>db t3.medium × 1</b></td><td>4 · 16GiB / 2 · 4GiB</td><td>58 / 17</td><td><b>약 30GiB · 116파드</b> / 약 3.4GiB · 17파드</td><td>requests 여유 약 20Gi · 실사용 기준 여유 약 17Gi. 노드 1대만 남아도(약 15Gi) 실사용 수용 → N-1 시연 가능. DB를 떼어 내 JVM 파드와 메모리 경쟁이 없음. 장애 · 자동 복구 시연 때만 app 3대</td></tr>
 </table></div>
-<p>노드당 최대 파드 수는 VPC CNI가 ENI마다 IP를 나눠 주기 때문에 정해집니다(t3.large: ENI 3개 × (IP 12 − 1) + 2 = 35). 할당 가능 메모리는 kubelet 예약분을 뺀 대략치입니다.</p>
-<div class="box rec"><b class="t">"t3.large도 크다"는 피드백에 대한 답 — 산수로 설명한다</b>
+<p>노드당 최대 파드 수는 VPC CNI가 ENI마다 IP를 나눠 주기 때문에 정해집니다(t3.large: ENI 3개 × (IP 12 − 1) + 2 = 35, t3.xlarge: ENI 4개 × (IP 15 − 1) + 2 = 58). 할당 가능 메모리는 kubelet 예약분을 뺀 대략치입니다.</p>
+<div class="box rec"><b class="t">10/14 사이징 조정 — requests가 아니라 실사용으로 계산한다</b>
 <ul>
-<li>"large도 크다"는 서비스 5개 기준에서 나온 이야기입니다. 지금은 <b>서비스 9개 + Keycloak</b>이고, JVM 서비스 하나에 최소 512Mi가 필요하므로 "서비스 수 × 기본 자원 + 플랫폼(관측성 · ArgoCD · 시스템)" = 약 9.8Gi(app 노드)이고, DB 티어 약 1.7Gi는 db 노드(t3.medium)에 따로 둡니다. 위 표가 그 근거이고, 발표에서도 이 산수로 사양을 설명합니다.</li>
-<li>그래서 노드를 더 키우지 않습니다. 실무 규모의 사양(노드 여러 대 · 멀티 AZ DB · 오토스케일링)은 <b>구현 대신 설명으로 대체</b>합니다(20장).</li>
+<li><b>requests 기준(약 9.8Gi)</b>으로는 t3.large × 2 할당 가능 약 14.6Gi에서 여유 4Gi처럼 보입니다. 하지만 <b>실사용</b>은 JVM 서비스 10개(gateway 2 + 업무 8)가 각 약 650~700Mi · Keycloak 약 1Gi · 관측성 약 2Gi · ArgoCD 약 1Gi · 시스템 약 1.2Gi → <b>약 12~13Gi</b>라 실제 여유는 <b>1~2Gi</b>뿐입니다.</li>
+<li>매일 08:00 클러스터 생성 직후 <b>JVM 11개가 동시에 기동</b>합니다. t3는 버스트형이라 CPU 크레딧 소모가 큽니다 — t3.large × 2는 4 vCPU 합계 · 기준 성능 30%, t3.xlarge × 2는 8 vCPU 합계 · 기준 성능 40%.</li>
+<li><b>노드 1대 장애 시연(N-1)</b>: t3.large 1대(약 7.3Gi)로는 실사용 12~13Gi를 받을 수 없고, t3.xlarge 1대(약 15Gi)는 받을 수 있습니다.</li>
+<li>대안 t3.large × 3은 시간당 $0.312로 더 싸지만, 노드가 늘고 노드당 CPU · 메모리는 그대로라 버스트 · N-1 여유가 작습니다 → <b>2대 구성은 유지하고 사양만 올립니다</b>. 비용은 6주 합계 약 $320 → 약 $440(아래 비용 표).</li>
+<li>멘토 피드백 "large도 크다"는 서비스 5개 기준이었습니다. 지금은 서비스 9개 + Keycloak이고, 위 실사용 산수가 근거입니다. 발표에서도 이 산수로 사양을 설명하고, 그 이상의 실무 규모 사양(노드 여러 대 · 멀티 AZ DB · 오토스케일링)은 <b>구현 대신 설명으로 대체</b>합니다(20장).</li>
 <li>SonarQube는 <b>SonarQube Cloud</b>를 쓰므로 별도 EC2(서버 + PostgreSQL)가 필요 없습니다. 클러스터 예산에도 들어가지 않습니다.</li>
 </ul></div>
 
@@ -662,7 +666,7 @@ DB를 공유하거나, 서로의 API를 촘촘히 호출해야 해서 "배포는
     # ── 백 티어: gateway · 업무 서비스 · Keycloak · 관측성 · ArgoCD
     app = {
       ami_type       = "AL2023_x86_64_STANDARD"
-      instance_types = ["t3.large"]     # 2 vCPU / 8GiB, 파드 35개
+      instance_types = ["t3.xlarge"]    # 4 vCPU / 16GiB, 파드 58개 — 10/14 t3.large 에서 조정 (실사용 12~13Gi · N-1 수용)
       capacity_type  = "ON_DEMAND"      # 비용을 더 줄이려면 SPOT (아래 참고)
       min_size       = 0                # scripts/scale-nodes.sh(수동 보조)로 0까지 내릴 수 있게. 야간 절약은 22:00 destroy가 맡음
       max_size       = 3                # 장애 · 복구 시연 때 3대
@@ -731,7 +735,7 @@ DB를 공유하거나, 서로의 API를 촘촘히 호출해야 해서 "배포는
 <tr><td><code>global/s3</code></td><td>상태 버킷 (+잠금)</td><td>상시</td><td>1주차 1일</td></tr>
 <tr><td><code>vpc/</code></td><td>VPC <code>10.0.0.0/16</code>, 서브넷 4(public 10.0.1/2.0/24 · private 10.0.11/12.0/24), IGW, NAT 1(2a), 라우팅, EKS 태그</td><td>상시</td><td>1주차 1~2일</td></tr>
 <tr><td><code>ecr/</code></td><td>저장소 9개 (gateway, user, store, product, order, payment, review, settlement, admin) + 수명주기</td><td>상시</td><td>구지훈 · 1주차 2일 (9개 한 번에)</td></tr>
-<tr><td><code>cluster/</code></td><td>EKS, 노드 그룹 2개(<code>app</code> t3.large × 2 · <code>db</code> t3.medium × 1, 라벨 · 테인트), access entries, IRSA 역할(<code>irsa.tf</code>), EBS CSI, LBC, metrics-server, 클러스터 OIDC 공급자(IRSA용 — 매일 새 ARN)</td><td><b>매일 08:00 apply · 22:00 destroy</b></td><td>전원 · 1주차 중</td></tr>
+<tr><td><code>cluster/</code></td><td>EKS, 노드 그룹 2개(<code>app</code> t3.xlarge × 2 · <code>db</code> t3.medium × 1, 라벨 · 테인트), access entries, IRSA 역할(<code>irsa.tf</code>), EBS CSI, LBC, metrics-server, 클러스터 OIDC 공급자(IRSA용 — 매일 새 ARN)</td><td><b>매일 08:00 apply · 22:00 destroy</b></td><td>전원 · 1주차 중</td></tr>
 <tr><td><code>cicd/</code></td><td>GitHub OIDC 공급자, Actions 역할 (ECR push · Serverless 배포 · 스케줄 apply/destroy · bootstrap)</td><td>상시</td><td>이경석이 작성 · 구지훈이 리뷰</td></tr>
 <tr><td><b><code>app/</code></b></td><td>
 <ul>
@@ -779,19 +783,19 @@ DB를 공유하거나, 서로의 API를 촘촘히 호출해야 해서 "배포는
 <div class="tbl"><table>
 <tr><th>항목</th><th>시간당</th><th>6주 · 매일 14시간 (08~22)</th><th>24시간 상시였다면</th><th>메모</th></tr>
 <tr><td>EKS 제어 평면</td><td>$0.10</td><td>약 $60</td><td>약 $100</td><td>클러스터가 있는 시간만 과금 → 22:00 destroy의 효과</td></tr>
-<tr><td><code>app</code> t3.large × 2 (On-Demand)</td><td>약 $0.21</td><td>약 $125</td><td>약 $210</td><td>노드도 클러스터와 함께 사라짐</td></tr>
+<tr><td><code>app</code> t3.xlarge × 2 (On-Demand)</td><td>약 $0.208 × 2</td><td>약 $245</td><td>약 $420</td><td>노드도 클러스터와 함께 사라짐. 10/14 t3.large × 2(약 $125)에서 조정</td></tr>
 <tr><td><code>db</code> t3.medium × 1 (On-Demand)</td><td>약 $0.052</td><td>약 $31</td><td>약 $52</td><td>DB 티어 분리 비용(10/13 3차). 0.052 × 14h × 42일 ≈ $31</td></tr>
 <tr><td>NAT 게이트웨이</td><td>약 $0.06 + 데이터</td><td>약 $60~</td><td>약 $60~</td><td><b>상시</b>. 이미지 pull 트래픽도 데이터 요금 — 야간 고정비의 대부분</td></tr>
 <tr><td>NLB</td><td>약 $0.02 + LCU</td><td>약 $15</td><td>약 $25</td><td>LBC가 매일 만들고 지움</td></tr>
 <tr><td>EIP(퍼블릭 IPv4) × 2</td><td>약 $0.005 × 2</td><td>약 $10</td><td>약 $10</td><td><b>상시</b>. 밤에 NLB가 없어도 EIP는 과금(그래야 주소가 안 바뀜)</td></tr>
 <tr><td>EBS · S3 · ECR · SES · Lambda · DynamoDB · SNS/SQS</td><td>—</td><td>$20 이하</td><td>$20 이하</td><td>사용량 적으면 거의 무료 구간. EBS는 낮에만 존재</td></tr>
 <tr><td>SonarQube Cloud (무료 플랜)</td><td>—</td><td>$0</td><td>$0</td><td>비공개 저장소 5만 줄 한도. 넘으면 사용 중단</td></tr>
-<tr><td><b>합계</b></td><td></td><td><b>약 $320</b></td><td>약 $470</td><td>야간(22:00~08:00) 시간당 약 $0.07 = NAT + EIP</td></tr>
+<tr><td><b>합계</b></td><td></td><td><b>약 $440</b></td><td>약 $690</td><td>이전(t3.large × 2) 약 $320 / $470. 야간(22:00~08:00) 시간당 약 $0.07 = NAT + EIP</td></tr>
 </table></div>
 <div class="box warn"><b class="t">첫날 할 일: AWS Budgets 알람</b>
-월 예산(예: $150)의 50% · 80% · 100%에서 팀 전원에게 메일이 가도록 Budgets를 만듭니다. 단가는 바뀌므로 <b>AWS Pricing Calculator로 직접 확인</b>하고, 모든 자원에 <code>Project=sesac-gojigi</code> 태그를 붙여 Cost Explorer에서 걸러 볼 수 있게 합니다. 야간 절약은 <code>infra-schedule.yml</code>의 22:00 destroy가 맡고(12장), 낮에 시연이 끝나 일찍 내리고 싶으면 같은 워크플로를 <code>workflow_dispatch</code>로 실행합니다. 발표(11-20) 후에는 상시 자원(<code>app/</code> · <code>vpc/</code> 등)까지 destroy 합니다.</div>
+월 예산(예: $350)의 50% · 80% · 100%에서 팀 전원에게 메일이 가도록 Budgets를 만듭니다. 단가는 바뀌므로 <b>AWS Pricing Calculator로 직접 확인</b>하고, 모든 자원에 <code>Project=sesac-gojigi</code> 태그를 붙여 Cost Explorer에서 걸러 볼 수 있게 합니다. 야간 절약은 <code>infra-schedule.yml</code>의 22:00 destroy가 맡고(12장), 낮에 시연이 끝나 일찍 내리고 싶으면 같은 워크플로를 <code>workflow_dispatch</code>로 실행합니다. 발표(11-20) 후에는 상시 자원(<code>app/</code> · <code>vpc/</code> 등)까지 destroy 합니다.</div>
 <div class="box prod"><b class="t">더 줄이고 싶다면 (선택)</b>
-<b>Spot 인스턴스</b>(<code>capacity_type = "SPOT"</code>, <code>instance_types = ["t3.large","t3a.large","m5.large"]</code>)는 60~70% 저렴하지만 2분 예고 후 회수될 수 있습니다. MySQL · Redis(EBS 볼륨은 한 AZ에 묶임)가 다른 AZ로 옮겨 가면 뜨지 못하므로 <code>db</code> 노드 그룹은 반드시 On-Demand, Spot을 쓴다면 <code>app</code>만. VPC CNI의 <b>prefix delegation</b>을 켜면 노드당 파드 수 제한도 크게 늘어납니다.</div>
+<b>Spot 인스턴스</b>(<code>capacity_type = "SPOT"</code>, <code>instance_types = ["t3.xlarge","t3a.xlarge","m5.xlarge"]</code>)는 60~70% 저렴하지만 2분 예고 후 회수될 수 있습니다. MySQL · Redis(EBS 볼륨은 한 AZ에 묶임)가 다른 AZ로 옮겨 가면 뜨지 못하므로 <code>db</code> 노드 그룹은 반드시 On-Demand, Spot을 쓴다면 <code>app</code>만. VPC CNI의 <b>prefix delegation</b>을 켜면 노드당 파드 수 제한도 크게 늘어납니다.</div>
 
 <h3>(선택) 작업용 우분투 EC2를 만든다면</h3>
 <p>필수가 아닙니다. 각자 WSL에서 kubectl · terraform을 쓸 수 있으면 만들지 않습니다. 만든다면 위 인프라 도면의 <b>퍼블릭 서브넷(2c)의 t3.small</b>이고, <code>app/</code>에서 상시 자원으로 만듭니다.</p>
@@ -2580,7 +2584,7 @@ jobs:
 <div class="tbl"><table>
 <tr><th>상황</th><th>대응</th></tr>
 <tr><td>아침 apply · bootstrap 실패</td><td>Actions 실패 알림 확인 → <code>infra-schedule</code>(action=up) 또는 <code>bootstrap</code>을 <code>workflow_dispatch</code>로 수동 재실행(둘 다 멱등). Terraform 잠금 · 상태 오류는 구지훈이 로컬에서 <code>terraform apply cluster/</code>(19장)</td></tr>
-<tr><td>22:00 이후에도 작업해야 할 때</td><td>down은 그대로 두고 필요하면 수동 up(시간당 약 $0.36 — 제어 평면 + t3.large 2대 + t3.medium 1대). 22:00 전에 작업을 마치는 것을 기본으로</td></tr>
+<tr><td>22:00 이후에도 작업해야 할 때</td><td>down은 그대로 두고 필요하면 수동 up(시간당 약 $0.57 — 제어 평면 + t3.xlarge 2대 + t3.medium 1대, 야간 상시 비용 NAT · EIP 약 $0.07/h는 별도로 그대로). 22:00 전에 작업을 마치는 것을 기본으로</td></tr>
 <tr><td>시연 당일(11/20)</td><td>발표 시간에 맞춰 수동 up(평소처럼 08:00도 가능), 노드 3대는 <code>scripts/scale-nodes.sh</code>(수동 보조 도구)로. 발표 전 down cron이 돌지 않도록 그날은 스케줄을 잠시 비활성화</td></tr>
 <tr><td>발표 후</td><td>down 실행 후 상시 자원(app → cicd → ecr → vpc)도 destroy(16장)</td></tr>
 </table></div>
@@ -3390,7 +3394,7 @@ services:
 <tr><td><code>preStop</code> sleep 10s</td><td>종료 신호(SIGTERM) 전에 이 파드로 오는 새 요청이 끊기도록 대기</td></tr>
 <tr><td><code>server.shutdown: graceful</code> + <code>timeout-per-shutdown-phase: 30s</code></td><td>처리 중인 요청을 마치고 종료</td></tr>
 <tr><td><code>terminationGracePeriodSeconds: 60</code></td><td>preStop 10s + graceful 30s를 넉넉히 덮음 (넘으면 SIGKILL)</td></tr>
-<tr><td><code>requests.memory: 512Mi</code> · <code>limits.memory: 768Mi</code></td><td>업무 서비스 8개 × 512Mi + gateway × 2 + Keycloak 1Gi … app 노드 합계 약 9.8Gi → t3.large × 2, MySQL · Redis는 db 노드 (04장)</td></tr>
+<tr><td><code>requests.memory: 512Mi</code> · <code>limits.memory: 768Mi</code></td><td>업무 서비스 8개 × 512Mi + gateway × 2 + Keycloak 1Gi … app 노드 합계 약 9.8Gi(실사용 약 12~13Gi) → t3.xlarge × 2(할당 약 30Gi), MySQL · Redis는 db 노드 (04장)</td></tr>
 </table></div>
 <p class="cap">gotgan-config/deploy/k8s/keycloak/keycloak.yaml — Keycloak (클러스터 내부 전용)</p>
 <pre><code>apiVersion: apps/v1
@@ -3465,7 +3469,7 @@ spec:
 <tr><td><code>global/s3/</code></td><td>main.tf</td><td>상태 버킷 · 잠금</td><td>모든 폴더의 backend</td></tr>
 <tr><td><code>vpc/</code></td><td>provider.tf · main.tf · outputs.tf</td><td>VPC · 서브넷 4 · NAT · EKS 태그</td><td>cluster/ · app/ (퍼블릭 서브넷 ID → NLB 어노테이션)</td></tr>
 <tr><td><code>ecr/</code></td><td>provider.tf · main.tf · outputs.tf</td><td>저장소 9개(gateway · user · store · product · order · payment · review · settlement · admin) + 수명주기</td><td>backend.yml · Helm values</td></tr>
-<tr><td><code>cluster/</code> (<b>매일 08:00 apply · 22:00 destroy</b>)</td><td>provider.tf · data.tf · variables.tf(<code>team_member_arns</code>) · main.tf · ebs-csi-driver.tf · lbc.tf + iam_policy.json · metrics-server.tf · outputs.tf</td><td>EKS · 노드 그룹 2개(<code>app</code> t3.large × 2, min 0 · max 3, 라벨 <code>tier=app</code> / <code>db</code> t3.medium × 1, min 0 · max 1, 2a 고정, 라벨 + 테인트 <code>tier=db:NoSchedule</code>) · access entries · IRSA 역할 · 애드온 · Helm 릴리스(LBC · metrics-server)</td><td>app/ (OIDC 공급자 ARN → IRSA — 클러스터를 다시 만들면 OIDC 공급자 URL이 바뀌므로 IRSA 신뢰 정책은 bootstrap이 갱신하거나 app/을 다시 apply)</td></tr>
+<tr><td><code>cluster/</code> (<b>매일 08:00 apply · 22:00 destroy</b>)</td><td>provider.tf · data.tf · variables.tf(<code>team_member_arns</code>) · main.tf · ebs-csi-driver.tf · lbc.tf + iam_policy.json · metrics-server.tf · outputs.tf</td><td>EKS · 노드 그룹 2개(<code>app</code> t3.xlarge × 2, min 0 · max 3, 라벨 <code>tier=app</code> / <code>db</code> t3.medium × 1, min 0 · max 1, 2a 고정, 라벨 + 테인트 <code>tier=db:NoSchedule</code>) · access entries · IRSA 역할 · 애드온 · Helm 릴리스(LBC · metrics-server)</td><td>app/ (OIDC 공급자 ARN → IRSA — 클러스터를 다시 만들면 OIDC 공급자 URL이 바뀌므로 IRSA 신뢰 정책은 bootstrap이 갱신하거나 app/을 다시 apply)</td></tr>
 <tr><td><code>cicd/</code></td><td>provider.tf · variables.tf · main.tf · outputs.tf</td><td>GitHub OIDC 공급자 · Actions 역할</td><td>GitHub Secret <code>AWS_ROLE_ARN</code></td></tr>
 <tr><td><code>app/</code> (상시)</td><td>provider.tf · data.tf(vpc · cluster 상태) · eip.tf · s3.tf · sns_sqs.tf · dynamodb.tf · ses.tf · ssm.tf · outputs.tf</td><td>05 · 09 · 10 · 11장의 AWS 자원 (아래 표). <code>kms.tf</code> · <code>secrets.tf</code>는 삭제됨(시크릿은 GitHub Secrets, 12장)</td><td>Helm values(EIP · 역할 ARN) · serverless.yml(SSM)</td></tr>
 </table></div>
@@ -3601,7 +3605,7 @@ Windows에서 커밋한 <code>gradlew</code>나 <code>.sh</code> 파일이 CRLF 
 <p>담당은 03장 · 8-1 기준입니다: <b>구지훈</b>(AWS IaC · settlement · admin · 알림 메일 · 정산 명세서) · <b>이경석</b>(CI/CD · Keycloak · user · gateway 인증) · <b>박지연</b>(관측성 · 헬스 체크 · product · store · 로그 아카이브) · <b>이종빈</b>(order · payment · review). 화면은 각자 담당 서비스의 화면을 함께 맡습니다.</p>
 <div class="tbl"><table>
 <tr><th>주차 · 기간 · 목표</th><th>구지훈</th><th>이경석</th><th>박지연</th><th>이종빈</th></tr>
-<tr><td><b>1주차</b><br>10/12 ~ 10/16<br><b>인프라 ①</b> AWS 기반</td><td>Budgets · IAM · global/s3 · vpc · ecr(9) · cluster(노드 그룹 2개: app t3.large × 2 · db t3.medium × 1 · access entries · EBS CSI · LBC · metrics-server) · <code>02-networkpolicy.yaml</code>(DB 티어) · EIP + DuckDNS · 팀원 kubectl 접근 · GitHub Secrets · Variables 등록(3개 저장소) · <code>docs/secrets.md</code></td><td>클러스터 없이 할 수 있는 것: 저장소 3개 생성 · 브랜치 보호 · PR 템플릿 · <b>3개 저장소 CI 골격 · 레포 간 토큰(<code>CONFIG_REPO_TOKEN</code>)</b> · cicd/(OIDC 역할) 작성 → 구지훈 리뷰 · Keycloak realm 설계(역할 · 매퍼 · <code>gotgan-backend</code>) · gateway 골격 · 로컬 docker-compose로 Keycloak 로그인 확인</td><td>관측성 매니페스트 작성(Prometheus · Loki · Grafana · Zipkin · kube-state-metrics) · <code>logback-spring.xml</code> 공통 형식 · product · store API 계약 · DDL</td><td>order · payment · review API · 이벤트 계약 + DDL · 로컬 docker-compose로 <b>Saga 골격</b>(order → product → payment 스텁) · 서비스 템플릿 점검 · 프론트 골격(목업 이식 시작: 라우터 · 레이아웃 · axios · Query)</td></tr>
+<tr><td><b>1주차</b><br>10/12 ~ 10/16<br><b>인프라 ①</b> AWS 기반</td><td>Budgets · IAM · global/s3 · vpc · ecr(9) · cluster(노드 그룹 2개: app t3.xlarge × 2 · db t3.medium × 1 · access entries · EBS CSI · LBC · metrics-server) · <code>02-networkpolicy.yaml</code>(DB 티어) · EIP + DuckDNS · 팀원 kubectl 접근 · GitHub Secrets · Variables 등록(3개 저장소) · <code>docs/secrets.md</code></td><td>클러스터 없이 할 수 있는 것: 저장소 3개 생성 · 브랜치 보호 · PR 템플릿 · <b>3개 저장소 CI 골격 · 레포 간 토큰(<code>CONFIG_REPO_TOKEN</code>)</b> · cicd/(OIDC 역할) 작성 → 구지훈 리뷰 · Keycloak realm 설계(역할 · 매퍼 · <code>gotgan-backend</code>) · gateway 골격 · 로컬 docker-compose로 Keycloak 로그인 확인</td><td>관측성 매니페스트 작성(Prometheus · Loki · Grafana · Zipkin · kube-state-metrics) · <code>logback-spring.xml</code> 공통 형식 · product · store API 계약 · DDL</td><td>order · payment · review API · 이벤트 계약 + DDL · 로컬 docker-compose로 <b>Saga 골격</b>(order → product → payment 스텁) · 서비스 템플릿 점검 · 프론트 골격(목업 이식 시작: 라우터 · 레이아웃 · axios · Query)</td></tr>
 <tr><td colspan="5"><b>1주차 완료 기준</b>: EKS가 떠 있고 4명 모두 kubectl 가능 · ECR 9개 · EIP + DuckDNS 주소 확정 · 도메인별 API · 이벤트 계약과 DDL 리뷰 완료</td></tr>
 <tr><td><b>2주차</b><br>10/19 ~ 10/23<br><b>인프라 ②</b> 인수인계 · 걷는 뼈대</td><td>app/ 자원(S3 4종 · SNS 토픽 3 · SQS + DLQ · DynamoDB 2 · IRSA · SSM) · MySQL(스키마 8 · 서비스별 계정) · Redis(AOF + PVC) · <b><code>secrets-sync</code> · <code>infra-schedule</code> · <code>bootstrap</code> 워크플로</b>(08:00 up · 22:00 down 1회 검증) · <b>인프라 인수인계</b>(산출물 목록 · 접근 방법 · 주소를 문서로 공유) → 이경석 · 박지연이 그 위에 연결</td><td>Actions 실제 job(테스트 → Sonar → ECR push → gotgan-config <code>values.yaml</code> 태그 커밋) · ArgoCD(gotgan-config 감시) · Keycloak 배포(secrets-sync Secret · realm 자리표시자 · 시드 계정 스크립트) · <b>목업 서비스 1개</b> 파이프라인 · Vercel 연결</td><td>monitoring 스택 배포 · 목업 서비스 로그/지표 확인 · <b>System Status v1</b>(Stat · State timeline)</td><td>로컬에서 Saga 골격 동작 확인 · 공통 템플릿(ApiResponse · 에러 핸들러 · <code>@CurrentUser</code>) 전 서비스 적용 · 프론트 골격 완료(MSW 픽스처)</td></tr>
 <tr><td colspan="5"><b>2주차 완료 기준 (걷는 뼈대)</b>: 목업 서비스 1개가 <code>https://gotgan.vercel.app/api/...</code>로 응답(<b>Vercel → DuckDNS → NLB → gateway → 서비스</b>) · Grafana에 로그 · 지표가 보임 · main에 push하면 자동 배포(Actions → ECR → gotgan-config 태그 커밋 → ArgoCD) · 아침 자동 생성(infra-schedule → bootstrap) 1회 성공 · 인프라 인수인계 완료</td></tr>
@@ -3805,7 +3809,7 @@ Windows에서 커밋한 <code>gradlew</code>나 <code>.sh</code> 파일이 CRLF 
 <tr><td>제외</td><td><b>오토스케일링(HPA) · 이력 파티셔닝 · 고급 인덱스 · CQRS 읽기 테이블 · 캐시 · Elasticsearch · NL2SQL · 썸네일 · Cognito</b> → 20장 "실무에서는"으로 설명만</td><td>예매 · 경매 같은 동시성 폭주 도메인이 아님, 실무 기준은 이번 기간에 과함</td></tr>
 <tr><td rowspan="2">범위</td><td>리뷰 · 취소/반품/교환 = <b>Must</b>, 포인트 · 회원등급 = <b>Should</b>. 찜 · 쿠폰 제거, 비회원 구매 TODO</td><td>멘토: 범위 축소. 이커머스 핵심 흐름 우선</td></tr>
 <tr><td>포인트: 실결제금액의 <b>5% 적립</b> + 다음 결제에서 사용, 상품주문 단위로 비율 배분 기록</td><td>부분 취소 · 반품 시 환원 · 회수를 정확히</td></tr>
-<tr><td>인프라</td><td>EKS 워커 <b>t3.large × 2 유지</b>(max 3, 시연 때 3대)</td><td>멘토 "large도 크다"는 5개 기준. 9개 + Keycloak은 "서비스 수 × 기본 자원" 산수로 설명</td></tr>
+<tr><td>인프라</td><td>EKS 워커 <b>t3.large × 2 유지</b>(max 3, 시연 때 3대) → <b>10/14 t3.xlarge × 2로 조정</b>(아래 "10/14 사이징 조정")</td><td>멘토 "large도 크다"는 5개 기준. 9개 + Keycloak은 "서비스 수 × 기본 자원" 산수로 설명</td></tr>
 <tr><td>담당</td><td>구지훈(AWS IaC · settlement · admin · 알림 메일 · 정산 명세서) · 이경석(CI/CD · Keycloak · user · gateway 인증) · 박지연(관측성 · 헬스 체크 · product · store · 로그 아카이브) · 이종빈(order · payment · review)</td><td>멘토: IaC는 한 사람이 끝까지 만들어 공유, 업무와 발표는 공평하게 · 각자 오너십</td></tr>
 <tr><td rowspan="2">일정 · 운영</td><td>10/12 ~ 11/20, <b>11/13 기능 동결</b>, 마지막 주 QA · 발표 준비, 11/20 발표</td><td>날짜는 변동 가능, 변경 시 이 표에 기록</td></tr>
 <tr><td>1~3일 스프린트 · 금요일 중간 점검 · 초반 데일리 스크럼 · QA 자동화 + 마지막 주 전체 QA · Claude 프로젝트에 가이드라인 · 컨벤션 컨텍스트</td><td>멘토: 기간이 짧아 2주 스프린트 불필요</td></tr>
@@ -3818,18 +3822,27 @@ Windows에서 커밋한 <code>gradlew</code>나 <code>.sh</code> 파일이 CRLF 
 <tr><td>2</td><td><b>시크릿은 GitHub Secrets 단일 소스</b>. Secrets Manager · KMS · ESO 제거(<code>app/kms.tf</code> · <code>app/secrets.tf</code> · <code>cluster/eso.tf</code> · <code>deploy/k8s/external-secrets/</code> 삭제, IRSA에서 <code>kms:Decrypt</code> 제거). <code>secrets-sync</code> 워크플로가 K8s Secret(<code>mysql-secret</code> · <code>{service}-secret</code> · <code>keycloak-secret</code> · <code>grafana-secret</code> · <code>alert-webhook-secret</code>) 생성, 비밀 아닌 값은 GitHub Variables, 목록은 <code>docs/secrets.md</code>, 값은 노션. realm JSON은 <code>${GOTGAN_BACKEND_CLIENT_SECRET}</code> 자리표시자</td><td>매일 클러스터를 다시 만드는 구조에서 Secrets Manager + ESO는 AWS 자원 · 파드 · IRSA 역할만 늘림. 6주 프로젝트에 로테이션 요구 없음. 실무 방식(Vault · Secrets Manager + 자동 로테이션)은 20장</td></tr>
 <tr><td>3</td><td><b>인프라 일일 스케줄</b>: <code>infra-schedule.yml</code>이 KST 08:00(cron <code>0 23 * * *</code> UTC) <code>cluster/</code> apply → <code>bootstrap.yml</code>(k8s 기본 계층 · secrets-sync · 관측성 · ArgoCD), KST 22:00(cron <code>0 13 * * *</code>) ArgoCD 앱 · LoadBalancer Service · PVC 삭제 → <code>cluster/</code> destroy. vpc · ecr · cicd · app은 상시. <code>nightly-scale.yml</code>(노드 0) 폐기, <code>scripts/scale-nodes.sh</code>는 수동 보조. <b>매일 아침 빈 DB</b> → Flyway <code>R__demo_seed.sql</code> · Keycloak 시드 계정(이경석)으로 복원</td><td>야간 비용 최소화(남는 건 NAT · EIP) + 매일 "빈 클러스터에서 전부 자동으로 올라오는" IaC · 자동 복구 검증이 됨. EIP가 상시 자원이라 DuckDNS 변경 없음. 빈 DB는 팀이 수용</td></tr>
 <tr><td>4</td><td><b>Redis 장애 대비 — MySQL 이중화 + AOF</b>: 장바구니 원본 <code>orderdb.cart_item</code>, Redis <code>cart:{userId}</code>는 캐시(쓰기 MySQL 먼저 → Redis, 읽기 Redis → 미스 · 장애 시 MySQL). Resilience4j <code>redisCart</code> 서킷 + 폴백, Redis AOF + PVC(ebs-sc 1Gi). 13장 시연 ⑦ 추가. <code>blacklist:{jti}</code>는 Redis 전용 유지</td><td>Redis 1대 장애로 장바구니 · 주문서가 멈추면 "안 죽는 MSA" 목표와 모순. Sentinel · 복제본 · ElastiCache는 파드 수 · 비용상 20장</td></tr>
-<tr><td>5</td><td><b>AWS 인프라 아키텍처 도면</b>을 04장에 신설: VPC · AZ 2a/2c · 퍼블릭/프라이빗 서브넷 · NAT · NLB(EIP 2) · EKS 워커(t3.large ×2) 위 파드 · 관리형 서비스(ECR · S3 · SNS/SQS · DynamoDB · SES) · 외부(Vercel → DuckDNS → EIP → NLB → gateway) · GitHub Actions(OIDC) 경로 · 상시 vs 매일 재생성 자원 구분</td><td>02장 도면은 앱 수준이라 네트워크 · 보안 그룹 · 접근 경로 질문에 답할 도면이 없었음</td></tr>
+<tr><td>5</td><td><b>AWS 인프라 아키텍처 도면</b>을 04장에 신설: VPC · AZ 2a/2c · 퍼블릭/프라이빗 서브넷 · NAT · NLB(EIP 2) · EKS 워커(t3.xlarge ×2, 10/14 조정) 위 파드 · 관리형 서비스(ECR · S3 · SNS/SQS · DynamoDB · SES) · 외부(Vercel → DuckDNS → EIP → NLB → gateway) · GitHub Actions(OIDC) 경로 · 상시 vs 매일 재생성 자원 구분</td><td>02장 도면은 앱 수준이라 네트워크 · 보안 그룹 · 접근 경로 질문에 답할 도면이 없었음</td></tr>
 </table></div>
 
 <h3>10/13 3차 회의</h3>
 <div class="tbl"><table>
 <tr><th>#</th><th>결정</th><th>이유 · 근거</th></tr>
 <tr><td>1</td><td><b>3티어 구조로 명시</b>: 프론트 티어(Vercel) → 백 티어(EKS <code>app</code> 노드 그룹) → DB 티어(EKS <code>db</code> 노드 그룹). Vercel → 서비스 직접 경로 · 사용자 → DB 직접 경로 없음. 02장 · 04장 도면과 본문을 티어 기준으로 다시 그림</td><td>"어디가 프론트 · 백 · DB인가"를 도면 한 장에서 답할 수 있어야 함. 네트워크 경계가 티어와 일치해야 설명이 쉬움</td></tr>
-<tr><td>2</td><td><b>db 노드 그룹 분리</b>: <code>db</code> = t3.medium × 1(min 0 · max 1, 프라이빗 2a, 라벨 + 테인트 <code>tier=db:NoSchedule</code>) — MySQL · Redis만. <code>app</code> = t3.large × 2(min 0 · max 3, 2a · 2c, 라벨 <code>tier=app</code>). Helm Deployment에 <code>nodeSelector: tier: app</code> + 파드 라벨 <code>tier: backend</code>, MySQL · Redis 매니페스트에 <code>nodeSelector: tier: db</code> + toleration. EBS gp3 PVC가 2a에 묶이므로 db 노드도 2a 고정. 비용 약 $31 추가(6주 합계 약 $320)</td><td>DB를 JVM 파드와 같은 노드에서 메모리 경쟁시키지 않음, 티어 경계를 노드 단위로도 보이게. 파드 예산: app 약 35파드 · 9.8Gi(여유 약 4Gi), db 약 1.7Gi</td></tr>
+<tr><td>2</td><td><b>db 노드 그룹 분리</b>: <code>db</code> = t3.medium × 1(min 0 · max 1, 프라이빗 2a, 라벨 + 테인트 <code>tier=db:NoSchedule</code>) — MySQL · Redis만. <code>app</code> = t3.large × 2(min 0 · max 3, 2a · 2c, 라벨 <code>tier=app</code>) — 10/14 t3.xlarge × 2로 조정. Helm Deployment에 <code>nodeSelector: tier: app</code> + 파드 라벨 <code>tier: backend</code>, MySQL · Redis 매니페스트에 <code>nodeSelector: tier: db</code> + toleration. EBS gp3 PVC가 2a에 묶이므로 db 노드도 2a 고정. 비용 약 $31 추가(6주 합계 약 $320)</td><td>DB를 JVM 파드와 같은 노드에서 메모리 경쟁시키지 않음, 티어 경계를 노드 단위로도 보이게. 파드 예산: app 약 35파드 · 9.8Gi(여유 약 4Gi), db 약 1.7Gi</td></tr>
 <tr><td>3</td><td><b>NetworkPolicy</b> <code>deploy/k8s/02-networkpolicy.yaml</code>: DB 티어 파드(3306 · 6379) ingress는 네임스페이스 sesac-gojigi의 <code>tier=backend</code> 파드만, DB 파드 egress는 DNS 외 없음(NAT 경로 없음). bootstrap이 configmap 직후 적용</td><td>"DB는 백 티어에서만" 을 문서가 아니라 클러스터가 강제. 20장에 있던 NetworkPolicy를 DB 티어에 한해 채택</td></tr>
 <tr><td>4</td><td><b>blackbox exporter 삭제</b>: 관측성 파드는 Prometheus · Loki · Zipkin · Grafana · kube-state-metrics 5개. System Status의 "외부 체크(<code>probe_success</code>)" 패널은 gateway <code>up</code> Stat으로 대체</td><td>gateway 파드 2개의 <code>up</code> · Ready로 입구 생존을 충분히 보여줌. 파드 · 설정 하나 줄임</td></tr>
 <tr><td>5</td><td><b>presigned URL 예외 명시</b>: 프론트가 백 티어를 거치지 않는 유일한 경로는 파일 업로드 — 백엔드(product · store · review)가 presigned URL 발급 → 브라우저가 S3에 직접 PUT. 도면에 "유일한 예외"로 표기</td><td>3티어 원칙의 예외를 숨기지 않고 도면 · 본문에서 설명</td></tr>
 <tr><td>6</td><td><b>EBS 표기 통일</b>: "EBS 볼륨(gp3 디스크)" — ElastiCache와 혼동 금지. <b>도면은 AWS 공식 아키텍처 아이콘</b>(2026-07 패키지)을 인라인 symbol로 사용, README · 문서 사이트에서 같은 파일</td><td>발표 · 리뷰에서 EBS를 관리형 Redis로 오해한 사례. 아이콘 통일로 도면 가독성</td></tr>
+</table></div>
+
+<h3>10/14 사이징 조정</h3>
+<div class="tbl"><table>
+<tr><th>#</th><th>결정</th><th>이유 · 근거</th></tr>
+<tr><td>1</td><td><b><code>app</code> 노드 그룹 t3.large × 2 → t3.xlarge × 2</b>(4 vCPU · 16GiB, 노드당 파드 58, min 0 · max 3, 프라이빗 2a · 2c, 라벨 <code>tier=app</code>). <code>db</code> t3.medium × 1 · 작업용 EC2 t3.small은 그대로. app 할당 가능 약 30Gi · 파드 116 → requests(약 9.8Gi) 여유 약 20Gi, 실사용 기준 여유 약 17Gi</td><td>requests 기준으로는 t3.large × 2(할당 약 14.6Gi)에 여유 4Gi처럼 보이지만, <b>실사용</b>은 JVM 서비스 10개(gateway 2 + 업무 8) 각 약 650~700Mi · Keycloak 약 1Gi · 관측성 약 2Gi · ArgoCD 약 1Gi · 시스템 약 1.2Gi → 약 12~13Gi라 실제 여유 1~2Gi뿐</td></tr>
+<tr><td>2</td><td>08:00 기동 부하 · 장애 시연 기준으로 사양 결정</td><td>매일 08:00 클러스터 생성 직후 JVM 11개가 동시에 기동 → t3 CPU 크레딧 소모가 큼(t3.large 4 vCPU 합계 · 기준 성능 30% → t3.xlarge 8 vCPU 합계 · 기준 성능 40%). <b>노드 1대 장애 시연(N-1)</b>: t3.large 1대(약 7.3Gi)로는 실사용 12~13Gi를 받을 수 없고, t3.xlarge 1대(약 15Gi)는 수용</td></tr>
+<tr><td>3</td><td>대안 t3.large × 3은 채택하지 않음 — 2대 구성 유지, 사양만 올림</td><td>t3.large × 3은 시간당 $0.312로 더 싸지만 노드가 늘고 노드당 CPU · 메모리는 그대로라 버스트 · N-1 여유가 작음</td></tr>
+<tr><td>4</td><td>비용 재계산: 6주 · 매일 14시간 합계 <b>약 $320 → 약 $440</b>(app 노드 약 $125 → 약 $245), 24시간 상시였다면 약 $470 → 약 $690. 22:00 이후 수동 up 시간당 약 $0.57. AWS Budgets 월 예산 예시 $350</td><td>04장 비용 표 · 12장 일일 스케줄 표에 반영</td></tr>
 </table></div>
 
 <div class="box rec"><b class="t">ADR로 남기기</b>
@@ -3850,7 +3863,7 @@ Windows에서 커밋한 <code>gradlew</code>나 <code>.sh</code> 파일이 CRLF 
 <tr><td>Keycloak realm 설정 유실</td><td>재설치 · DB 초기화 후 클라이언트 · 매퍼 · 역할이 사라짐</td><td><b>realm export(JSON)를 Git으로 관리</b> + 기동 시 import(매일 아침 bootstrap이 자동), 클라이언트 시크릿은 realm JSON에 <code>${GOTGAN_BACKEND_CLIENT_SECRET}</code> 자리표시자 + GitHub Secret, 콘솔에서 바꾼 설정은 바로 export(다음 날 아침이면 사라짐)</td></tr>
 <tr><td>무중단 배포 실패</td><td>롤링 배포 중 502 · 5xx 발생</td><td>readinessProbe(<code>/actuator/health/readiness</code>), <code>maxUnavailable: 0</code> · <code>maxSurge: 1</code>, <b>preStop</b> sleep + graceful shutdown, gateway 2개, System Status로 5xx 0 확인</td></tr>
 <tr><td>팀원 클러스터 접근 불가</td><td><code>error: You must be logged in to the server (Unauthorized)</code></td><td>04장 <code>access_entries</code>에 팀원 ARN 등록</td></tr>
-<tr><td>파드 Pending</td><td><code>Too many pods</code>, <code>Insufficient memory</code></td><td>app t3.large × 2(파드 약 35 · requests 약 9.8Gi, 여유 약 4Gi) + db t3.medium × 1, requests 현실화(512Mi), ArgoCD dex · notifications 0개, 시연 때만 app 노드 3대. MySQL · Redis가 Pending이면 db 노드의 테인트 · toleration · 2a 서브넷 확인</td></tr>
+<tr><td>파드 Pending</td><td><code>Too many pods</code>, <code>Insufficient memory</code></td><td>app t3.xlarge × 2(할당 약 30Gi · 파드 116 — 파드 약 35 · requests 약 9.8Gi, requests 여유 약 20Gi · 실사용 기준 여유 약 17Gi) + db t3.medium × 1, requests 현실화(512Mi), ArgoCD dex · notifications 0개, 시연 때만 app 노드 3대. MySQL · Redis가 Pending이면 db 노드의 테인트 · toleration · 2a 서브넷 확인</td></tr>
 <tr><td>db 노드 1대 · AZ 2a 고정</td><td>2a 장애 또는 db 노드 다운 시 MySQL · Redis 전부 불가 → 모든 서비스가 DB 오류(읽기 전용 화면만 부분 동작)</td><td><b>수용</b>(10/13 3차). EBS 볼륨(gp3 디스크)이 2a에 묶여 다른 AZ로 옮길 수 없음. 노드 그룹 max 1이라 자동 교체(관리형 노드 그룹 재생성)는 되지만 AZ 자체 장애는 못 막음. 멀티 AZ DB(RDS Multi-AZ)는 20장. 시연은 "서비스 하나 다운" · "Redis 다운"까지만, DB 다운은 시연하지 않음</td></tr>
 <tr><td>NetworkPolicy로 DB 접근 차단</td><td>파드가 MySQL · Redis에 연결 못 함(타임아웃), Keycloak 기동 실패</td><td>DB에 닿는 파드는 전부 라벨 <code>tier: backend</code>(Helm Deployment 기본 · Keycloak 포함) + 네임스페이스 sesac-gojigi. 라벨 빠진 파드는 <code>kubectl get pod -L tier</code>로 확인. 디버그용 <code>mysql</code> 클라이언트 파드도 같은 라벨을 붙여 띄움</td></tr>
 <tr><td>JVM OOMKilled</td><td>파드 재시작 반복, <code>OOMKilled</code></td><td><code>-XX:MaxRAMPercentage=75</code>, limits 768Mi, CPU limit은 두지 않거나 넉넉히(기동 시 스로틀링)</td></tr>
