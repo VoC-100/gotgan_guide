@@ -144,7 +144,7 @@ svg .arrowhead2{fill:var(--accent)}
 <main>
 <header class="hero">
   <h1>곳간(GOTGAN) 스마트스토어형 오픈마켓<br>MSA 프로젝트 사전 가이드라인</h1>
-  <p>4인 · 6주 · 첫 MSA/AWS 프로젝트의 아키텍처 결정과 작업 계획. 학습 자료(<code>eks-msa-observability-cicd-guide.html</code>)와 목업(<code>MockupPage/</code>)을 바탕으로, 1차 멘토링과 팀 회의에서 확정한 내용을 기준으로 정리했습니다.</p>
+  <p>3인 · 6주 · 첫 MSA/AWS 프로젝트의 아키텍처 결정과 작업 계획. 학습 자료(<code>eks-msa-observability-cicd-guide.html</code>)와 목업(<code>MockupPage/</code>)을 바탕으로, 1차 멘토링과 팀 회의에서 확정한 내용을 기준으로 정리했습니다.</p>
   <p>작성 2026-10-03 · 개정 2026-10-12 (1차 멘토링 · 팀 회의 반영)</p>
   <div class="chips">
     <span class="chip">Java 21 · Spring Boot 4.1</span><span class="chip">Spring Cloud Gateway</span><span class="chip">Keycloak</span><span class="chip">JPA · QueryDSL</span><span class="chip">Resilience4j</span>
@@ -163,7 +163,7 @@ svg .arrowhead2{fill:var(--accent)}
 <div class="tbl"><table>
 <tr><th>질문</th><th>결론</th><th>장</th></tr>
 <tr><td>서비스 구성</td><td><b>업무 기능(데이터 소유권) 기준으로 Spring 9개 + Keycloak.</b> gateway + 업무 8개(user · store · product · order · payment · review · settlement · admin). <b>admin은 DB 없음</b> — 각 서비스 <code>/internal/**</code>을 호출해 조합만 하는 관리자용 계층. <b>카테고리(상위/하위)는 product</b>, 카테고리별 수수료는 settlement. 상품문의 · 답변은 review, FAQ는 프론트 정적 데이터.</td><td>03</td></tr>
-<tr><td>업무 분장</td><td><b>구지훈</b> AWS IaC · settlement · admin / <b>이경석</b> CI/CD · Keycloak · user · 게이트웨이 인증 / <b>박지연</b> 로깅 · 관측성 · 헬스 체크 · product · store / <b>이종빈</b> order · payment · review. 발표도 각자 담당 영역을 직접 설명.</td><td>03</td></tr>
+<tr><td>업무 분장</td><td><b>구지훈</b> AWS IaC · settlement · admin · payment / <b>이경석</b> CI/CD · Keycloak · user · 게이트웨이 인증 · order · review / <b>박지연</b> 로깅 · 관측성 · 헬스 체크 · product · store. 발표도 각자 담당 영역을 직접 설명.</td><td>03</td></tr>
 <tr><td>대시보드</td><td>판매자 대시보드 = store, 관리자 대시보드 = admin 안의 <code>dashboard</code> 패키지. 각 서비스의 <code>/internal/stats/**</code>를 <b>병렬 호출해 DTO 하나로 조합</b>하고, 한 서비스가 죽으면 그 영역만 <code>null</code> + <code>unavailable</code>로 <b>부분 응답(200)</b>. 집계 계산은 데이터 주인 서비스가.</td><td>03 · 06</td></tr>
 <tr><td>EC2 크기</td><td>3티어 — 백 티어 <b><code>app</code> t3.xlarge × 2</b>(min 0 · max 3, 시연 때 3대) + DB 티어 <b><code>db</code> t3.medium × 1</b>(2a 고정, MySQL · Redis만, NetworkPolicy로 백 티어만 접근). OS는 AL2023. app 파드 약 35개 · requests 약 9.8Gi지만 JVM 실사용은 약 12~13Gi라 t3.large × 2로는 여유 1~2Gi · 노드 1대 장애(N-1) 시연 불가 → 10/14 t3.xlarge × 2로 조정(할당 약 30Gi).</td><td>04</td></tr>
 <tr><td>서빙 도메인</td><td>프론트는 <b>Vercel</b>(기본 HTTPS · PR 미리보기), API는 NLB <b>고정 IP(EIP)</b> + <b>DuckDNS</b>. Vercel rewrites로 <code>/api/*</code>를 API로 넘겨 브라우저에서는 같은 출처로 보이게.</td><td>05</td></tr>
@@ -213,7 +213,7 @@ svg .arrowhead2{fill:var(--accent)}
 <h3>확정된 전제</h3>
 <div class="box rec"><b class="t">이 문서의 전제</b>
 <ol>
-<li><b>팀은 4명</b>입니다: 구지훈 · 이경석 · 박지연 · 이종빈. 인프라 · 서비스 담당은 03장 표 그대로입니다.</li>
+<li><b>팀은 3명</b>입니다: 구지훈 · 이경석 · 박지연. 인프라 · 서비스 담당은 03장 표 그대로입니다.</li>
 <li><b>기간은 2026-10-12(월) ~ 11-20(금)</b>입니다. 개발은 11-13(금) 기능 동결까지, 11-16 ~ 11-20은 QA · 발표 준비, 11-20에 발표합니다(16장).</li>
 <li><b>결제는 포트원(PortOne) V2 테스트 채널</b>로 실제 결제 흐름을 연동합니다. 사업자가 아니므로 테스트 상점 · 테스트 키만 씁니다(07장).</li>
 <li><b>택배사 연동은 하지 않습니다.</b> 판매자가 송장번호를 직접 입력하고, 배송완료는 판매자 버튼 또는 스케줄러로 status만 바꿉니다.</li>
@@ -228,7 +228,7 @@ svg .arrowhead2{fill:var(--accent)}
 <h3>6주에 MSA를 처음 하는 팀이 지켜야 할 원칙</h3>
 <ol>
 <li><b>인프라 먼저, 걷는 뼈대(Walking Skeleton)로 마무리.</b> 1~2주차(10-12 ~ 10-23)는 인프라 기간입니다. 구지훈이 AWS IaC를 완성해 넘기면 이경석(CI/CD) · 박지연(로깅)이 그 위에 연결하고, 2주차 말에 <b>목업 서비스 1개</b>로 "NLB → 게이트웨이 → 서비스 응답, Grafana · Loki에 로그가 보이고, push하면 자동 배포"까지 확인합니다. 같은 기간 도메인 담당은 API · 이벤트 계약, DDL, 로컬 docker-compose로 MSA 골격을 검증하고 프론트 골격을 잡습니다. 9개 서비스의 dev 배포는 3주차에 합니다.</li>
-<li><b>서비스 수와 사람 수를 맞춘다.</b> 서비스 9개 + Keycloak을 4명이 나누므로 한 사람이 최대 3개(이종빈: order · payment · review)를 맡습니다. payment · review는 범위가 작은 서비스이고, 구매 흐름에는 <b>공동 리뷰어</b>를 두어 PR 리뷰와 막힐 때 지원을 함께 하며, <b>우선순위</b>(order · payment Saga → 리뷰 → 상품문의는 Should)대로 진행해 부담을 나눕니다.</li>
+<li><b>서비스 수와 사람 수를 맞춘다.</b> 서비스 9개 + Keycloak을 3명이 나눕니다: 구지훈(인프라 + settlement · admin · payment) · 이경석(CI/CD · Keycloak · gateway 인증 + user · order · review) · 박지연(관측성 + product · store). 이경석에게 업무가 몰리므로 구매 흐름 PR은 구지훈을 <b>공동 리뷰어</b>로 두어 리뷰와 막힐 때 지원을 함께 하고, order Saga · payment는 구지훈과 <b>계약(API · 이벤트)을 먼저 확정</b>한 뒤 <b>우선순위</b>(user · gateway 인증 → order Saga → review → 상품문의는 Should)대로 진행합니다.</li>
 <li><b>계약(API · 이벤트) 먼저, 구현은 나중.</b> OpenAPI 명세와 이벤트 스키마를 먼저 합의하면 프론트는 MSW로, 백엔드는 각자 병렬로 개발할 수 있습니다.</li>
 <li><b>통합은 매주 금요일.</b> 1~3일 스프린트로 일하고, 매주 금요일 자체 중간 점검(데모)에서 dev 클러스터의 E2E 시나리오를 돌려 봅니다. 5주차(11-11)에는 전체 흐름을 한 번 완주합니다. 마지막 주에 처음 합치면 반드시 실패합니다.</li>
 <li><b>Must 먼저, 화면은 적게 · 완벽하게.</b> 목업 화면 43개를 전부 만들 수 없습니다. 16장의 범위표로 Must를 끝까지 완성한 뒤 Should로 넘어가고, 만들지 않는 화면은 빈 화면 대신 메뉴에서 뺍니다.</li>
@@ -335,7 +335,7 @@ svg .arrowhead2{fill:var(--accent)}
 <!-- ============================================================ 03 -->
 <section id="s3">
 <h2><span class="n">03</span>서비스 분할 기준 · 업무 분장</h2>
-<p class="lead">결론: 서비스는 <b>데이터 소유권(기능)</b> 기준으로 나눕니다. 업무 서비스 8개 + 게이트웨이 + Keycloak, 담당자 4명이 각자 한 도메인 묶음(관리자 · 회원 · 판매자 스토어 · 구매 흐름)을 백엔드부터 화면까지 끝까지 맡습니다.</p>
+<p class="lead">결론: 서비스는 <b>데이터 소유권(기능)</b> 기준으로 나눕니다. 업무 서비스 8개 + 게이트웨이 + Keycloak, 담당자 3명이 각자 도메인 묶음(관리자 · 결제 / 회원 · 구매 흐름 / 판매자 스토어)을 백엔드부터 화면까지 끝까지 맡습니다.</p>
 
 <h3>먼저 용어 정리: "서비스"와 "서버"</h3>
 <div class="tbl"><table>
@@ -351,7 +351,7 @@ svg .arrowhead2{fill:var(--accent)}
 <li><b>반드시 한 트랜잭션으로 묶여야 하는가?</b> 주문(<code>orders</code>)과 상품주문(<code>order_item</code>)은 항상 함께 바뀌므로 같은 서비스. 주문과 재고 · 결제 · 포인트는 잠시 어긋나도 보상할 수 있으므로 다른 서비스여도 됩니다(Saga, 06장).</li>
 <li><b>변경 이유가 같은가?</b> 정산 규칙이 바뀔 때 함께 고쳐야 하는 코드는 settlement 한곳에, 포트원 연동 방식이 바뀔 때 고칠 코드는 payment 한곳에 둡니다.</li>
 <li><b>부하 · 장애 특성이 다른가?</b> 상품 조회는 많고, 정산 배치는 주 1회, 결제는 외부 API(포트원) 지연에 묶입니다. 다르면 나눌 이유가 됩니다.</li>
-<li><b>한 사람이 책임질 수 있는가?</b> (Conway의 법칙) 4명이면 1인당 2~3개, 전체 9개가 상한입니다. 그래서 각자 맡는 서비스가 <b>한 도메인 묶음</b>이 되도록 나눴습니다.</li>
+<li><b>한 사람이 책임질 수 있는가?</b> (Conway의 법칙) 3명이면 1인당 2~4개(gateway 포함), 전체 9개가 상한입니다. 그래서 각자 맡는 서비스가 <b>한 도메인 묶음</b>이 되도록 나눴습니다.</li>
 <li><b>나누면 동기 호출이 얼마나 생기는가?</b> 화면 하나를 그리려고 서비스 3~4개를 매번 동기 호출해야 한다면 경계를 의심합니다. 꼭 필요하면(대시보드) 서버에서 조합하고 부분 응답으로 장애를 가두며, 다른 서비스의 사실이 필요하면(리뷰 작성 자격) 이벤트로 받아 자기 DB에 둡니다.</li>
 </ol>
 
@@ -395,9 +395,9 @@ DB를 공유하거나, 서로의 API를 촘촘히 호출해야 해서 "배포는
 <tr><td><b>user-service</b> :8081</td><td>회원 프로필 · 배송지 · 포인트(적립 · 사용) · 회원등급</td><td>가입 · 로그인 · refresh · 로그아웃(Keycloak 대리), 내 정보, 배송지, 포인트</td><td>(로그인 공용)</td><td>회원 조회</td><td>MySQL userdb</td><td>이경석</td></tr>
 <tr><td><b>store-service</b> :8082</td><td>입점 신청 · 심사 · 서류 · 스토어(상태 · 배송정책) · <b>판매자 대시보드(조합)</b></td><td>스토어 홈 · 목록, 입점 신청</td><td>스토어 설정, 판매자 대시보드</td><td>입점 승인 · 반려 · 보완요청, 스토어 상태</td><td>MySQL storedb, S3 seller-docs</td><td>박지연</td></tr>
 <tr><td><b>product-service</b> :8083</td><td>상품 · 옵션 · 재고 · 이미지 메타 · <b>카테고리(상위/하위)</b></td><td>카테고리, 목록 · QueryDSL 검색 · 상세</td><td>상품 CRUD · 재고</td><td>카테고리 관리, 강제 판매중지</td><td>MySQL productdb, S3 images(<code>products/</code>)</td><td>박지연</td></tr>
-<tr><td><b>order-service</b> :8084</td><td>장바구니 · 주문 · 상품주문 · 배송(status) · 취소/반품/교환(status) · 구매확정 · <b>Saga 오케스트레이터</b></td><td>장바구니, 주문 · 결제 확인, 주문내역, 구매확정, 취소 · 반품 · 교환 신청</td><td>발주확인, 송장(수기), 클레임 처리</td><td>주문 조회</td><td>MySQL orderdb, Redis <code>cart:</code></td><td>이종빈</td></tr>
-<tr><td><b>payment-service</b> :8086</td><td>결제 · 포트원 V2 검증/취소 · 웹훅</td><td>직접 호출 없음(order 경유), 포트원 웹훅만</td><td>—</td><td>결제 조회</td><td>MySQL paymentdb</td><td>이종빈</td></tr>
-<tr><td><b>review-service</b> :8087</td><td>리뷰(사진 · 별점) · 판매자 답글 · <b>상품문의 · 답변</b> · 리뷰 작성 자격</td><td>리뷰 작성 · 조회, 상품문의</td><td>리뷰 답글, 문의 답변</td><td>—</td><td>MySQL reviewdb, S3 images(<code>reviews/</code>)</td><td>이종빈</td></tr>
+<tr><td><b>order-service</b> :8084</td><td>장바구니 · 주문 · 상품주문 · 배송(status) · 취소/반품/교환(status) · 구매확정 · <b>Saga 오케스트레이터</b></td><td>장바구니, 주문 · 결제 확인, 주문내역, 구매확정, 취소 · 반품 · 교환 신청</td><td>발주확인, 송장(수기), 클레임 처리</td><td>주문 조회</td><td>MySQL orderdb, Redis <code>cart:</code></td><td>이경석</td></tr>
+<tr><td><b>payment-service</b> :8086</td><td>결제 · 포트원 V2 검증/취소 · 웹훅</td><td>직접 호출 없음(order 경유), 포트원 웹훅만</td><td>—</td><td>결제 조회</td><td>MySQL paymentdb</td><td>구지훈</td></tr>
+<tr><td><b>review-service</b> :8087</td><td>리뷰(사진 · 별점) · 판매자 답글 · <b>상품문의 · 답변</b> · 리뷰 작성 자격</td><td>리뷰 작성 · 조회, 상품문의</td><td>리뷰 답글, 문의 답변</td><td>—</td><td>MySQL reviewdb, S3 images(<code>reviews/</code>)</td><td>이경석</td></tr>
 <tr><td><b>settlement-service</b> :8085</td><td>정산 적재 · 주간 집계 · 지급 · 보류 · <b>카테고리별 수수료</b></td><td>—</td><td>정산 내역</td><td>수수료 관리, 정산 집계 · 지급 실행</td><td>MySQL settlementdb</td><td>구지훈</td></tr>
 <tr><td><b>admin-service</b> :8088</td><td><b>없음</b> — 관리자 API 진입점 · <code>/internal/**</code> 호출 조합 · <b>관리자 대시보드(조합)</b></td><td>—</td><td>—</td><td>모든 <code>/api/admin/**</code></td><td>없음</td><td>구지훈</td></tr>
 </table></div>
@@ -535,18 +535,17 @@ DB를 공유하거나, 서로의 API를 촘촘히 호출해야 해서 "배포는
 <p>각자 <b>자기 서비스의 백엔드 + DB + 그 서비스를 쓰는 모든 화면</b>을 한 사람이 끝까지 책임지는 수직 분할입니다. 인프라도 한 사람이 끝까지 만들어 공유합니다.</p>
 <div class="tbl"><table>
 <tr><th>담당자</th><th>인프라</th><th>서비스 · 도메인</th><th>서버리스</th></tr>
-<tr><td><b>구지훈</b></td><td>AWS IaC(Terraform) 전체 · SonarQube Cloud 연동 설정</td><td>settlement-service · admin-service (스마트스토어 관리자 도메인)</td><td>알림 메일 · 정산 명세서</td></tr>
-<tr><td><b>이경석</b></td><td>CI/CD(GitHub Actions · ArgoCD) · Keycloak</td><td>user-service · gateway 인증 연동 (회원 · 인증 · 인가)</td><td>—</td></tr>
+<tr><td><b>구지훈</b></td><td>AWS IaC(Terraform) 전체 · SonarQube Cloud 연동 설정</td><td>settlement-service · admin-service (스마트스토어 관리자 도메인) · payment-service (결제 · 포트원)</td><td>알림 메일 · 정산 명세서</td></tr>
+<tr><td><b>이경석</b></td><td>CI/CD(GitHub Actions · ArgoCD) · Keycloak</td><td>user-service · gateway 인증 연동 (회원 · 인증 · 인가) · order-service · review-service (구매 흐름)</td><td>—</td></tr>
 <tr><td><b>박지연</b></td><td>로깅 · 관측성(Prometheus · Loki · Grafana · Zipkin) · 헬스 체크 대시보드</td><td>product-service · store-service (판매자 스토어 도메인)</td><td>로그 아카이브</td></tr>
-<tr><td><b>이종빈</b></td><td>—</td><td>order-service · payment-service · review-service (구매 흐름)</td><td>—</td></tr>
 </table></div>
 
 <h4>운영 원칙</h4>
 <ol>
 <li><b>수직 분할</b>: 한 기능을 프론트 · 백엔드 담당 두 명이 나눠 갖지 않습니다. API 협의 비용을 줄이고, 발표에서도 각자 맡은 영역을 직접 설명합니다(오너십). AI로 만든 코드도 담당자가 설명할 수 있어야 합니다.</li>
 <li><b>인프라 연계</b>: 구지훈이 IaC를 끝까지 만들어 공유하고, 이경석(CI/CD) · 박지연(로깅)이 그 위에 연결합니다. 1~2주차가 인프라 기간이고, 2주차 말에 <b>목업 서비스 1개</b>로 인프라 · CI/CD · 게이트웨이 · 로깅 연결을 확인한 뒤 3주차부터 도메인 개발(프론트 포함)에 들어갑니다(16장).</li>
-<li><b>공동 리뷰어 지정</b>: 서비스마다 담당자 외 1명을 리뷰어로 짝지어 둡니다. 특히 서비스 경계를 넘는 흐름은 관련 담당자가 함께 봅니다. 예: <b>order · payment Saga는 이경석 또는 구지훈이 공동 리뷰</b>(user 포인트 차감 단계 · 정산 이벤트와 맞물림), 판매자 대시보드 조합은 order · settlement 담당이 <code>/internal/stats</code> 계약을 함께 확인합니다.</li>
-<li><b>이종빈의 우선순위</b>: 서비스 3개를 맡으므로 <b>order · payment(Must, Saga · 포트원) → review(Must, 비교적 단순한 CRUD + 이벤트 1개)</b> 순서로 진행합니다. 상품문의 · 답변(Should)은 그다음입니다.</li>
+<li><b>공동 리뷰어 지정</b>: 서비스마다 담당자 외 1명을 리뷰어로 짝지어 둡니다. 특히 서비스 경계를 넘는 흐름은 관련 담당자가 함께 봅니다. 예: <b>order(이경석) · payment(구지훈) Saga는 두 사람이 서로 공동 리뷰</b>(user 포인트 차감 단계 · 정산 이벤트와 맞물림), 판매자 대시보드 조합은 order · settlement 담당이 <code>/internal/stats</code> 계약을 함께 확인합니다.</li>
+<li><b>담당자별 우선순위</b>: 이경석은 <b>user · gateway 인증(Must) → order Saga(Must) → review(Must, 비교적 단순한 CRUD + 이벤트 1개)</b>, 구지훈은 <b>인프라 → payment(Must, 포트원) → settlement · admin</b> 순서로 진행합니다. 상품문의 · 답변(Should)은 그다음입니다.</li>
 <li><b>Must를 끝낸 사람이 돕기</b>: 다른 담당자는 자기 Must가 끝나면 review의 화면 · 테스트나 Saga 통합 테스트를 나눠 맡습니다. 이때도 데이터 주인(담당자)이 리뷰하고 머지합니다.</li>
 </ol>
 </section>
@@ -722,7 +721,7 @@ DB를 공유하거나, 서로의 API를 촘촘히 호출해야 해서 "배포는
   # 클러스터를 매일 만드는 주체는 GitHub Actions 역할 → 자동 관리자 등록을 끄고 아래에 전부 명시
   enable_cluster_creator_admin_permissions = false
 
-  # ★ 팀원 4명 + Actions 역할 모두 같은 권한 (빠뜨리면 그 주체는 클러스터에 접근 못 함)
+  # ★ 팀원 전원 + Actions 역할 모두 같은 권한 (빠뜨리면 그 주체는 클러스터에 접근 못 함)
   access_entries = {
     for name, arn in local.cluster_admin_arns : name =&gt; {
       principal_arn = arn
@@ -750,7 +749,7 @@ data "aws_iam_roles" "github_actions" {
   name_regex = "^sesac-gojigi-github-actions$"   # 없으면 빈 목록 — 에러 없이 access entries 에서 빠짐
 }</code></pre>
 <div class="box warn"><b class="t">학습 가이드 그대로 두면 생기는 문제</b>
-<code>enable_cluster_creator_admin_permissions = true</code>는 <b>terraform apply를 실행한 주체만</b> 클러스터 관리자로 등록합니다. 이 프로젝트에서 클러스터를 매일 만드는 주체는 <b>GitHub Actions 역할</b>(<code>infra-schedule</code>)이므로, 그대로 두면 Actions 역할만 관리자가 되고 구지훈을 포함한 팀원 4명 모두 <code>kubectl</code>에서 <code>Unauthorized</code>를 받습니다. 그래서 자동 등록을 끄고(<code>false</code>) <b>팀원 4명(IAM 사용자 <code>sesac-a1</code> ~ <code>a4</code>)과 Actions 역할을 <code>access_entries</code>에 같은 권한</b>(<code>AmazonEKSClusterAdminPolicy</code>, 클러스터 범위)으로 명시합니다(10/14). <code>true</code>로 둔 채 같은 주체를 또 적으면 중복 등록 오류가 납니다. <code>*.tfvars</code>는 gitignore라 CI가 읽지 못하므로 사용자 이름 목록은 <code>variables.tf</code>의 기본값으로 둡니다. Actions 역할은 <code>cicd/</code> remote state 대신 <b>이름(<code>sesac-gojigi-github-actions</code>)으로 조회</b>합니다 — <code>cicd/</code>(이경석)가 apply되기 전에도 클러스터를 만들 수 있고, 역할이 생기면 다음 날 08:00 apply 때 자동으로 들어갑니다(10/14). 팀원은 <code>aws eks update-kubeconfig</code>만 하면 됩니다.</div>
+<code>enable_cluster_creator_admin_permissions = true</code>는 <b>terraform apply를 실행한 주체만</b> 클러스터 관리자로 등록합니다. 이 프로젝트에서 클러스터를 매일 만드는 주체는 <b>GitHub Actions 역할</b>(<code>infra-schedule</code>)이므로, 그대로 두면 Actions 역할만 관리자가 되고 구지훈을 포함한 팀원 전원이 <code>kubectl</code>에서 <code>Unauthorized</code>를 받습니다. 그래서 자동 등록을 끄고(<code>false</code>) <b>팀원 전원(IAM 사용자 <code>sesac-a1</code> ~ <code>a4</code>)과 Actions 역할을 <code>access_entries</code>에 같은 권한</b>(<code>AmazonEKSClusterAdminPolicy</code>, 클러스터 범위)으로 명시합니다(10/14). <code>true</code>로 둔 채 같은 주체를 또 적으면 중복 등록 오류가 납니다. <code>*.tfvars</code>는 gitignore라 CI가 읽지 못하므로 사용자 이름 목록은 <code>variables.tf</code>의 기본값으로 둡니다. Actions 역할은 <code>cicd/</code> remote state 대신 <b>이름(<code>sesac-gojigi-github-actions</code>)으로 조회</b>합니다 — <code>cicd/</code>(이경석)가 apply되기 전에도 클러스터를 만들 수 있고, 역할이 생기면 다음 날 08:00 apply 때 자동으로 들어갑니다(10/14). 팀원은 <code>aws eks update-kubeconfig</code>만 하면 됩니다.</div>
 
 <h3>구지훈이 Terraform으로 만들 것 · 폴더 구성</h3>
 <p>학습 가이드의 "폴더 1개 = apply 1번" 구조를 유지하고, 애플리케이션이 쓰는 AWS 자원을 담을 <code>app/</code> 폴더를 추가합니다. 폴더는 <code>gotgan-config/infra/terraform/</code> 아래에 있습니다. Lambda 함수와 그 트리거(SQS 구독 · EventBridge 규칙)는 Serverless Framework로 배포합니다(11장). 시크릿을 담는 AWS 자원(Secrets Manager · KMS)은 두지 않습니다 — 시크릿은 GitHub Secrets가 단일 소스입니다.</p>
@@ -770,7 +769,7 @@ data "aws_iam_roles" "github_actions" {
 <li>SSM 파라미터(서버리스가 읽을 ARN) · 작업용 EC2 + SSM 인스턴스 프로파일(선택)</li>
 <li>서비스별 IRSA 역할은 여기 없음 → <code>cluster/irsa.tf</code>(위 "매일 다시 생긴다는 것의 뜻"). <code>app/</code>은 <code>cluster/</code>를 읽지 않습니다</li>
 </ul></td><td>상시</td><td>전원 · EIP는 1주차, 나머지는 2주차 인수인계 전까지</td></tr>
-<tr><td><code>cluster/</code></td><td>EKS, 노드 그룹 2개(<code>app</code> t3.xlarge × 2 · <code>db</code> t3.medium × 1, 라벨 · 테인트), access entries(팀원 4명 + Actions 역할), IRSA 역할(<code>irsa.tf</code>), EBS CSI, LBC, metrics-server, 클러스터 OIDC 공급자(IRSA용 — 매일 새 ARN)</td><td><b>매일 08:00 apply · 22:00 destroy</b></td><td>전원 · 1주차 중</td></tr>
+<tr><td><code>cluster/</code></td><td>EKS, 노드 그룹 2개(<code>app</code> t3.xlarge × 2 · <code>db</code> t3.medium × 1, 라벨 · 테인트), access entries(팀원 전원 + Actions 역할), IRSA 역할(<code>irsa.tf</code>), EBS CSI, LBC, metrics-server, 클러스터 OIDC 공급자(IRSA용 — 매일 새 ARN)</td><td><b>매일 08:00 apply · 22:00 destroy</b></td><td>전원 · 1주차 중</td></tr>
 </table></div>
 <p><b>apply 순서</b>: <code>global/s3</code> → <code>vpc</code> → <code>ecr</code> → <code>app</code> → <code>cluster</code>(10/14). <code>cicd/</code>는 다른 폴더와 상태 의존이 없어 <code>global/s3</code> 이후 언제든 apply합니다(이경석). <code>cluster/</code>는 <code>app/</code>(S3 · SQS · SNS ARN → IRSA)의 output을 읽으므로 맨 뒤이고 — Actions 역할은 output이 아니라 이름으로 찾습니다 — 상시 폴더는 매일 사라지는 <code>cluster/</code>를 읽지 않습니다 — 의존은 <code>cluster/</code> → 상시 폴더 한 방향뿐이라 순환이 생기지 않습니다. 전체 삭제는 <code>cluster</code> → <code>app</code> → <code>cicd</code> → <code>ecr</code> → <code>vpc</code>입니다.</p>
 <p class="cap">SQS 구독 큐 — 이벤트 표(10장)의 구독자마다 큐 1개</p>
@@ -1507,13 +1506,13 @@ Resilience4j의 Spring Boot 스타터는 Boot 버전별 아티팩트(<code>resil
 <h2><span class="n">07</span>결제: payment-service · 포트원 V2 테스트 연동</h2>
 <p class="lead">사업자가 아니므로 PG 실계약 없이 <b>포트원 관리자 콘솔의 테스트 채널</b>로 실제와 같은 결제창 · 검증 · 취소 흐름을 만듭니다. 결제는 <b>payment-service(8086, paymentdb)</b>가 소유합니다 — 포트원 조회 · 취소 · 웹훅은 payment만 하고, order-service는 Saga 오케스트레이터로서 payment의 <code>/internal/payments/**</code>만 부릅니다. 테스트 결제는 실제 출금이 일어나지 않거나 PG사가 자동 취소합니다(채널별 정책은 콘솔 안내 확인).</p>
 
-<h3>테스트용 개발 인프라 준비 (1회 · 이종빈 + 구지훈)</h3>
+<h3>테스트용 개발 인프라 준비 (1회 · 구지훈)</h3>
 <ol>
-<li>포트원 관리자 콘솔에 <b>팀 공용 계정</b>으로 가입(이종빈이 만들고 팀원 초대)</li>
+<li>포트원 관리자 콘솔에 <b>팀 공용 계정</b>으로 가입(구지훈이 만들고 팀원 초대)</li>
 <li>결제 연동 → 채널 관리 → <b>테스트 채널 추가</b>(콘솔에서 고를 수 있는 테스트 PG 중 하나, 예: 카드 결제 테스트) → 채널 키 발급</li>
 <li><b>V2 API Secret</b> 발급 → 서버 전용 비밀 값</li>
 <li><b>웹훅</b> 주소 등록: <code>https://gotgan.vercel.app/api/payments/webhook</code>(05장 rewrite 경유 → 게이트웨이 → payment-service) → 웹훅 시크릿 발급</li>
-<li>이종빈이 API Secret · 웹훅 시크릿을 GitHub Secrets(<code>PORTONE_API_SECRET</code> · <code>PORTONE_WEBHOOK_SECRET</code>, gotgan-config)에 등록 → <code>secrets-sync</code>가 <code>payment-service-secret</code>으로 만들어 파드 환경 변수로 주입(12장)</li>
+<li>구지훈이 API Secret · 웹훅 시크릿을 GitHub Secrets(<code>PORTONE_API_SECRET</code> · <code>PORTONE_WEBHOOK_SECRET</code>, gotgan-config)에 등록 → <code>secrets-sync</code>가 <code>payment-service-secret</code>으로 만들어 파드 환경 변수로 주입(12장)</li>
 <li>로컬 개발 중 웹훅을 받아 보려면 ngrok으로 임시 주소를 만들어 테스트 웹훅에 등록</li>
 </ol>
 <div class="tbl"><table>
@@ -1666,7 +1665,7 @@ public class PaymentVerifyService {
 <ul>
 <li><b>V1(아임포트) 자료와 섞지 않기.</b> 검색되는 블로그 다수가 V1(<code>IMP.request_pay</code>, <code>imp_uid</code>) 방식입니다. 이 프로젝트는 V2(<code>PortOne.requestPayment</code>, <code>paymentId</code>)로 통일하고, 요청 필드 이름은 포트원 개발자 문서(V2)를 기준으로 합니다.</li>
 <li>테스트 결제는 PG에 따라 당일 자동 취소될 수 있으므로, "포트원 콘솔의 결제 내역"이 아니라 <b>paymentdb의 <code>payment</code> · <code>payment_cancel</code></b>과 order의 상품주문 상태를 기준으로 정산합니다.</li>
-<li>포인트로 전액을 내는 주문(실결제금액 0원)은 포트원 결제창을 열 수 없습니다. 최소 결제 금액을 두거나 0원 주문은 결제 단계를 건너뛰는 규칙을 이종빈이 정해 API 명세에 적습니다.</li>
+<li>포인트로 전액을 내는 주문(실결제금액 0원)은 포트원 결제창을 열 수 없습니다. 최소 결제 금액을 두거나 0원 주문은 결제 단계를 건너뛰는 규칙을 구지훈이 정해 API 명세에 적습니다.</li>
 <li>모바일 브라우저는 결제창이 리다이렉트 방식이라 <code>requestPayment</code>의 응답 대신 <code>redirectUrl</code>로 돌아옵니다. 완료 페이지에서도 [요청 2](<code>payment/confirm</code>)를 호출하도록 만듭니다.</li>
 <li>실서비스(실결제) 전환은 사업자 등록과 PG 계약이 필요하므로 범위 밖(Won't)입니다.</li>
 </ul></div>
@@ -2339,7 +2338,7 @@ export const handler = async () =&gt; {
 <div class="box warn"><b class="t">서버리스에서 꼭 막히는 곳</b>
 <ul>
 <li><b>Serverless Framework v4는 로그인(라이선스 키)이 필요</b>합니다. 소규모 조직은 무료지만 <code>serverless login</code> 또는 CI에 <code>SERVERLESS_ACCESS_KEY</code>를 넣어야 합니다. 팀 계정을 1주차에 만들어 두세요. 대안: AWS SAM, Terraform으로 Lambda 직접 배포.</li>
-<li><b>SES는 처음에 샌드박스</b>입니다. <b>검증된 이메일 주소로만</b> 보낼 수 있으니 팀원 4명의 메일을 SES 자격 증명으로 검증해 두고, 테스트 회원 이메일도 그 주소들로 만드세요.</li>
+<li><b>SES는 처음에 샌드박스</b>입니다. <b>검증된 이메일 주소로만</b> 보낼 수 있으니 팀원 메일을 SES 자격 증명으로 검증해 두고, 테스트 회원 이메일도 그 주소들로 만드세요.</li>
 <li><b>CloudWatch 내보내기는 계정당 동시에 1개</b>이고, 버킷 정책에 CloudWatch Logs 서비스 주체 권한이 없으면 실패합니다. KMS로 암호화한 버킷이면 키 정책도 필요합니다.</li>
 <li><b>cron은 UTC</b>입니다. EventBridge <code>cron(0 18 * * ? *)</code>이 한국 시간 03:00입니다.</li>
 <li><b>Lambda를 VPC에 넣지 않습니다.</b> VPC에 넣으면 S3 · SES · DynamoDB 접근에 NAT나 VPC 엔드포인트가 필요해집니다. 클러스터 내부 API가 필요해 보이면 필요한 값을 이벤트 payload에 담아 보내도록 경계를 다시 설계하세요.</li>
@@ -2663,7 +2662,7 @@ public Review create(ReviewCreateRequest request, AuthUser user) {
 <tr><td>브랜치</td><td><code>main</code>(보호) + <code>feat/{도메인}-{작업}</code> · <code>fix/</code> · <code>refactor/</code> · <code>docs/</code> · <code>chore/</code>. 모든 변경은 <b>PR → main</b></td></tr>
 <tr><td>main 보호</td><td>직접 push 금지, PR 필수, 승인 1명, CI(테스트 · SonarQube 품질 게이트 · gitleaks) 통과 필수, <b>Squash merge</b></td></tr>
 <tr><td>커밋 · PR 제목</td><td>Conventional Commits <code>{type}({scope}): {요약}</code> — type <code>feat</code> <code>fix</code> <code>refactor</code> <code>docs</code> <code>test</code> <code>chore</code> <code>ci</code> <code>infra</code>, 요약은 한국어 명사형 50자 이내 (예: <code>feat(order): 포트원 결제 검증 API</code>). 다른 담당에 영향 있는 변경은 PR 제목에 <code>[영향]</code></td></tr>
-<tr><td>CODEOWNERS</td><td><b>gotgan-backend</b>: <code>/services/settlement-service/</code> · <code>/services/admin-service/</code> · <code>/serverless/order-notification/</code> · <code>/serverless/settlement-report/</code> → 구지훈 / <code>/.github/</code> · <code>/services/gateway-service/</code> · <code>/services/user-service/</code> → 이경석 / <code>/services/store-service/</code> · <code>/services/product-service/</code> · <code>/serverless/log-archive/</code> → 박지연 / <code>/services/order-service/</code> · <code>/services/payment-service/</code> · <code>/services/review-service/</code> → 이종빈. <b>gotgan-config</b>: <code>/infra/</code> · <code>/.github/workflows/infra*.yml</code> · <code>bootstrap.yml</code> · <code>secrets-sync.yml</code> · <code>/docs/secrets.md</code> → 구지훈 / <code>/deploy/helm/</code> · <code>/deploy/argocd/</code> · <code>/deploy/k8s/keycloak/</code> → 이경석 / <code>/deploy/observability/</code> → 박지연. <b>gotgan-frontend</b>: <code>src/features/{도메인}/</code>는 그 도메인 담당(14장)</td></tr>
+<tr><td>CODEOWNERS</td><td><b>gotgan-backend</b>: <code>/services/settlement-service/</code> · <code>/services/admin-service/</code> · <code>/services/payment-service/</code> · <code>/serverless/order-notification/</code> · <code>/serverless/settlement-report/</code> → 구지훈(<code>@jihoon-devstu</code>) / <code>/.github/</code> · <code>/services/gateway-service/</code> · <code>/services/user-service/</code> · <code>/services/order-service/</code> · <code>/services/review-service/</code> → 이경석(<code>@perish95</code>) / <code>/services/store-service/</code> · <code>/services/product-service/</code> · <code>/serverless/log-archive/</code> → 박지연(<code>@VoC-100</code>). <b>gotgan-config</b>: <code>/infra/</code> · <code>/.github/workflows/infra*.yml</code> · <code>bootstrap.yml</code> · <code>secrets-sync.yml</code> · <code>/docs/secrets.md</code> → 구지훈 / <code>/deploy/helm/</code> · <code>/deploy/argocd/</code> · <code>/deploy/k8s/keycloak/</code> → 이경석 / <code>/deploy/observability/</code> → 박지연. <b>gotgan-frontend</b>: <code>src/features/{도메인}/</code>는 그 도메인 담당(14장)</td></tr>
 <tr><td>이슈 · 칸반</td><td>GitHub Projects (Todo / In Progress / Review / Done), 이슈 제목 <code>[요구사항 ID] 작업</code>, 마일스톤 = 주차</td></tr>
 <tr><td>비밀 유출 방지</td><td><code>.gitignore</code>(tfstate, *.pem, .env, .env.local) + gitleaks(세 저장소 모두 <code>security.yml</code>). Secret YAML은 애초에 파일이 없음(secrets-sync)</td></tr>
 </table></div>
@@ -2809,7 +2808,7 @@ Prometheus · Loki 데이터는 EBS PVC(각 10Gi)에 두고 보존 7일로 제�
 <tr><th>features</th><th>호출하는 API</th><th>담당</th></tr>
 <tr><td><code>auth</code> · <code>user</code></td><td><code>/api/auth/**</code> · <code>/api/users/**</code></td><td>이경석</td></tr>
 <tr><td><code>store</code> · <code>product</code></td><td><code>/api/stores/**</code> · <code>/api/seller/apply|store|dashboard</code> · <code>/api/products/**</code> · <code>/api/categories/**</code> · <code>/api/seller/products/**</code></td><td>박지연</td></tr>
-<tr><td><code>order</code> · <code>review</code> · <code>support</code></td><td><code>/api/carts/**</code> · <code>/api/orders/**</code> · <code>/api/seller/order-items|claims/**</code> · <code>/api/reviews/**</code> · <code>/api/inquiries/**</code> · <code>/api/seller/reviews|inquiries/**</code> (FAQ는 API 없음)</td><td>이종빈</td></tr>
+<tr><td><code>order</code> · <code>review</code> · <code>support</code></td><td><code>/api/carts/**</code> · <code>/api/orders/**</code> · <code>/api/seller/order-items|claims/**</code> · <code>/api/reviews/**</code> · <code>/api/inquiries/**</code> · <code>/api/seller/reviews|inquiries/**</code> (FAQ는 API 없음)</td><td>이경석</td></tr>
 <tr><td><code>settlement</code> · <code>admin</code></td><td><code>/api/seller/settlements/**</code> · <code>/api/admin/**</code></td><td>구지훈</td></tr>
 </table></div>
 <p>관리자 화면은 백엔드와 같이 <b><code>features/admin</code> 하나</b>에 모읍니다. 관리자 API가 전부 <code>/api/admin/**</code> → admin-service로 들어가므로(03장), 프론트도 같은 경계를 따릅니다. 다른 도메인 컴포넌트가 필요하면 <code>shared/</code>로 승격해서 씁니다.</p>
@@ -3498,7 +3497,7 @@ spec:
 <tr><td><code>ecr/</code></td><td>provider.tf · main.tf · outputs.tf</td><td>저장소 9개(gateway · user · store · product · order · payment · review · settlement · admin) + 수명주기</td><td>backend.yml · Helm values</td></tr>
 <tr><td><code>cicd/</code></td><td>provider.tf · variables.tf · main.tf · outputs.tf</td><td>GitHub OIDC 공급자 · Actions 역할 (이경석 작성 · apply)</td><td>GitHub Secret <code>AWS_ROLE_ARN</code>. cluster/는 이 output이 아니라 역할 이름으로 조회</td></tr>
 <tr><td><code>app/</code> (상시)</td><td>provider.tf · data.tf(vpc 상태만 — cluster는 읽지 않음) · eip.tf · s3.tf · sns_sqs.tf · dynamodb.tf · ses.tf · ssm.tf · outputs.tf</td><td>05 · 09 · 10 · 11장의 AWS 자원 (아래 표). <code>kms.tf</code> · <code>secrets.tf</code>는 삭제됨(시크릿은 GitHub Secrets, 12장)</td><td>Helm values(EIP) · cluster/irsa.tf(S3 · SQS · SNS ARN) · serverless.yml(SSM)</td></tr>
-<tr><td><code>cluster/</code> (<b>매일 08:00 apply · 22:00 destroy</b>)</td><td>provider.tf · data.tf(vpc · app 상태 + Actions 역할 이름 조회) · variables.tf(<code>team_iam_users</code>) · main.tf · irsa.tf · ebs-csi-driver.tf · lbc.tf + iam_policy.json · metrics-server.tf · outputs.tf</td><td>EKS · 노드 그룹 2개(<code>app</code> t3.xlarge × 2, min 0 · max 3, 라벨 <code>tier=app</code> / <code>db</code> t3.medium × 1, min 0 · max 1, 2a 고정, 라벨 + 테인트 <code>tier=db:NoSchedule</code>) · access entries(팀원 4명 + Actions 역할) · IRSA 역할 · 애드온(vpc-cni · coredns · kube-proxy · EBS CSI · metrics-server — EKS 관리형) · Helm 릴리스(LBC 3.5.0)</td><td>다른 폴더는 읽지 않음(매일 사라짐) — 워크플로가 클러스터 이름으로 kubeconfig만 받음. IRSA 역할은 이름 고정이라 Helm values의 <code>roleArn</code> 불변</td></tr>
+<tr><td><code>cluster/</code> (<b>매일 08:00 apply · 22:00 destroy</b>)</td><td>provider.tf · data.tf(vpc · app 상태 + Actions 역할 이름 조회) · variables.tf(<code>team_iam_users</code>) · main.tf · irsa.tf · ebs-csi-driver.tf · lbc.tf + iam_policy.json · metrics-server.tf · outputs.tf</td><td>EKS · 노드 그룹 2개(<code>app</code> t3.xlarge × 2, min 0 · max 3, 라벨 <code>tier=app</code> / <code>db</code> t3.medium × 1, min 0 · max 1, 2a 고정, 라벨 + 테인트 <code>tier=db:NoSchedule</code>) · access entries(팀원 전원 + Actions 역할) · IRSA 역할 · 애드온(vpc-cni · coredns · kube-proxy · EBS CSI · metrics-server — EKS 관리형) · Helm 릴리스(LBC 3.5.0)</td><td>다른 폴더는 읽지 않음(매일 사라짐) — 워크플로가 클러스터 이름으로 kubeconfig만 받음. IRSA 역할은 이름 고정이라 Helm values의 <code>roleArn</code> 불변</td></tr>
 </table></div>
 <p class="cap">gotgan-config/infra/terraform/app/ 이 만드는 자원</p>
 <div class="tbl"><table>
@@ -3629,21 +3628,21 @@ Windows에서 커밋한 <code>gradlew</code>나 <code>.sh</code> 파일이 CRLF 
 </table></div>
 
 <h3>주차별 계획 (담당자 기준)</h3>
-<p>담당은 03장 · 8-1 기준입니다: <b>구지훈</b>(AWS IaC · settlement · admin · 알림 메일 · 정산 명세서) · <b>이경석</b>(CI/CD · Keycloak · user · gateway 인증) · <b>박지연</b>(관측성 · 헬스 체크 · product · store · 로그 아카이브) · <b>이종빈</b>(order · payment · review). 화면은 각자 담당 서비스의 화면을 함께 맡습니다.</p>
+<p>담당은 03장 · 8-1 기준입니다: <b>구지훈</b>(AWS IaC · settlement · admin · payment · 알림 메일 · 정산 명세서) · <b>이경석</b>(CI/CD · Keycloak · user · gateway 인증 · order · review) · <b>박지연</b>(관측성 · 헬스 체크 · product · store · 로그 아카이브). 화면은 각자 담당 서비스의 화면을 함께 맡습니다.</p>
 <div class="tbl"><table>
-<tr><th>주차 · 기간 · 목표</th><th>구지훈</th><th>이경석</th><th>박지연</th><th>이종빈</th></tr>
-<tr><td><b>1주차</b><br>10/12 ~ 10/16<br><b>인프라 ①</b> AWS 기반</td><td>IAM · global/s3 · vpc · ecr(9) · app/eip · cluster(노드 그룹 2개: app t3.xlarge × 2 · db t3.medium × 1 · access entries · EBS CSI · LBC · metrics-server) · <code>02-networkpolicy.yaml</code>(DB 티어) · EIP + DuckDNS · 팀원 kubectl 접근 · GitHub Secrets · Variables 등록(3개 저장소) · <code>docs/secrets.md</code></td><td>클러스터 없이 할 수 있는 것: 저장소 3개 생성 · 브랜치 보호 · PR 템플릿 · <b>3개 저장소 CI 골격 · 레포 간 토큰(<code>CONFIG_REPO_TOKEN</code>)</b> · cicd/(OIDC 역할) 작성 · apply · <code>AWS_ROLE_ARN</code> 등록 · Keycloak realm 설계(역할 · 매퍼 · <code>gotgan-backend</code>) · gateway 골격 · 로컬 docker-compose로 Keycloak 로그인 확인</td><td>관측성 매니페스트 작성(Prometheus · Loki · Grafana · Zipkin · kube-state-metrics) · <code>logback-spring.xml</code> 공통 형식 · product · store API 계약 · DDL</td><td>order · payment · review API · 이벤트 계약 + DDL · 로컬 docker-compose로 <b>Saga 골격</b>(order → product → payment 스텁) · 서비스 템플릿 점검 · 프론트 골격(목업 이식 시작: 라우터 · 레이아웃 · axios · Query)</td></tr>
-<tr><td colspan="5"><b>1주차 완료 기준</b>: EKS가 떠 있고 4명 모두 kubectl 가능 · ECR 9개 · EIP + DuckDNS 주소 확정 · 도메인별 API · 이벤트 계약과 DDL 리뷰 완료</td></tr>
-<tr><td><b>2주차</b><br>10/19 ~ 10/23<br><b>인프라 ②</b> 인수인계 · 걷는 뼈대</td><td>app/ 자원(S3 4종 · SNS 토픽 3 · SQS + DLQ · DynamoDB 2 · SSM) · <code>cluster/irsa.tf</code>(서비스별 IRSA) · MySQL(스키마 8 · 서비스별 계정) · Redis(AOF + PVC) · <b><code>secrets-sync</code> · <code>infra-schedule</code> · <code>bootstrap</code> 워크플로</b>(08:00 up · 22:00 down 1회 검증) · <b>인프라 인수인계</b>(산출물 목록 · 접근 방법 · 주소를 문서로 공유) → 이경석 · 박지연이 그 위에 연결</td><td>Actions 실제 job(테스트 → Sonar → ECR push → gotgan-config <code>values.yaml</code> 태그 커밋) · ArgoCD(gotgan-config 감시) · Keycloak 배포(secrets-sync Secret · realm 자리표시자 · 시드 계정 스크립트) · <b>목업 서비스 1개</b> 파이프라인 · Vercel 연결</td><td>monitoring 스택 배포 · 목업 서비스 로그/지표 확인 · <b>System Status v1</b>(Stat · State timeline)</td><td>로컬에서 Saga 골격 동작 확인 · 공통 템플릿(ApiResponse · 에러 핸들러 · <code>@CurrentUser</code>) 전 서비스 적용 · 프론트 골격 완료(MSW 픽스처)</td></tr>
-<tr><td colspan="5"><b>2주차 완료 기준 (걷는 뼈대)</b>: 목업 서비스 1개가 <code>https://gotgan.vercel.app/api/...</code>로 응답(<b>Vercel → DuckDNS → NLB → gateway → 서비스</b>) · Grafana에 로그 · 지표가 보임 · main에 push하면 자동 배포(Actions → ECR → gotgan-config 태그 커밋 → ArgoCD) · 아침 자동 생성(infra-schedule → bootstrap) 1회 성공 · 인프라 인수인계 완료</td></tr>
-<tr><td><b>3주차</b><br>10/26 ~ 10/30<br><b>도메인 ①</b> 핵심 CRUD + 화면</td><td>settlement 골격 + <code>category_commission</code> · admin 골격(<code>/api/admin/**</code> → <code>/internal/**</code>, Resilience4j) · SonarQube Cloud 연동(Actions <code>sonar</code> · PR 코멘트) · SES 검증</td><td>user-service 가입 · 로그인 · refresh · 로그아웃(Keycloak 대리 호출) · 배송지 · gateway 인증(<code>oauth2ResourceServer</code> · 헤더 주입 · 라우트 권한) · 화면: 로그인 · 가입 · 라우트 가드</td><td>product: 카테고리 · 상품 · 옵션 CRUD · 목록 · 상세 · QueryDSL 검색 · 이미지 presign / store: 입점 신청 · 서류 presign · 심사 <code>/internal</code> API · 화면: 상품 · 입점 신청</td><td>장바구니(MySQL <code>cart_item</code> 원본 + Redis 캐시, <code>redisCart</code> 서킷 · <b>Redis 폴백</b>) · 주문서 금액 계산(가격은 product에서 재확인) · order · payment · review dev 배포 · 화면: 장바구니 · 주문서</td></tr>
-<tr><td colspan="5"><b>3주차 완료 기준 (E2E #1)</b>: 9개 서비스 dev 배포 · 가입 · 로그인 → 입점 신청 → 관리자 승인(admin → store) → 상품 등록 → 구매자가 장바구니에 담기</td></tr>
-<tr><td><b>4주차</b><br>11/02 ~ 11/06<br><b>도메인 ②</b> Saga · 이벤트 · 리뷰</td><td>admin 입점 관리 · 카테고리 · 수수료 관리 API · settlement <code>OrderItemConfirmed</code> 구독 · Lambda 배포 역할 · 화면: 관리자 입점 심사 · 카테고리</td><td><code>StoreApproved</code> 구독(Admin API로 SELLER · <code>store_id</code>) · 포인트 사용 차감 · 환원 <code>/internal/points/use</code>(sagaId 멱등) · <code>OrderPaid</code> 구독 5% 적립 · serverless 배포 워크플로 · 화면: 마이페이지 회원정보 · 배송지</td><td>재고 예약/해제 <code>/internal/stock/reservations</code> · <code>StoreApproved</code> · <code>StoreStatusChanged</code> 발행 · 스토어 홈 · 공통 로그 형식 점검 · RED 대시보드 · System Status 완성(gateway <code>up</code> · 재시작 수) · 화면: 판매자 상품 · 스토어 설정</td><td><b>주문 생성 Saga</b>(PENDING → 포인트 → 재고 → 결제 준비 → 포트원 결제창 → verify → PAID, 역순 보상) · payment(포트원 V2 검증 · 취소 · 웹훅) · 결제 대기 만료 스케줄러 · <code>OrderPaid</code> 발행 · 리뷰 CRUD(사진 · 별점 · sanitizer) · 화면: 결제 · 주문 내역 · 리뷰</td></tr>
-<tr><td colspan="5"><b>4주차 완료 기준</b>: 포트원 테스트 결제로 주문 성공 + 실패(재고 부족 · 금액 위변조 · 결제창 닫기) 시 보상 확인 · 포인트 사용 · 적립 반영 · 입점 승인 → 판매자 전환 · 이벤트가 SQS · DLQ로 흐름</td></tr>
-<tr><td><b>5주차</b><br>11/09 ~ 11/13<br><b>도메인 ③</b> 전체 흐름 완주 · 동결</td><td>주간 정산 집계 · 지급 · 보류 · <code>SettlementPaid</code> · 정산 명세서 Lambda · 알림 메일 Lambda · <b>관리자 대시보드</b>(조합 · 부분 응답) · 시연용 노드 3대 리허설 · IAM 최소 권한 · 비용 점검</td><td>회원등급(<code>OrderItemConfirmed</code> → 누적 구매액) · 취소 · 반품 시 포인트 환원 · 회수 · 화면: 포인트 · 등급 · 무중단 배포 검증(롤링 + readiness · preStop, 배포 중 실패 0) · (Could) ArgoCD 롤백</td><td><b>판매자 대시보드</b>(<code>store/dashboard</code>, <code>/internal/stats</code> 병렬 조합) · 재고 복원 API · 스토어 휴면/정지 → 상품 숨김 · 장애 시연 대시보드(order 0개 · 파드 삭제 → 초록 복귀) · kiosk 모드 · (Could) 로그 아카이브 Lambda</td><td>발주확인 · 송장 수기 · 배송완료 · 구매확정(스케줄러) · <code>OrderItemConfirmed</code> · <b>취소 · 반품 Saga</b>(포트원 부분 취소 → 재고 복원 → 포인트) · 교환(status) · 리뷰 작성 자격 · 상품문의 · 답변 · 화면: 판매자 주문 · 클레임 · Saga 보상 시연 점검</td></tr>
-<tr><td colspan="5"><b>5주차 완료 기준</b>: <b>11/11(수) E2E 전체 흐름 1회 완주</b>(입점 → 상품 → 주문 · 결제 → 발주확인 → 송장 → 배송완료 → 구매확정 → 리뷰 → 정산 집계 → 지급 → 명세서 메일) · <b>11/13(금) 기능 동결</b> · 시연 시나리오(13장: 정상 흐름 · 서비스 다운 · 파드 삭제 → 자동 복구 · 무중단 배포 · Saga 보상)를 리허설할 수 있는 상태</td></tr>
-<tr><td><b>6주차</b><br>11/16 ~ 11/20<br>QA · 발표</td><td colspan="4">전체 QA 1회 · 버그 수정 · README(서비스별) · ADR 정리 · 발표 자료(<b>각자 담당 영역을 직접 설명</b>) · 리허설 2회 · 시연용 시드 데이터 · <b>11/20 발표</b> · 발표 후 <code>infra-schedule</code> down → 상시 자원(app · cicd · ecr · vpc) 순서대로 destroy(NLB → EIP 순서 주의)</td></tr>
-<tr><td colspan="5"><b>6주차 완료 기준</b>: 11/20 발표 완료 · AWS 자원 삭제 확인(Tag Editor로 <code>Project=sesac-gojigi</code> 검색 — 연계 계정이라 Cost Explorer 불가)</td></tr>
+<tr><th>주차 · 기간 · 목표</th><th>구지훈</th><th>이경석</th><th>박지연</th></tr>
+<tr><td><b>1주차</b><br>10/12 ~ 10/16<br><b>인프라 ①</b> AWS 기반</td><td>IAM · global/s3 · vpc · ecr(9) · app/eip · cluster(노드 그룹 2개: app t3.xlarge × 2 · db t3.medium × 1 · access entries · EBS CSI · LBC · metrics-server) · <code>02-networkpolicy.yaml</code>(DB 티어) · EIP + DuckDNS · 팀원 kubectl 접근 · GitHub Secrets · Variables 등록(3개 저장소) · <code>docs/secrets.md</code> / payment: API 계약 + DDL / 프론트: 골격(목업 이식 시작: 라우터 · 레이아웃 · axios · Query)</td><td>클러스터 없이 할 수 있는 것: 저장소 3개 생성 · 브랜치 보호 · PR 템플릿 · <b>3개 저장소 CI 골격 · 레포 간 토큰(<code>CONFIG_REPO_TOKEN</code>)</b> · cicd/(OIDC 역할) 작성 · apply · <code>AWS_ROLE_ARN</code> 등록 · Keycloak realm 설계(역할 · 매퍼 · <code>gotgan-backend</code>) · gateway 골격 · 로컬 docker-compose로 Keycloak 로그인 확인 / 구매 흐름: order · review API · 이벤트 계약 + DDL · 로컬 docker-compose로 <b>Saga 골격</b>(order → product → payment 스텁) · 서비스 템플릿 점검</td><td>관측성 매니페스트 작성(Prometheus · Loki · Grafana · Zipkin · kube-state-metrics) · <code>logback-spring.xml</code> 공통 형식 · product · store API 계약 · DDL</td></tr>
+<tr><td colspan="4"><b>1주차 완료 기준</b>: EKS가 떠 있고 팀원 전원 kubectl 가능 · ECR 9개 · EIP + DuckDNS 주소 확정 · 도메인별 API · 이벤트 계약과 DDL 리뷰 완료</td></tr>
+<tr><td><b>2주차</b><br>10/19 ~ 10/23<br><b>인프라 ②</b> 인수인계 · 걷는 뼈대</td><td>app/ 자원(S3 4종 · SNS 토픽 3 · SQS + DLQ · DynamoDB 2 · SSM) · <code>cluster/irsa.tf</code>(서비스별 IRSA) · MySQL(스키마 8 · 서비스별 계정) · Redis(AOF + PVC) · <b><code>secrets-sync</code> · <code>infra-schedule</code> · <code>bootstrap</code> 워크플로</b>(08:00 up · 22:00 down 1회 검증) · <b>인프라 인수인계</b>(산출물 목록 · 접근 방법 · 주소를 문서로 공유) → 이경석 · 박지연이 그 위에 연결 / 프론트: 골격 완료 · 목업 화면 이식(라우트 · 레이아웃 · 페이지, MSW 픽스처 — API · 훅은 각 도메인 담당)</td><td>Actions 실제 job(테스트 → Sonar → ECR push → gotgan-config <code>values.yaml</code> 태그 커밋) · ArgoCD(gotgan-config 감시) · Keycloak 배포(secrets-sync Secret · realm 자리표시자 · 시드 계정 스크립트) · <b>목업 서비스 1개</b> 파이프라인 · Vercel 연결 / 구매 흐름: 로컬에서 Saga 골격 동작 확인 · 공통 템플릿(ApiResponse · 에러 핸들러 · <code>@CurrentUser</code>) 전 서비스 적용</td><td>monitoring 스택 배포 · 목업 서비스 로그/지표 확인 · <b>System Status v1</b>(Stat · State timeline)</td></tr>
+<tr><td colspan="4"><b>2주차 완료 기준 (걷는 뼈대)</b>: 목업 서비스 1개가 <code>https://gotgan.vercel.app/api/...</code>로 응답(<b>Vercel → DuckDNS → NLB → gateway → 서비스</b>) · Grafana에 로그 · 지표가 보임 · main에 push하면 자동 배포(Actions → ECR → gotgan-config 태그 커밋 → ArgoCD) · 아침 자동 생성(infra-schedule → bootstrap) 1회 성공 · 인프라 인수인계 완료</td></tr>
+<tr><td><b>3주차</b><br>10/26 ~ 10/30<br><b>도메인 ①</b> 핵심 CRUD + 화면</td><td>settlement 골격 + <code>category_commission</code> · admin 골격(<code>/api/admin/**</code> → <code>/internal/**</code>, Resilience4j) · SonarQube Cloud 연동(Actions <code>sonar</code> · PR 코멘트) · SES 검증 / payment: dev 배포</td><td>user-service 가입 · 로그인 · refresh · 로그아웃(Keycloak 대리 호출) · 배송지 · gateway 인증(<code>oauth2ResourceServer</code> · 헤더 주입 · 라우트 권한) · 화면: 로그인 · 가입 · 라우트 가드 / 구매 흐름: 장바구니(MySQL <code>cart_item</code> 원본 + Redis 캐시, <code>redisCart</code> 서킷 · <b>Redis 폴백</b>) · 주문서 금액 계산(가격은 product에서 재확인) · order · review dev 배포 · 화면: 장바구니 · 주문서</td><td>product: 카테고리 · 상품 · 옵션 CRUD · 목록 · 상세 · QueryDSL 검색 · 이미지 presign / store: 입점 신청 · 서류 presign · 심사 <code>/internal</code> API · 화면: 상품 · 입점 신청</td></tr>
+<tr><td colspan="4"><b>3주차 완료 기준 (E2E #1)</b>: 9개 서비스 dev 배포 · 가입 · 로그인 → 입점 신청 → 관리자 승인(admin → store) → 상품 등록 → 구매자가 장바구니에 담기</td></tr>
+<tr><td><b>4주차</b><br>11/02 ~ 11/06<br><b>도메인 ②</b> Saga · 이벤트 · 리뷰</td><td>admin 입점 관리 · 카테고리 · 수수료 관리 API · settlement <code>OrderItemConfirmed</code> 구독 · Lambda 배포 역할 · 화면: 관리자 입점 심사 · 카테고리 / payment: 포트원 V2 검증 · 취소 · 웹훅</td><td><code>StoreApproved</code> 구독(Admin API로 SELLER · <code>store_id</code>) · 포인트 사용 차감 · 환원 <code>/internal/points/use</code>(sagaId 멱등) · <code>OrderPaid</code> 구독 5% 적립 · serverless 배포 워크플로 · 화면: 마이페이지 회원정보 · 배송지 / 구매 흐름: <b>주문 생성 Saga</b>(PENDING → 포인트 → 재고 → 결제 준비 → 포트원 결제창 → verify → PAID, 역순 보상) · 결제 대기 만료 스케줄러 · <code>OrderPaid</code> 발행 · 리뷰 CRUD(사진 · 별점 · sanitizer) · 화면: 결제 · 주문 내역 · 리뷰</td><td>재고 예약/해제 <code>/internal/stock/reservations</code> · <code>StoreApproved</code> · <code>StoreStatusChanged</code> 발행 · 스토어 홈 · 공통 로그 형식 점검 · RED 대시보드 · System Status 완성(gateway <code>up</code> · 재시작 수) · 화면: 판매자 상품 · 스토어 설정</td></tr>
+<tr><td colspan="4"><b>4주차 완료 기준</b>: 포트원 테스트 결제로 주문 성공 + 실패(재고 부족 · 금액 위변조 · 결제창 닫기) 시 보상 확인 · 포인트 사용 · 적립 반영 · 입점 승인 → 판매자 전환 · 이벤트가 SQS · DLQ로 흐름</td></tr>
+<tr><td><b>5주차</b><br>11/09 ~ 11/13<br><b>도메인 ③</b> 전체 흐름 완주 · 동결</td><td>주간 정산 집계 · 지급 · 보류 · <code>SettlementPaid</code> · 정산 명세서 Lambda · 알림 메일 Lambda · <b>관리자 대시보드</b>(조합 · 부분 응답) · 시연용 노드 3대 리허설 · IAM 최소 권한 · 비용 점검 / payment: 포트원 부분 취소(취소 · 반품 Saga 단계)</td><td>회원등급(<code>OrderItemConfirmed</code> → 누적 구매액) · 취소 · 반품 시 포인트 환원 · 회수 · 화면: 포인트 · 등급 · 무중단 배포 검증(롤링 + readiness · preStop, 배포 중 실패 0) · (Could) ArgoCD 롤백 / 구매 흐름: 발주확인 · 송장 수기 · 배송완료 · 구매확정(스케줄러) · <code>OrderItemConfirmed</code> · <b>취소 · 반품 Saga</b>(포트원 부분 취소 → 재고 복원 → 포인트) · 교환(status) · 리뷰 작성 자격 · 상품문의 · 답변 · 화면: 판매자 주문 · 클레임 · Saga 보상 시연 점검</td><td><b>판매자 대시보드</b>(<code>store/dashboard</code>, <code>/internal/stats</code> 병렬 조합) · 재고 복원 API · 스토어 휴면/정지 → 상품 숨김 · 장애 시연 대시보드(order 0개 · 파드 삭제 → 초록 복귀) · kiosk 모드 · (Could) 로그 아카이브 Lambda</td></tr>
+<tr><td colspan="4"><b>5주차 완료 기준</b>: <b>11/11(수) E2E 전체 흐름 1회 완주</b>(입점 → 상품 → 주문 · 결제 → 발주확인 → 송장 → 배송완료 → 구매확정 → 리뷰 → 정산 집계 → 지급 → 명세서 메일) · <b>11/13(금) 기능 동결</b> · 시연 시나리오(13장: 정상 흐름 · 서비스 다운 · 파드 삭제 → 자동 복구 · 무중단 배포 · Saga 보상)를 리허설할 수 있는 상태</td></tr>
+<tr><td><b>6주차</b><br>11/16 ~ 11/20<br>QA · 발표</td><td colspan="3">전체 QA 1회 · 버그 수정 · README(서비스별) · ADR 정리 · 발표 자료(<b>각자 담당 영역을 직접 설명</b>) · 리허설 2회 · 시연용 시드 데이터 · <b>11/20 발표</b> · 발표 후 <code>infra-schedule</code> down → 상시 자원(app · cicd · ecr · vpc) 순서대로 destroy(NLB → EIP 순서 주의)</td></tr>
+<tr><td colspan="4"><b>6주차 완료 기준</b>: 11/20 발표 완료 · AWS 자원 삭제 확인(Tag Editor로 <code>Project=sesac-gojigi</code> 검색 — 연계 계정이라 Cost Explorer 불가)</td></tr>
 </table></div>
 
 <h3>스프린트 리듬</h3>
@@ -3669,7 +3668,7 @@ Windows에서 커밋한 <code>gradlew</code>나 <code>.sh</code> 파일이 CRLF 
 <!-- ============================================================ 14 -->
 <section id="s14">
 <h2><span class="n">17</span>담당자별 사전 학습 체크리스트</h2>
-<p class="lead">담당자 4명의 <b>인프라 + 서비스</b> 기준으로 정리했습니다. 4명 모두 "전원 공통"을 먼저 보고, 각자 자기 표를 체크리스트로 씁니다. 발표에서 각자 담당 영역을 직접 설명하므로, <b>AI가 만든 코드도 본인이 설명할 수 있어야</b> 합니다.</p>
+<p class="lead">담당자 3명의 <b>인프라 + 서비스</b> 기준으로 정리했습니다. 3명 모두 "전원 공통"을 먼저 보고, 각자 자기 표를 체크리스트로 씁니다. 발표에서 각자 담당 영역을 직접 설명하므로, <b>AI가 만든 코드도 본인이 설명할 수 있어야</b> 합니다.</p>
 
 <h3>전원 공통</h3>
 <div class="grid2">
@@ -3704,7 +3703,7 @@ Windows에서 커밋한 <code>gradlew</code>나 <code>.sh</code> 파일이 CRLF 
 </ul></div>
 </div>
 
-<h3>구지훈 — AWS IaC · settlement · admin · 서버리스</h3>
+<h3>구지훈 — AWS IaC · settlement · admin · payment · 서버리스</h3>
 <div class="tbl"><table>
 <tr><th>주제</th><th>알아야 할 것</th><th>이 프로젝트에서</th></tr>
 <tr><td>Terraform</td><td>상태 · 잠금, <b>모듈</b>, <code>terraform_remote_state</code>, <code>-target</code>, import, <b>destroy 순서</b>, SSM 파라미터로 값 넘기기</td><td>global · vpc · ecr · cluster · app 단계 분리 (04장)</td></tr>
@@ -3717,9 +3716,10 @@ Windows에서 커밋한 <code>gradlew</code>나 <code>.sh</code> 파일이 CRLF 
 <tr><td>정산 배치 · <b>ShedLock</b></td><td><code>@Scheduled</code> + ShedLock, 배치 멱등(UNIQUE 키), <code>long</code>(원) · <code>BigDecimal</code>(비율) · 반올림, ISO 주차 · Asia/Seoul</td><td>주간 집계 · 지급 · 보류, 카테고리 수수료(적용 시작일)</td></tr>
 <tr><td>admin 조합 · <b>Resilience4j</b></td><td><code>CompletableFuture</code> 병렬 호출, 서비스별 타임아웃 · 서킷 브레이커 · 폴백, 부분 응답(<code>unavailable</code>)</td><td>관리자 API 진입점 · 관리자 대시보드 (03 · 13장)</td></tr>
 <tr><td>SonarQube Cloud · 비용</td><td>Gradle <code>sonar</code> · 품질 게이트 · PR 코멘트 / 과금 자원(EKS · NAT · LB · EBS · EIP)</td><td>12장, 예산 초과 사고 방지</td></tr>
+<tr><td><b>포트원 V2</b></td><td>브라우저 SDK <code>requestPayment</code>, 서버 결제 조회 · 취소(부분) API, 금액 검증, 웹훅 서명 검증, sagaId · <code>portone_payment_id</code> 멱등(verify · 웹훅 중복 수신), V1(아임포트)과의 차이</td><td>payment-service (07장)</td></tr>
 </table></div>
 
-<h3>이경석 — CI/CD · Keycloak · user · gateway 인증</h3>
+<h3>이경석 — CI/CD · Keycloak · user · gateway 인증 · order · review</h3>
 <div class="tbl"><table>
 <tr><th>주제</th><th>알아야 할 것</th><th>이 프로젝트에서</th></tr>
 <tr><td><b>Keycloak</b> 기본</td><td><b>realm · client · role · 사용자 속성 · 프로토콜 매퍼</b>, 토큰 수명, realm export/import, <code>KC_HOSTNAME</code></td><td>realm <code>gotgan</code>, 클레임 <code>user_id</code> · <code>store_id</code> · <code>roles</code> (08장)</td></tr>
@@ -3731,6 +3731,15 @@ Windows에서 커밋한 <code>gradlew</code>나 <code>.sh</code> 파일이 CRLF 
 <tr><td><b>ArgoCD</b> · 무중단 배포</td><td>Application, auto-sync · prune · selfHeal, 롤백(= Git revert) / 롤링 업데이트(<code>maxUnavailable: 0</code>) · readiness · preStop · graceful shutdown</td><td>시연 ④ 무중단 배포, ⑤ 롤백(Could)</td></tr>
 <tr><td>포인트 · 등급</td><td>sagaId 멱등 차감 · 환원, 이벤트 소비 멱등(<code>processed_event</code>)</td><td><code>/internal/points/use</code>, <code>OrderPaid</code> 5% 적립, 등급 (Should)</td></tr>
 <tr><td>프론트</td><td>Zustand authStore, axios 401 → refresh 재시도 큐, 역할별 라우트 가드</td><td>로그인 · 가입 · 마이페이지</td></tr>
+<tr><td><b>Saga · 보상</b></td><td>오케스트레이션, 단계 기록(<code>saga_instance</code>), 역순 보상, 타임아웃 시 "결과 모름" 처리, 멈춘 Saga 복구 스케줄러</td><td>주문 생성 · 결제 후 취소/반품 Saga (06장)</td></tr>
+<tr><td><b>상태머신</b></td><td>상품주문 · 클레임 상태 전이표를 enum + 전이 메서드로(허용 안 되는 전이는 예외), 이력 기록</td><td>결제완료 → … → 구매확정, 취소 · 반품 · 교환</td></tr>
+<tr><td>트랜잭션 · 락</td><td>전파 속성(REQUIRES_NEW), 낙관적 락(<code>@Version</code>) vs 비관적 락</td><td>주문 · 상품주문 동시 변경</td></tr>
+<tr><td><b>Redis</b></td><td>Hash 명령, TTL, <code>StringRedisTemplate</code></td><td>장바구니 <code>cart:{userId}</code></td></tr>
+<tr><td><b>Idempotency</b> · 이벤트</td><td>sagaId · 이벤트 ID 멱등, <code>processed_event</code>, <code>@TransactionalEventListener</code>, ShedLock, 대량 처리 페이징</td><td><code>OrderPaid</code> · <code>OrderItemConfirmed</code> · 결제 대기 만료(15분) · 자동 구매확정</td></tr>
+<tr><td>호출자 측 Resilience4j</td><td>타임아웃(연결 2s · 읽기 3s) · 서킷 브레이커 · 폴백 → <code>EXTERNAL_API_ERROR</code></td><td>order → user · product · payment 호출</td></tr>
+<tr><td>포인트 배분</td><td>사용 · 적립 포인트를 상품주문 금액 비율로 나누고 끝전 처리</td><td>부분 취소 · 반품 시 환원 · 회수 금액</td></tr>
+<tr><td><b>Sanitizer</b> · XSS</td><td>OWASP Java HTML Sanitizer 정책, 저장 전 정화</td><td>리뷰 · 상품문의 본문</td></tr>
+<tr><td>프론트 (구매 흐름)</td><td>스토어별 그룹 장바구니, 낙관적 업데이트, TanStack Table 행 선택 일괄 처리</td><td>장바구니 · 주문서 · 판매자 주문관리</td></tr>
 </table></div>
 
 <h3>박지연 — 관측성 · 헬스 체크 · product · store</h3>
@@ -3748,28 +3757,13 @@ Windows에서 커밋한 <code>gradlew</code>나 <code>.sh</code> 파일이 CRLF 
 <tr><td>(Could) 로그 아카이브</td><td>EventBridge 스케줄, CloudWatch Logs 내보내기, S3 수명주기</td><td><code>log-archive</code> Lambda</td></tr>
 </table></div>
 
-<h3>이종빈 — order · payment · review</h3>
-<div class="tbl"><table>
-<tr><th>주제</th><th>알아야 할 것</th><th>이 프로젝트에서</th></tr>
-<tr><td><b>Saga · 보상</b></td><td>오케스트레이션, 단계 기록(<code>saga_instance</code>), 역순 보상, 타임아웃 시 "결과 모름" 처리, 멈춘 Saga 복구 스케줄러</td><td>주문 생성 · 결제 후 취소/반품 Saga (06장)</td></tr>
-<tr><td><b>포트원 V2</b></td><td>브라우저 SDK <code>requestPayment</code>, 서버 결제 조회 · 취소(부분) API, 금액 검증, 웹훅 서명 검증, V1(아임포트)과의 차이</td><td>payment-service (07장)</td></tr>
-<tr><td><b>상태머신</b></td><td>상품주문 · 클레임 상태 전이표를 enum + 전이 메서드로(허용 안 되는 전이는 예외), 이력 기록</td><td>결제완료 → … → 구매확정, 취소 · 반품 · 교환</td></tr>
-<tr><td>트랜잭션 · 락</td><td>전파 속성(REQUIRES_NEW), 낙관적 락(<code>@Version</code>) vs 비관적 락</td><td>주문 · 상품주문 동시 변경</td></tr>
-<tr><td><b>Redis</b></td><td>Hash 명령, TTL, <code>StringRedisTemplate</code></td><td>장바구니 <code>cart:{userId}</code></td></tr>
-<tr><td><b>Idempotency</b> · 이벤트</td><td>sagaId · 이벤트 ID 멱등, <code>processed_event</code>, <code>@TransactionalEventListener</code>, ShedLock, 대량 처리 페이징</td><td><code>OrderPaid</code> · <code>OrderItemConfirmed</code> · 결제 대기 만료(15분) · 자동 구매확정</td></tr>
-<tr><td>호출자 측 Resilience4j</td><td>타임아웃(연결 2s · 읽기 3s) · 서킷 브레이커 · 폴백 → <code>EXTERNAL_API_ERROR</code></td><td>order → user · product · payment 호출</td></tr>
-<tr><td>포인트 배분</td><td>사용 · 적립 포인트를 상품주문 금액 비율로 나누고 끝전 처리</td><td>부분 취소 · 반품 시 환원 · 회수 금액</td></tr>
-<tr><td><b>Sanitizer</b> · XSS</td><td>OWASP Java HTML Sanitizer 정책, 저장 전 정화</td><td>리뷰 · 상품문의 본문</td></tr>
-<tr><td>프론트</td><td>스토어별 그룹 장바구니, 낙관적 업데이트, TanStack Table 행 선택 일괄 처리</td><td>장바구니 · 주문서 · 판매자 주문관리</td></tr>
-</table></div>
-
 <h3>입문 트랙 — 웹 · 팀 프로젝트 경험이 적은 팀원을 위한 1주차</h3>
 <p>1주차 초반에 팀이 함께 아래를 확인하고, 경험이 있는 팀원이 페어를 맡습니다. 다른 팀원에게도 복습이 됩니다.</p>
 <div class="tbl"><table>
 <tr><th>순서</th><th>주제</th><th>목표 (이걸 혼자 할 수 있으면 통과)</th></tr>
 <tr><td>1</td><td><b>Git 기본</b></td><td><code>clone</code> → <code>switch -c feat/12-login</code> → 수정 → <code>add</code> · <code>commit</code> → <code>push</code> → GitHub에서 PR 생성 → 리뷰 반영 → Squash merge → <code>switch main</code> · <code>pull</code></td></tr>
 <tr><td>2</td><td>Git 협업 상황</td><td>충돌 해결(같은 줄 수정 실습), <code>git pull --rebase</code>, 실수 되돌리기(<code>restore</code> · <code>revert</code>), "main에 직접 push 금지" 이유 이해</td></tr>
-<tr><td>3</td><td>연습 저장소 실습</td><td>팀 연습 저장소에서 4명이 같은 파일을 고치며 PR · 충돌 · 리뷰를 한 바퀴 (반나절)</td></tr>
+<tr><td>3</td><td>연습 저장소 실습</td><td>팀 연습 저장소에서 3명이 같은 파일을 고치며 PR · 충돌 · 리뷰를 한 바퀴 (반나절)</td></tr>
 <tr><td>4</td><td>HTTP · REST 기초</td><td>메서드 · 상태 코드 · 헤더 · JSON, 브라우저 개발자 도구 Network 탭으로 요청 읽기</td></tr>
 <tr><td>5</td><td>Spring Boot 첫 API</td><td>서비스 템플릿으로 Controller → Service → Repository → MySQL 저장 · 조회 API 1개를 만들고 PR</td></tr>
 <tr><td>6</td><td>터미널 · WSL · Docker</td><td><code>cd/ls/cat</code>, <code>docker compose up -d</code>, <code>kubectl get pods</code> · <code>logs</code></td></tr>
@@ -3837,7 +3831,7 @@ Windows에서 커밋한 <code>gradlew</code>나 <code>.sh</code> 파일이 CRLF 
 <tr><td rowspan="2">범위</td><td>리뷰 · 취소/반품/교환 = <b>Must</b>, 포인트 · 회원등급 = <b>Should</b>. 찜 · 쿠폰 제거, 비회원 구매 TODO</td><td>멘토: 범위 축소. 이커머스 핵심 흐름 우선</td></tr>
 <tr><td>포인트: 실결제금액의 <b>5% 적립</b> + 다음 결제에서 사용, 상품주문 단위로 비율 배분 기록</td><td>부분 취소 · 반품 시 환원 · 회수를 정확히</td></tr>
 <tr><td>인프라</td><td>EKS 워커 <b>t3.large × 2 유지</b>(max 3, 시연 때 3대) → <b>10/14 t3.xlarge × 2로 조정</b>(아래 "10/14 사이징 조정")</td><td>멘토 "large도 크다"는 5개 기준. 9개 + Keycloak은 "서비스 수 × 기본 자원" 산수로 설명</td></tr>
-<tr><td>담당</td><td>구지훈(AWS IaC · settlement · admin · 알림 메일 · 정산 명세서) · 이경석(CI/CD · Keycloak · user · gateway 인증) · 박지연(관측성 · 헬스 체크 · product · store · 로그 아카이브) · 이종빈(order · payment · review)</td><td>멘토: IaC는 한 사람이 끝까지 만들어 공유, 업무와 발표는 공평하게 · 각자 오너십</td></tr>
+<tr><td>담당</td><td>구지훈(AWS IaC · settlement · admin · payment · 알림 메일 · 정산 명세서) · 이경석(CI/CD · Keycloak · user · gateway 인증 · order · review) · 박지연(관측성 · 헬스 체크 · product · store · 로그 아카이브) — 10/15 3인 체제로 재배치(아래 "10/15 팀 3인 체제 전환")</td><td>멘토: IaC는 한 사람이 끝까지 만들어 공유, 업무와 발표는 공평하게 · 각자 오너십</td></tr>
 <tr><td rowspan="2">일정 · 운영</td><td>10/12 ~ 11/20, <b>11/13 기능 동결</b>, 마지막 주 QA · 발표 준비, 11/20 발표</td><td>날짜는 변동 가능, 변경 시 이 표에 기록</td></tr>
 <tr><td>1~3일 스프린트 · 금요일 중간 점검 · 초반 데일리 스크럼 · QA 자동화 + 마지막 주 전체 QA · Claude 프로젝트에 가이드라인 · 컨벤션 컨텍스트</td><td>멘토: 기간이 짧아 2주 스프린트 불필요</td></tr>
 </table></div>
@@ -3872,6 +3866,14 @@ Windows에서 커밋한 <code>gradlew</code>나 <code>.sh</code> 파일이 CRLF 
 <tr><td>4</td><td>비용 재계산: 6주 · 매일 14시간 합계 <b>약 $320 → 약 $440</b>(app 노드 약 $125 → 약 $245), 24시간 상시였다면 약 $470 → 약 $690. 22:00 이후 수동 up 시간당 약 $0.57. AWS Budgets 월 예산 예시 $350</td><td>04장 비용 표 · 12장 일일 스케줄 표에 반영</td></tr>
 </table></div>
 
+<h3>10/15 팀 3인 체제 전환</h3>
+<div class="tbl"><table>
+<tr><th>#</th><th>결정</th><th>이유 · 근거</th></tr>
+<tr><td>1</td><td><b>팀 3인 체제</b>: 팀원 1명 이탈로 구지훈 · 이경석 · 박지연 3명. 서비스 9개 + Keycloak 구성은 유지하고 담당만 재배치</td><td>서비스를 합치면 Saga · 장애 격리 설계와 문서 전체를 다시 써야 함. 일정이 밀리면 범위는 MoSCoW(Could 먼저 제외)로 조정</td></tr>
+<tr><td>2</td><td><b>payment → 구지훈</b>(포트원 콘솔 팀 계정 · API Secret/웹훅 시크릿 등록 · 0원 결제 규칙 · payment-service), <b>order · review → 이경석</b>(장바구니 · Saga 오케스트레이터 · 취소/반품/교환 · 리뷰 · 상품문의 · 해당 화면). 03장 표 · CODEOWNERS · 16장 일정표 · 17장 학습표 갱신</td><td>payment는 GitHub Secrets · secrets-sync · 웹훅 주소 등 인프라 연동이 많고, order · review는 포인트(user) · 인증과 맞물리는 구매 흐름</td></tr>
+<tr><td>3</td><td><b>이경석 업무 집중 대응</b>: 우선순위 고정(user · gateway 인증 → order Saga → review), 구매 흐름 PR 공동 리뷰어 = 구지훈, order Saga · payment는 구지훈과 API · 이벤트 계약을 먼저 확정</td><td>CI/CD · Keycloak · user · gateway에 order · review가 더해짐(19장 위험 요소)</td></tr>
+</table></div>
+
 <div class="box rec"><b class="t">ADR로 남기기</b>
 위 결정 중 아키텍처에 영향을 주는 것(서비스 9개 분할 · admin BFF · 카테고리 위치 · Keycloak 대리 로그인 · 대시보드 부분 응답 · Resilience4j 표준 · 서버리스 범위 · 제외 목록 · 저장소 3분할 · GitHub Secrets 단일 소스 · 인프라 일일 스케줄 · 장바구니 MySQL 원본 + Redis 캐시 · 3티어 · db 노드 분리 · NetworkPolicy)은 <code>gotgan-config/docs/adr/0001-service-split.md</code>처럼 <b>ADR</b>(결정 · 배경 · 검토한 대안 · 결과)로 저장소에 남기세요. 결정이 바뀌면 기존 ADR을 고치지 말고 새 ADR에서 "대체함"으로 연결합니다.</div>
 </section>
@@ -3883,7 +3885,7 @@ Windows에서 커밋한 <code>gradlew</code>나 <code>.sh</code> 파일이 CRLF 
 <tr><th>위험</th><th>증상</th><th>예방 · 대응</th></tr>
 <tr><td>범위 과다</td><td>발표 때 빈 화면 · 끊긴 흐름</td><td>16장 Must 화면부터 끝까지 연결, 덜 된 화면은 메뉴에서 숨김, 11/13 이후 새 기능 금지</td></tr>
 <tr><td>구지훈 인프라 병목</td><td>인프라를 기다리느라 다른 사람이 멈춤, settlement · admin 일정까지 밀림</td><td>1주차 산출물 목록 · 날짜를 미리 공유, 기다리는 동안은 docker compose + MSW로 개발, 인프라 요청은 이슈로, settlement · admin은 3주차부터 본격 시작(인프라 기간에는 골격 · 계약만)</td></tr>
-<tr><td>이종빈 3개 서비스 부담</td><td>order · payment · review가 한 사람에게 몰려 Saga가 늦어짐</td><td>우선순위 고정(주문 Saga · payment → 취소/반품 → 리뷰 → 상품문의(Should)), 연동 지점 공동 리뷰(포인트 = 이경석, 재고 = 박지연), 1주차에 서비스 템플릿 · Saga 골격 선행</td></tr>
+<tr><td>이경석 업무 집중(CI/CD · Keycloak · user · gateway + order · review)</td><td>인증 · 배포 파이프라인과 구매 흐름이 한 사람에게 몰려 order Saga · 리뷰가 늦어짐</td><td>우선순위 고정(user · gateway 인증 → order Saga → review → 상품문의(Should)), 구매 흐름 PR 공동 리뷰어 = 구지훈(order Saga · payment 계약 먼저 확정), 연동 지점 공동 리뷰(재고 = 박지연), 범위 조정은 MoSCoW(Could 먼저 제외), 1주차에 서비스 템플릿 · Saga 골격 선행</td></tr>
 <tr><td>payment 분리로 Saga 단계 증가</td><td>중간 단계 실패 · 타임아웃 후 재고 · 포인트가 묶인 채 남음</td><td><code>saga_instance</code>에 단계 기록, sagaId 멱등, 역순 보상, 멈춘 Saga 복구 스케줄러, Resilience4j 타임아웃 → "결과 모름"은 조회 후 결정 (06장)</td></tr>
 <tr><td>동기 호출 장애 전파</td><td>서비스 하나가 죽으면 대시보드 · admin 화면 전체가 500</td><td>Resilience4j(타임아웃 · 서킷 브레이커 · 폴백) 표준, 대시보드는 실패 영역만 <code>null</code> + <code>unavailable</code> 부분 응답</td></tr>
 <tr><td>Keycloak issuer 불일치</td><td>모든 요청 401, 로그에 <code>iss</code> claim 오류</td><td><code>KC_HOSTNAME=http://keycloak:8080</code> 고정, user-service · gateway 모두 클러스터 내부 주소 사용, 브라우저는 Keycloak을 직접 부르지 않음 (08장)</td></tr>

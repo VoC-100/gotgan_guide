@@ -38,7 +38,7 @@ export default function HomePage() {
       <section className="home-hero">
         <div className="kicker">GOTGAN · PROJECT DOCS</div>
         <h1>곳간 프로젝트 문서</h1>
-        <p>소상공인을 위한 스마트스토어형 오픈마켓 · MSA · AWS EKS · 4인 · 2026-10-12 ~ 11-20</p>
+        <p>소상공인을 위한 스마트스토어형 오픈마켓 · MSA · AWS EKS · 3인 · 2026-10-12 ~ 11-20</p>
         <ul className="hero-facts">
           <li><b>서비스</b>게이트웨이 + 업무 8개 + Keycloak</li>
           <li><b>백엔드</b>Java 21 · Spring Boot 4.1</li>

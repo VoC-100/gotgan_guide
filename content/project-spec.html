@@ -166,7 +166,7 @@ svg .ah2{fill:var(--point)}
   <div>이커머스 핵심(상품 · 주문 · 결제)을 DDD로 나눠 클라우드 네이티브로 올린 MSA · AWS EKS · 서버리스</div>
   <div class="meta">
     <div><b>버전</b>v2.0 · 2026-10-12</div>
-    <div><b>기간 · 인원</b>2026-10-12 ~ 11-20 · 4명</div>
+    <div><b>기간 · 인원</b>2026-10-12 ~ 11-20 · 3명</div>
     <div><b>기준 문서</b>project-guideline.html · 개정 정리 8장 · MockupPage</div>
     <div><b>환경</b>dev 1개 · ap-northeast-2</div>
   </div>
@@ -386,9 +386,9 @@ svg .ah2{fill:var(--point)}
 <tr><td><b>user-service</b></td><td>8081</td><td>회원 프로필 · 배송지 · 포인트(적립 · 사용) · 회원등급 · 가입/로그인/refresh/로그아웃 API(Keycloak 대리 호출)</td><td>userdb</td><td>—</td><td>StoreApproved · OrderPaid · OrderItemConfirmed</td><td>이경석</td></tr>
 <tr><td><b>store-service</b></td><td>8082</td><td>입점 신청 · 심사 · 서류 · 스토어(상태 · 배송정책) · 판매자 대시보드(조합)</td><td>storedb · S3 seller-docs</td><td>StoreApproved · StoreStatusChanged</td><td>—</td><td>박지연</td></tr>
 <tr><td><b>product-service</b></td><td>8083</td><td>상품 · 옵션 · 재고 · 이미지 메타 · 카테고리(상위/하위) · QueryDSL 검색</td><td>productdb · S3 images(<code>products/</code>)</td><td>—</td><td>StoreStatusChanged</td><td>박지연</td></tr>
-<tr><td><b>order-service</b></td><td>8084</td><td>장바구니 · 주문 · 상품주문 · 배송(status) · 취소/반품/교환(status) · 구매확정 · Saga 오케스트레이터</td><td>orderdb(<code>cart_item</code> 포함) · Redis(<code>cart:</code> 캐시)</td><td>OrderPaid · OrderItemShipped · OrderItemConfirmed · OrderItemCancelled · OrderItemReturned</td><td>—</td><td>이종빈</td></tr>
-<tr><td><b>payment-service</b></td><td>8086</td><td>결제 준비 · 포트원 V2 검증/취소 · 웹훅</td><td>paymentdb</td><td>—</td><td>—</td><td>이종빈</td></tr>
-<tr><td><b>review-service</b></td><td>8087</td><td>리뷰(사진 · 별점) · 판매자 답글 · 상품문의 · 답변 · 리뷰 작성 자격</td><td>reviewdb · S3 images(<code>reviews/</code>)</td><td>—</td><td>OrderItemConfirmed</td><td>이종빈</td></tr>
+<tr><td><b>order-service</b></td><td>8084</td><td>장바구니 · 주문 · 상품주문 · 배송(status) · 취소/반품/교환(status) · 구매확정 · Saga 오케스트레이터</td><td>orderdb(<code>cart_item</code> 포함) · Redis(<code>cart:</code> 캐시)</td><td>OrderPaid · OrderItemShipped · OrderItemConfirmed · OrderItemCancelled · OrderItemReturned</td><td>—</td><td>이경석</td></tr>
+<tr><td><b>payment-service</b></td><td>8086</td><td>결제 준비 · 포트원 V2 검증/취소 · 웹훅</td><td>paymentdb</td><td>—</td><td>—</td><td>구지훈</td></tr>
+<tr><td><b>review-service</b></td><td>8087</td><td>리뷰(사진 · 별점) · 판매자 답글 · 상품문의 · 답변 · 리뷰 작성 자격</td><td>reviewdb · S3 images(<code>reviews/</code>)</td><td>—</td><td>OrderItemConfirmed</td><td>이경석</td></tr>
 <tr><td><b>settlement-service</b></td><td>8085</td><td>카테고리별 수수료 · 정산 적재 · 주간 집계 · 지급 · 보류</td><td>settlementdb</td><td>SettlementPaid</td><td>OrderItemConfirmed · StoreStatusChanged</td><td>구지훈</td></tr>
 <tr><td><b>admin-service</b></td><td>8088</td><td>관리자 API 진입점 · 각 서비스 <code>/internal/**</code> 호출 조합 · 관리자 대시보드(조합)</td><td><b>없음</b></td><td>—</td><td>—</td><td>구지훈</td></tr>
 </table></div>
@@ -670,7 +670,7 @@ gotgan-config/           sesac-final-1/gotgan-config — ArgoCD가 감시하는 
 <tr><td>IaC</td><td>Terraform 1.16.5 고정(<code>required_version = "~&gt; 1.16.0"</code> · CI 동일) · aws provider ~&gt; 5.0 · 모듈 vpc 5 / eks 20 / iam 5 · 상태 S3 + S3 자체 잠금(<code>use_lockfile</code>, DynamoDB 잠금 테이블 없음) · apply 순서 global/s3 → vpc → ecr → app → cluster (cicd는 상태 의존 없음 — 이경석) · 담당 구지훈(끝까지 만들어 공유, cicd/는 이경석)</td></tr>
 <tr><td>리전 · AZ</td><td>ap-northeast-2 · 2a, 2c</td></tr>
 <tr><td>네트워크</td><td>VPC 10.0.0.0/16 · 퍼블릭 /24 ×2 · 프라이빗 /24 ×2 · NAT 1개 · EKS 서브넷 태그</td></tr>
-<tr><td>EKS</td><td>1.35 · 퍼블릭 엔드포인트 · access entries(팀원 4명 관리자)</td></tr>
+<tr><td>EKS</td><td>1.35 · 퍼블릭 엔드포인트 · access entries(팀원 전원 관리자)</td></tr>
 <tr><td>노드 그룹 (3티어)</td><td>2개 — 백 티어 <b><code>app</code> t3.xlarge ×2</b> (4 vCPU · 16GiB · 파드 58개/노드 · 10/14 t3.large에서 조정 · 프라이빗 2a · 2c · min 0 / max 3 · 라벨 <code>tier=app</code>) + DB 티어 <b><code>db</code> t3.medium ×1</b> (2 vCPU · 4GiB · 프라이빗 2a 고정 · min 0 / max 1 · 라벨 + 테인트 <code>tier=db:NoSchedule</code> · MySQL · Redis만). AL2023 · gp3 암호화 · On-Demand · 장애 · 자동 복구 시연 때만 app 3대 (오토스케일링 · HPA 없음). 프론트 티어는 Vercel</td></tr>
 <tr><td>파드 예산</td><td>app: 약 35개 · 메모리 requests 약 9.8Gi — gateway ×2 · 업무 8 × 512Mi · Keycloak 1Gi · 관측성 5(Prometheus · Loki · Zipkin · Grafana · kube-state-metrics, blackbox 없음) · ArgoCD 5 · 시스템 ~14 → t3.xlarge ×2(할당 약 30Gi · 파드 116) requests 여유 약 20Gi. 실사용(JVM 10개 각 약 650~700Mi · Keycloak 약 1Gi · 관측성 약 2Gi · ArgoCD 약 1Gi · 시스템 약 1.2Gi ≈ 12~13Gi) 기준 여유 약 17Gi, 노드 1대(약 15Gi)만 남아도 수용(N-1). db: MySQL 1Gi + Redis 128Mi + 시스템 ≈ 1.7Gi → t3.medium(할당 약 3.4Gi)</td></tr>
 <tr><td>DB 티어 격리</td><td><code>deploy/k8s/02-networkpolicy.yaml</code> — <code>tier=db</code> 파드의 3306 · 6379 ingress는 네임스페이스 sesac-gojigi의 <code>tier=backend</code> 파드만, DB 파드 egress는 DNS뿐(NAT 경로 없음). Helm Deployment: <code>nodeSelector tier=app</code> + 파드 라벨 <code>tier: backend</code> / MySQL · Redis: <code>nodeSelector tier=db</code> + toleration + 라벨 <code>tier: db</code>. EBS 볼륨(gp3 디스크) PVC는 2a에 묶임</td></tr>
@@ -1047,7 +1047,7 @@ gotgan-config/                ArgoCD가 감시하는 쪽 · 인프라 자동화
 <tr><td><code>app/dynamodb.tf</code></td><td>notifications · settlement-reports 테이블 (On-Demand · TTL)</td><td>4</td></tr>
 <tr><td><code>app/ses.tf</code></td><td>발신 · 수신 이메일 자격 증명 (샌드박스 검증)</td><td>4</td></tr>
 <tr><td><code>app/ssm.tf</code></td><td>큐 · 테이블 · 버킷 ARN을 SSM 파라미터로 기록 (serverless.yml이 읽음)</td><td>4</td></tr>
-<tr><td><code>cluster/main.tf</code></td><td>EKS 모듈: 제어 평면 · 노드 그룹 2개(<code>app</code> t3.xlarge ×2 라벨 <code>tier=app</code> / <code>db</code> t3.medium ×1 2a 고정 · 라벨 + 테인트 <code>tier=db:NoSchedule</code>) · access entries(팀원 4명 + Actions 역할, <code>enable_cluster_creator_admin_permissions = false</code>) · OIDC 공급자 — <b>cluster/ 전체가 매일 08:00 apply · 22:00 destroy</b>(infra-schedule)</td><td>5</td></tr>
+<tr><td><code>cluster/main.tf</code></td><td>EKS 모듈: 제어 평면 · 노드 그룹 2개(<code>app</code> t3.xlarge ×2 라벨 <code>tier=app</code> / <code>db</code> t3.medium ×1 2a 고정 · 라벨 + 테인트 <code>tier=db:NoSchedule</code>) · access entries(팀원 전원 + Actions 역할, <code>enable_cluster_creator_admin_permissions = false</code>) · OIDC 공급자 — <b>cluster/ 전체가 매일 08:00 apply · 22:00 destroy</b>(infra-schedule)</td><td>5</td></tr>
 <tr><td><code>cluster/irsa.tf</code></td><td>서비스별 IAM 역할 + 정책 (ServiceAccount와 연결) — 신뢰 정책이 그날의 OIDC 공급자를 가리키므로 클러스터와 함께 매일 재생성, 이름 고정 → ARN 불변. 권한 대상 ARN은 app/ remote state</td><td>5</td></tr>
 <tr><td><code>cluster/ebs-csi-driver.tf</code></td><td>EBS CSI 애드온 + IRSA 역할 (MySQL · Prometheus 볼륨)</td><td>5</td></tr>
 <tr><td><code>cluster/lbc.tf</code> · <code>iam_policy.json</code></td><td>Load Balancer Controller Helm 설치 + IRSA · 공식 권한 정책 파일</td><td>5</td></tr>
